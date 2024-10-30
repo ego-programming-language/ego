@@ -1,0 +1,8 @@
+[package]
+name = "emulator"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+"ego" = { path = "../ego" }
+"self-vm" = { path = "../self" }
