@@ -12,6 +12,7 @@ pub fn print_as_bytecode(node: &CallExpression) -> Vec<u8> {
     let mut bytecode = vec![];
 
     // load arguments
+    // todo: handle different var types, not only conts
     let load_const_bytecode = get_bytecode("load_const".to_string());
     for argument in &node.arguments.children {
         if let Some(arg) = argument {
@@ -22,17 +23,22 @@ pub fn print_as_bytecode(node: &CallExpression) -> Vec<u8> {
                         panic!("Cannot compile negative numbers on self");
                     }
 
-                    // value type bytecode
-                    let num = match i64::try_from(v.value as i64) {
-                        Ok(int_num) => int_num,
-                        Err(_) => panic!("Conversion failed: out of range"),
+                    let (num_bytecode, num_type_bytecode) = match v.value {
+                        value if value >= i32::MIN as f64 && value <= i32::MAX as f64 => (
+                            bytes_from_32(Number::I32(value as i32)).to_vec(),
+                            get_bytecode("i32".to_string()),
+                        ),
+                        value if value >= i64::MIN as f64 && value <= i64::MAX as f64 => (
+                            bytes_from_64(Number::I64(value as i64)).to_vec(),
+                            get_bytecode("i64".to_string()),
+                        ),
+                        _ => panic!("Unsupported number type or out of range"),
                     };
 
-                    let num_type_bytecode = get_bytecode("i64".to_string());
+                    // Push type bytecode
                     bytecode.push(num_type_bytecode);
 
                     // value bytecode
-                    let num_bytecode = bytes_from_64(Number::I64(num));
                     bytecode.extend_from_slice(&num_bytecode);
                 }
                 _ => {

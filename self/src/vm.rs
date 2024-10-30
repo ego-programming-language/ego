@@ -124,4 +124,8 @@ impl Vm {
             self.pc += 1; // increment program counter
         }
     }
+
+    pub fn debug_bytecode(&mut self) {
+        print!("{:#?}", self.instructions)
+    }
 }
