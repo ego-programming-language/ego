@@ -29,7 +29,7 @@ version = "0.0.0-alpha.0.1"
 dependencies = [
  "lazy_static",
  "regex",
- "self-vm 0.1.0 (git+https://github.com/noreplydev/self)",
+ "self-vm",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -39,7 +39,7 @@ name = "emulator"
 version = "0.1.0"
 dependencies = [
  "ego",
- "self-vm 0.1.0",
+ "self-vm",
 ]
 
 [[package]]
@@ -125,11 +125,6 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 [[package]]
 name = "self-vm"
 version = "0.1.0"
-
-[[package]]
-name = "self-vm"
-version = "0.1.0"
-source = "git+https://github.com/noreplydev/self#c5fdf8af7588cb1048201ccc5b306d51df66ee9a"
 
 [[package]]
 name = "syn"
