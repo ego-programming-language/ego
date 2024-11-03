@@ -50,7 +50,7 @@ impl Run {
 
         if self.args.contains(&"-vm".to_string()) {
             let bytecode = Compiler::gen_bytecode(ast);
-            let mut vm = self_vm::vm::Vm::new(bytecode);
+            let mut vm = self_vm::new(bytecode);
             vm.run();
         } else {
             let mut interpreter = Interpreter::new(ast.clone());
