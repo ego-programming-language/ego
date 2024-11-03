@@ -46,7 +46,7 @@ pub fn print_as_bytecode(node: &CallExpression) -> Vec<u8> {
                     bytecode.extend_from_slice(&num_bytecode);
                 }
                 Expression::StringLiteral(v) => {
-                    let string_bytes = v.value.as_bytes();
+                    let string_bytes = v.raw_value.as_bytes();
                     // todo: handle larger string
                     let string_length = string_bytes.len() as u32;
 

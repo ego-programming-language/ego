@@ -1068,10 +1068,14 @@ impl Module {
             }
             LexerTokenType::StringLiteral => {
                 self.next(); // consume string literal
+                let string = token.value.clone();
+                let mut chars = string.chars();
+                chars.next();
+                chars.next_back();
+                let raw_string = chars.collect();
+
                 Expression::StringLiteral(StringLiteral::new(
-                    token.value.clone(),
-                    token.at,
-                    token.line,
+                    string, raw_string, token.at, token.line,
                 ))
             }
             LexerTokenType::Identifier => {
