@@ -94,6 +94,7 @@ impl Translator {
             0x03 => DataType::I32,
             0x04 => DataType::I64,
             0x05 => DataType::Utf8,
+            0x06 => DataType::Bool,
             _ => panic!("Unknown data type"),
         };
 
@@ -102,6 +103,8 @@ impl Translator {
             DataType::I64 => 8,
             DataType::U32 => 4,
             DataType::U64 => 8,
+            DataType::Nothing => 0,
+            DataType::Bool => 1,
             DataType::Utf8 => {
                 self.pc += 1;
                 let (data_type, value) = self.get_value_length();
@@ -116,7 +119,6 @@ impl Translator {
                     panic!("Unexpected value type for string length");
                 }
             } // hardcoded for the moment
-            DataType::Nothing => 0,
             _ => {
                 panic!("Unsupported datatype")
             }

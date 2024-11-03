@@ -115,6 +115,7 @@ impl Vm {
                             Value::U32(x) => println!("PRINT -> {}", x.value),
                             Value::U64(x) => println!("PRINT -> {}", x.value),
                             Value::Utf8(x) => println!("PRINT -> {}", x.value),
+                            Value::Bool(x) => println!("PRINT -> {}", x.value),
                             Value::Nothing => println!("PRINT -> nothing"),
                             // Handle other types as necessary
                         }

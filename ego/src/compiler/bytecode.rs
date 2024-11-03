@@ -18,6 +18,7 @@ impl Bytecode {
         hash_map.insert("i32".to_string(), 0x03);
         hash_map.insert("u32".to_string(), 0x01);
         hash_map.insert("utf8".to_string(), 0x05);
+        hash_map.insert("bool".to_string(), 0x06);
         Bytecode { table: hash_map }
     }
 
