@@ -9,11 +9,15 @@ pub struct Bytecode {
 impl Bytecode {
     pub fn get_handler() -> Bytecode {
         let mut hash_map = HashMap::new();
-        hash_map.insert("i64".to_string(), 0x04);
-        hash_map.insert("i32".to_string(), 0x03);
+        // instructions
         hash_map.insert("load_const".to_string(), 0x01);
         hash_map.insert("print".to_string(), 0x02);
 
+        // values
+        hash_map.insert("i64".to_string(), 0x04);
+        hash_map.insert("i32".to_string(), 0x03);
+        hash_map.insert("u32".to_string(), 0x01);
+        hash_map.insert("utf8".to_string(), 0x05);
         Bytecode { table: hash_map }
     }
 

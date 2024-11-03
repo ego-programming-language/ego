@@ -1,10 +1,12 @@
+use std::collections::btree_map;
+
 use crate::{
     ast::{call_expression::CallExpression, Expression},
     compiler::bytecode::get_bytecode,
 };
 
 use self_vm::utils::{
-    to_bytes::{bytes_from_32, bytes_from_64},
+    to_bytes::{bytes_from_32, bytes_from_64, bytes_from_utf8},
     Number,
 };
 
@@ -35,11 +37,23 @@ pub fn print_as_bytecode(node: &CallExpression) -> Vec<u8> {
                         _ => panic!("Unsupported number type or out of range"),
                     };
 
-                    // Push type bytecode
+                    // type
                     bytecode.push(num_type_bytecode);
 
-                    // value bytecode
+                    // value
                     bytecode.extend_from_slice(&num_bytecode);
+                }
+                Expression::StringLiteral(v) => {
+                    bytecode.push(load_const_bytecode);
+
+                    let string_bytes = v.value.as_bytes();
+                    // todo: handle larger string
+                    let string_length = string_bytes.len() as u32;
+
+                    bytecode.push(get_bytecode("utf8".to_string()));
+                    bytecode.push(get_bytecode("u32".to_string()));
+                    bytecode.extend_from_slice(&string_length.to_le_bytes());
+                    bytecode.extend_from_slice(string_bytes);
                 }
                 _ => {
                     println!("- Argument skipped")

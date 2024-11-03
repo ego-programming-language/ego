@@ -1,4 +1,8 @@
-use crate::{instructions::Instruction, types::DataType};
+use crate::{
+    instructions::Instruction,
+    types::{DataType, Value},
+    utils::from_bytes::bytes_to_data,
+};
 
 pub struct Translator {
     bytecode: Vec<u8>,
@@ -98,6 +102,20 @@ impl Translator {
             DataType::I64 => 8,
             DataType::U32 => 4,
             DataType::U64 => 8,
+            DataType::Utf8 => {
+                self.pc += 1;
+                let (data_type, value) = self.get_value_length();
+                if data_type != DataType::U32 {
+                    panic!("bad utf8 value length")
+                }
+
+                let (string_length, _) = bytes_to_data(&DataType::U32, &value);
+                if let Value::U32(val) = string_length {
+                    val.value as usize
+                } else {
+                    panic!("Unexpected value type for string length");
+                }
+            } // hardcoded for the moment
             DataType::Nothing => 0,
             _ => {
                 panic!("Unsupported datatype")

@@ -21,3 +21,13 @@ pub fn bytes_from_32(num: Number) -> [u8; 4] {
         }
     }
 }
+
+pub fn bytes_from_utf8(string: &String) -> [u8; 8] {
+    let mut buffer = [0u8; 8];
+    let bytes = string.as_bytes();
+
+    let len = bytes.len().min(8);
+    buffer[..len].copy_from_slice(&bytes[..len]);
+
+    buffer
+}

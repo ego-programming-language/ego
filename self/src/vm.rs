@@ -33,6 +33,7 @@ impl Vm {
     pub fn run(&mut self) {
         while self.pc < self.instructions.len() {
             let instruction = &self.instructions[self.pc];
+            // debug each instruction: print!("Ins: {:#?}", instruction);
             match &instruction {
                 Instruction::Zero => {
                     println!("Zero");

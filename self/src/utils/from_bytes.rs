@@ -1,4 +1,4 @@
-use crate::types::{i32::I32, i64::I64, u32::U32, u64::U64, DataType, Value};
+use crate::types::{i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8, DataType, Value};
 
 pub fn bytes_to_data(data_type: &DataType, value: &Vec<u8>) -> (Value, String) {
     let printable_value;
@@ -42,6 +42,12 @@ pub fn bytes_to_data(data_type: &DataType, value: &Vec<u8>) -> (Value, String) {
             );
             printable_value = value.to_string();
             Value::U64(U64::new(value))
+        }
+        DataType::Utf8 => {
+            let value =
+                String::from_utf8(value.clone()).expect("Provided value is not valid UTF-8");
+            printable_value = value.to_string();
+            Value::Utf8(Utf8::new(value))
         }
         DataType::Nothing => {
             printable_value = "nothing".to_string();
