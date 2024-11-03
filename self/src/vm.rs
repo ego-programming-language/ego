@@ -127,6 +127,7 @@ impl Vm {
     }
 
     pub fn debug_bytecode(&mut self) {
-        print!("{:#?}", self.instructions)
+        println!("\n--- BYTECODE INSTRUCTIONS ----------\n");
+        println!("{:#?}", self.instructions)
     }
 }
