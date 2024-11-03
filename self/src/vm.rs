@@ -30,14 +30,10 @@ impl Vm {
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self, args: &Vec<String>) {
         while self.pc < self.instructions.len() {
             let instruction = &self.instructions[self.pc];
-            // debug each instruction: print!("Ins: {:#?}", instruction);
             match &instruction {
-                Instruction::Zero => {
-                    println!("Zero");
-                }
                 Instruction::LoadConst { data_type, value } => {
                     let (value, printable_value) = bytes_to_data(data_type, value);
                     self.operand_stack.push(value);
@@ -120,6 +116,9 @@ impl Vm {
                             // Handle other types as necessary
                         }
                     }
+                }
+                _ => {
+                    panic!("Unhandled instruction")
                 }
             }
 

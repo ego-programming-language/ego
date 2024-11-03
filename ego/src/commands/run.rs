@@ -51,7 +51,7 @@ impl Run {
         if self.args.contains(&"-vm".to_string()) {
             let bytecode = Compiler::gen_bytecode(ast);
             let mut vm = self_vm::new(bytecode);
-            vm.run();
+            vm.run(&self.args);
         } else {
             let mut interpreter = Interpreter::new(ast.clone());
             interpreter.exec(self.debug());

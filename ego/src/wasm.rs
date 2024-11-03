@@ -25,7 +25,7 @@ pub fn run_ego(code: String, vm: bool) -> Vec<String> {
     if vm {
         let bytecode = Compiler::gen_bytecode(ast);
         let mut vm = self_vm::vm::Vm::new(bytecode);
-        vm.run();
+        vm.run(&vec![]);
         vec!["Logs with executions are not implemented yet".to_string()]
     } else {
         let mut interpreter = Interpreter::new(ast.clone());

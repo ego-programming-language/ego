@@ -16,5 +16,5 @@ fn main() {
         vm.debug_bytecode();
         println!("\n--- RUNTIME ----------\n");
     }
-    vm.run();
+    vm.run(&args);
 }
