@@ -31,13 +31,16 @@ impl Vm {
     }
 
     pub fn run(&mut self, args: &Vec<String>) {
+        let debug = args.contains(&"-d".to_string());
         while self.pc < self.instructions.len() {
             let instruction = &self.instructions[self.pc];
             match &instruction {
                 Instruction::LoadConst { data_type, value } => {
                     let (value, printable_value) = bytes_to_data(data_type, value);
                     self.operand_stack.push(value);
-                    println!("LOAD_CONST <- {:?}({printable_value})", data_type);
+                    if debug {
+                        println!("LOAD_CONST <- {:?}({printable_value})", data_type);
+                    }
                 }
                 Instruction::StoreVar {
                     data_type,
@@ -46,12 +49,14 @@ impl Vm {
                 } => {
                     let (value, printable_value) = bytes_to_data(data_type, value);
                     // todo: self.symbol_table.add_key_value("", value);
-                    println!(
-                        "STORE_VAR: {} {:?}({})",
-                        if *mutable { "mut" } else { "inmutable" },
-                        data_type,
-                        printable_value
-                    );
+                    if debug {
+                        println!(
+                            "STORE_VAR: {} {:?}({})",
+                            if *mutable { "mut" } else { "inmutable" },
+                            data_type,
+                            printable_value
+                        );
+                    }
                 }
                 Instruction::Add => {
                     let right_operand = self.operand_stack.pop();
@@ -72,21 +77,29 @@ impl Vm {
                         (Value::I32(l), Value::I32(r)) => {
                             self.operand_stack
                                 .push(Value::I32(I32::new(l.value + r.value)));
-                            println!("ADD -> {:?}", l.value + r.value);
+                            if debug {
+                                println!("ADD -> {:?}", l.value + r.value);
+                            }
                         }
                         (Value::I64(l), Value::I64(r)) => {
                             self.operand_stack
                                 .push(Value::I64(I64::new(l.value + r.value)));
-                            println!("ADD -> {:?}", l.value + r.value);
+                            if debug {
+                                println!("ADD -> {:?}", l.value + r.value);
+                            }
                         }
                         (Value::U32(l), Value::U32(r)) => {
                             self.operand_stack
                                 .push(Value::U32(U32::new(l.value + r.value)));
-                            println!("ADD -> {:?}", l.value + r.value);
+                            if debug {
+                                println!("ADD -> {:?}", l.value + r.value);
+                            }
                         }
                         (Value::Nothing, Value::Nothing) => {
                             self.operand_stack.push(Value::Nothing);
-                            println!("ADD -> nothing");
+                            if debug {
+                                println!("ADD -> nothing");
+                            }
                         }
                         _ => unreachable!(),
                     }
@@ -105,15 +118,19 @@ impl Vm {
 
                     args.reverse();
                     for arg in args {
-                        match arg {
-                            Value::I32(x) => println!("PRINT -> {}", x.value),
-                            Value::I64(x) => println!("PRINT -> {}", x.value),
-                            Value::U32(x) => println!("PRINT -> {}", x.value),
-                            Value::U64(x) => println!("PRINT -> {}", x.value),
-                            Value::Utf8(x) => println!("PRINT -> {}", x.value),
-                            Value::Bool(x) => println!("PRINT -> {}", x.value),
-                            Value::Nothing => println!("PRINT -> nothing"),
-                            // Handle other types as necessary
+                        if debug {
+                            match arg {
+                                Value::I32(x) => println!("PRINT -> {}", x.value),
+                                Value::I64(x) => println!("PRINT -> {}", x.value),
+                                Value::U32(x) => println!("PRINT -> {}", x.value),
+                                Value::U64(x) => println!("PRINT -> {}", x.value),
+                                Value::Utf8(x) => println!("PRINT -> {}", x.value),
+                                Value::Bool(x) => println!("PRINT -> {}", x.value),
+                                Value::Nothing => println!("PRINT -> nothing"),
+                                // Handle other types as necessary
+                            }
+                        } else {
+                            print!("{}", arg.to_string());
                         }
                     }
                 }

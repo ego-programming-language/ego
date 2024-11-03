@@ -35,6 +35,18 @@ impl Value {
             Value::Nothing => DataType::Nothing,
         }
     }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            Value::I32(x) => x.value.to_string(),
+            Value::I64(x) => x.value.to_string(),
+            Value::U32(x) => x.value.to_string(),
+            Value::U64(x) => x.value.to_string(),
+            Value::Utf8(x) => x.value.to_string(),
+            Value::Bool(x) => x.value.to_string(),
+            Value::Nothing => "nothing".to_string(),
+        }
+    }
 }
 
 #[derive(Debug)]
