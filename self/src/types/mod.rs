@@ -12,6 +12,8 @@ use u32::U32;
 use u64::U64;
 use utf8::Utf8;
 
+use super::opcodes::DataType;
+
 #[derive(Debug)]
 pub enum Value {
     I32(I32),
@@ -45,32 +47,6 @@ impl Value {
             Value::Utf8(x) => x.value.to_string(),
             Value::Bool(x) => x.value.to_string(),
             Value::Nothing => "nothing".to_string(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum DataType {
-    I32,
-    I64,
-    U32,
-    U64,
-    Utf8,
-    Nothing,
-    Bool,
-}
-
-impl PartialEq for DataType {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (DataType::I32, DataType::I32) => true,
-            (DataType::I64, DataType::I64) => true,
-            (DataType::U32, DataType::U32) => true,
-            (DataType::U64, DataType::U64) => true,
-            (DataType::Utf8, DataType::Utf8) => true,
-            (DataType::Bool, DataType::Bool) => true,
-            (DataType::Nothing, DataType::Nothing) => true,
-            _ => false,
         }
     }
 }

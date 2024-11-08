@@ -1,4 +1,5 @@
-use crate::types::DataType;
+use crate::opcodes::DataType;
+
 
 #[derive(Debug)]
 pub enum Instruction {

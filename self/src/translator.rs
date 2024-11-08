@@ -1,6 +1,7 @@
 use crate::{
     instructions::Instruction,
-    types::{DataType, Value},
+    opcodes::{DataType, Opcode},
+    types::Value,
     utils::from_bytes::bytes_to_data,
 };
 
@@ -18,11 +19,11 @@ impl Translator {
         let mut instructions = vec![];
 
         while self.pc < self.bytecode.len() {
-            match self.bytecode[self.pc] {
+            match Opcode::to_opcode(self.bytecode[self.pc]) {
                 // ZERO
-                0 => instructions.push(Instruction::Zero),
+                Opcode::Zero => instructions.push(Instruction::Zero),
                 // LOAD_CONST
-                0x01 => {
+                Opcode::LoadConst => {
                     if self.pc + 1 >= self.bytecode.len() {
                         panic!("Invalid LOAD_CONST instruction at position {}", self.pc);
                     }
@@ -36,7 +37,7 @@ impl Translator {
                     });
                 }
                 // PRINT
-                0x02 => {
+                Opcode::Print => {
                     // get u32 value. 4 bytes based on the type plus the current
                     let value_length = 4;
                     if self.pc + value_length >= self.bytecode.len() {
@@ -51,9 +52,9 @@ impl Translator {
                     self.pc += 4;
                 }
                 // ADD
-                0x03 => instructions.push(Instruction::Add),
+                Opcode::Add => instructions.push(Instruction::Add),
                 // STORE_VAR
-                0x04 => {
+                Opcode::StoreVar => {
                     if self.pc + 1 >= self.bytecode.len() {
                         panic!("Invalid STORE_VAR instruction at position {}.", self.pc);
                     }
@@ -87,17 +88,7 @@ impl Translator {
     }
 
     fn get_value_length(&mut self) -> (DataType, Vec<u8>) {
-        let data_type = match self.bytecode[self.pc] {
-            0x00 => DataType::Nothing,
-            0x01 => DataType::U32,
-            0x02 => DataType::U64,
-            0x03 => DataType::I32,
-            0x04 => DataType::I64,
-            0x05 => DataType::Utf8,
-            0x06 => DataType::Bool,
-            _ => panic!("Unknown data type"),
-        };
-
+        let data_type = DataType::to_opcode(self.bytecode[self.pc]);
         let value_length = match data_type {
             DataType::I32 => 4,
             DataType::I64 => 8,
