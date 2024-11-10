@@ -11,6 +11,7 @@ use crate::ast::{
     assignament_statement::{AssignamentNode, VarType},
     identifier,
     module::ModuleAst,
+    string_literal::StringLiteral,
     AstNodeType, Expression,
 };
 
@@ -32,6 +33,9 @@ impl Compiler {
         while counter < self.ast.children.len() {
             let node_bytecode = match &self.ast.children[counter] {
                 // [op][var_type][identifier][value]
+                AstNodeType::AssignamentStatement(node) => {
+                    Compiler::compile_assignament_statement(node)
+                }
                 AstNodeType::Expression(node) => Compiler::compile_expression(node),
                 _ => {
                     // panic!("unhandled node type")
@@ -43,6 +47,34 @@ impl Compiler {
         }
 
         self.bytecode.clone()
+    }
+
+    fn compile_assignament_statement(node: &AssignamentNode) -> Vec<u8> {
+        let mut operation_bytecode = vec![];
+
+        // op
+        operation_bytecode.push(get_bytecode("store_var".to_string()));
+        // var_type
+        operation_bytecode.push(match node.var_type {
+            VarType::Const => get_bytecode("inmut".to_string()),
+            _ => get_bytecode("mut".to_string()),
+        });
+        // identifier
+        // create a Expression node from identifier string to avoid
+        // code duplication handling identifier name string
+        operation_bytecode.extend_from_slice(&Compiler::compile_expression(
+            &Expression::StringLiteral(StringLiteral::new(
+                node.identifier.name.clone(),
+                node.identifier.name.clone(),
+                node.identifier.at,
+                node.identifier.line,
+            )),
+        ));
+
+        // value
+        operation_bytecode.extend_from_slice(&Compiler::compile_expression(&node.init));
+
+        operation_bytecode
     }
 
     fn compile_expression(node: &Expression) -> Vec<u8> {

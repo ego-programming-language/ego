@@ -1,7 +1,7 @@
 use crate::{
     instructions::Instruction,
     opcodes::{DataType, Opcode},
-    types::Value,
+    types::{utf8::Utf8, Value},
     utils::from_bytes::bytes_to_data,
 };
 
@@ -57,23 +57,36 @@ impl Translator {
                 Opcode::StoreVar => {
                     if self.pc + 1 >= self.bytecode.len() {
                         panic!("Invalid STORE_VAR instruction at position {}.", self.pc);
+                    } else {
+                        self.pc += 1;
                     }
 
-                    self.pc += 1;
-                    let (data_type, value_bytes) = self.get_value_length();
-
-                    // 0x01 inmutable | 0x02 mutable
-                    self.pc += 1;
+                    // 0x00 inmutable | 0x00 mutable
                     let mutable = match self.bytecode[self.pc] {
-                        0x01 => false,
-                        0x02 => true,
+                        0x00 => false,
+                        0x01 => true,
                         _ => {
                             panic!("Invalid STORE_VAR instruction at position {}. Needed mutability property.", self.pc);
                         }
                     };
+                    self.pc += 1;
+
+                    // identifier
+                    let (identifier_data_type, identifier_bytes) = self.get_value_length();
+                    if identifier_data_type != DataType::Utf8 {
+                        panic!("Identifier type should be a string encoded as utf8")
+                    }
+
+                    let identifier_name = String::from_utf8(identifier_bytes)
+                        .expect("Identifier bytes should be valid UTF-8");
+                    self.pc += 1;
+
+                    // value
+                    let (value_data_type, value_bytes) = self.get_value_length();
 
                     instructions.push(Instruction::StoreVar {
-                        data_type,
+                        identifier: identifier_name,
+                        data_type: value_data_type,
                         mutable,
                         value: value_bytes,
                     });

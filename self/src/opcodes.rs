@@ -10,6 +10,10 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     m.insert("add".to_string(), 0x03);
     m.insert("store_var".to_string(), 0x04);
 
+    // params
+    m.insert("inmut".to_string(), 0x00);
+    m.insert("mut".to_string(), 0x01);
+
     // typecodes
     m.insert("nothing".to_string(), 0x00);
     m.insert("i32".to_string(), 0x01);

@@ -43,6 +43,7 @@ impl Vm {
                     }
                 }
                 Instruction::StoreVar {
+                    identifier,
                     data_type,
                     value,
                     mutable,
@@ -51,10 +52,11 @@ impl Vm {
                     // todo: self.symbol_table.add_key_value("", value);
                     if debug {
                         println!(
-                            "STORE_VAR: {} {:?}({})",
-                            if *mutable { "mut" } else { "inmutable" },
+                            "STORE_VAR[{}] <- {:?}({}) as {}",
+                            if *mutable { "MUT" } else { "INMUT" },
                             data_type,
-                            printable_value
+                            printable_value,
+                            identifier,
                         );
                     }
                 }
