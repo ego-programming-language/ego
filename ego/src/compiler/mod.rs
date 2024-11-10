@@ -3,16 +3,24 @@ mod handlers;
 
 use crate::ast::{module::ModuleAst, AstNodeType, Expression};
 
-pub struct Compiler {}
+pub struct Compiler {
+    ast: ModuleAst,
+    bytecode: Vec<u8>,
+}
 
 impl Compiler {
-    pub fn gen_bytecode(ast: ModuleAst) -> Vec<u8> {
-        let mut counter = 0;
-        let mut bytecode: Vec<u8> = vec![];
+    pub fn new(ast: ModuleAst) -> Compiler {
+        Compiler {
+            ast,
+            bytecode: vec![],
+        }
+    }
 
-        while counter < ast.children.len() {
-            match &ast.children[counter] {
-                AstNodeType::Expression(expr) => match expr {
+    pub fn gen_bytecode(&mut self) -> Vec<u8> {
+        let mut counter = 0;
+        while counter < self.ast.children.len() {
+            match &self.ast.children[counter] {
+                AstNodeType::Expression(node) => match node {
                     Expression::CallExpression(v) => {
                         let call_expression_bytecode = match v.identifier.name.as_str() {
                             "print" => handlers::print_as_bytecode(v),
@@ -22,7 +30,7 @@ impl Compiler {
                             }
                         };
 
-                        bytecode.extend_from_slice(&call_expression_bytecode);
+                        self.bytecode.extend_from_slice(&call_expression_bytecode);
                     }
                     _ => {}
                 },
@@ -31,6 +39,6 @@ impl Compiler {
             counter += 1;
         }
 
-        bytecode
+        self.bytecode.clone()
     }
 }

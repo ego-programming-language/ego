@@ -24,5 +24,6 @@ pub fn gen_bytecode(modulename: String, code: String, args: &Vec<String>) -> Vec
         println!("\n--- AST ----------\n");
         println!("{:#?}", ast);
     }
-    Compiler::gen_bytecode(ast)
+    let mut compiler = Compiler::new(ast);
+    compiler.gen_bytecode()
 }

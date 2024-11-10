@@ -49,7 +49,8 @@ impl Run {
         }
 
         if self.args.contains(&"-vm".to_string()) {
-            let bytecode = Compiler::gen_bytecode(ast);
+            let mut compiler = Compiler::new(ast);
+            let bytecode = compiler.gen_bytecode();
             let mut vm = self_vm::new(bytecode);
             vm.run(&self.args);
         } else {
