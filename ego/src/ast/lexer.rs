@@ -1,7 +1,5 @@
-use super::lexer_types::{LexerTokenType,LexerToken};
+use super::lexer_types::{LexerToken, LexerTokenType};
 use regex::Regex;
-
-
 
 const KEYWORDS: [&str; 14] = [
     "fn", "let", "if", "else", "while", "true", "false", "import", "return", "break", "nothing",
@@ -235,13 +233,20 @@ pub fn lex(source: String) -> Vec<LexerToken> {
                         current_token.push(c);
                         is_float = !is_float;
                     } else {
+                        // prev dot
                         tokens.push(token_with_type(
                             current_token,
                             line_counter,
                             line_char_counter,
                         ));
+                        // dot
+                        tokens.push(token_with_type(
+                            String::from(c),
+                            line_counter,
+                            line_char_counter,
+                        ));
+                        // post dot
                         current_token = String::new();
-                        current_token.push(c);
                     }
                 }
                 // whitespace types
