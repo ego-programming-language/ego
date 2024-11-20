@@ -101,7 +101,7 @@ impl PartialEq for LexerTokenType {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LexerToken {
     pub token_type: LexerTokenType,
     pub value: String,
