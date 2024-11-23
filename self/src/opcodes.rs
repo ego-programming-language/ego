@@ -2,19 +2,27 @@ use std::collections::HashMap;
 
 pub fn get_codes_map() -> HashMap<String, u8> {
     let mut m = HashMap::new();
+    // bytecode is generated using opcodes
+    // that are structured on a level system.
+    // More level means more nesting inside the
+    // bytecode interpretation. Opcode can be repeated
+    // if they are on different levels.
 
-    // opcodes
+    // instructions opcodes - level: 0
     m.insert("zero".to_string(), 0x00);
     m.insert("load_const".to_string(), 0x01);
-    m.insert("print".to_string(), 0x02);
     m.insert("add".to_string(), 0x03);
     m.insert("store_var".to_string(), 0x04);
 
-    // params
+    // builtin functions opcode - level: 0
+    m.insert("print".to_string(), 0x02);
+    m.insert("call".to_string(), 0x06);
+
+    // params - level 1
     m.insert("inmut".to_string(), 0x00);
     m.insert("mut".to_string(), 0x01);
 
-    // typecodes
+    // typecodes - level 2
     m.insert("nothing".to_string(), 0x00);
     m.insert("i32".to_string(), 0x01);
     m.insert("i64".to_string(), 0x02);
