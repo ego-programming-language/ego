@@ -9,6 +9,7 @@ use self_vm::utils::{
 
 use crate::ast::{
     assignament_statement::{AssignamentNode, VarType},
+    group::Group,
     identifier,
     module::ModuleAst,
     string_literal::StringLiteral,
@@ -142,5 +143,23 @@ impl Compiler {
                 panic!("unhandled expression type")
             }
         }
+    }
+
+    fn compile_group(node: &Group) -> (usize, Vec<u8>) {
+        // todo: handle different var types, not only conts
+        let mut bytecode = vec![];
+        let load_const_bytecode = get_bytecode("load_const".to_string());
+        for argument in &node.children {
+            if let Some(arg) = argument {
+                // todo: handle different var types, not only conts
+                // refactor: create a function to compile expressions to bytecode
+                bytecode.push(load_const_bytecode);
+                bytecode.extend_from_slice(&Compiler::compile_expression(&arg))
+            } else {
+                // push nothing to bytecode
+            }
+        }
+
+        (node.children.len(), bytecode)
     }
 }
