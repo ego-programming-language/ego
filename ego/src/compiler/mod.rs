@@ -83,6 +83,7 @@ impl Compiler {
             Expression::CallExpression(v) => {
                 let call_expression_bytecode = match v.identifier.name.as_str() {
                     "print" => handlers::print_as_bytecode(v),
+                    "call" => handlers::call_as_bytecode(v),
                     _ => {
                         // todo: handle custom defined callable members
                         vec![]

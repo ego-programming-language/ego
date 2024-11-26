@@ -40,6 +40,7 @@ pub enum Opcode {
     Print,
     Add,
     StoreVar,
+    Call,
     Unknown,
 }
 
@@ -51,6 +52,7 @@ impl Opcode {
             0x02 => Opcode::Print,
             0x03 => Opcode::Add,
             0x04 => Opcode::StoreVar,
+            0x06 => Opcode::Call,
             _ => Opcode::Unknown,
         }
     }
