@@ -1,5 +1,6 @@
 use crate::core::handlers::call_handler;
 use crate::core::handlers::call_handler::call_handler;
+use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::opcodes::DataType;
 use crate::translator::Translator;
 use crate::utils::from_bytes::bytes_to_data;
@@ -18,18 +19,21 @@ pub struct Vm {
     symbol_table: SymbolTable,
     instructions: Vec<Instruction>,
     pc: usize,
+    handlers: ForeignHandlers,
 }
 
 impl Vm {
     pub fn new(bytecode: Vec<u8>) -> Vm {
         let mut translator = Translator::new(bytecode);
         let instructions = translator.translate();
+        let handlers = ForeignHandlers::new();
 
         Vm {
             operand_stack: vec![],
             symbol_table: SymbolTable::new(),
             instructions,
             pc: 0,
+            handlers,
         }
     }
 
