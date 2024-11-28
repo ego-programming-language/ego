@@ -1,6 +1,6 @@
 use crate::opcodes::DataType;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Instruction {
     Zero,
     LoadConst {

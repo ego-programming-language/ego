@@ -33,7 +33,7 @@ impl Vm {
     pub fn run(&mut self, args: &Vec<String>) {
         let debug = args.contains(&"-d".to_string());
         while self.pc < self.instructions.len() {
-            let instruction = &self.instructions[self.pc];
+            let instruction = self.instructions[self.pc].clone();
             match &instruction {
                 Instruction::LoadConst { data_type, value } => {
                     let (value, printable_value) = bytes_to_data(data_type, value);
@@ -107,18 +107,7 @@ impl Vm {
                     }
                 }
                 Instruction::Print { number_of_args } => {
-                    let mut counter = 0;
-                    let mut args = vec![];
-                    while &counter < number_of_args {
-                        if let Some(v) = self.operand_stack.pop() {
-                            args.push(v);
-                        } else {
-                            panic!("Cannot get arg to print")
-                        }
-                        counter += 1;
-                    }
-
-                    args.reverse();
+                    let args = self.get_stack_values(number_of_args);
                     for arg in args {
                         if debug {
                             match arg {
@@ -143,6 +132,22 @@ impl Vm {
 
             self.pc += 1; // increment program counter
         }
+    }
+
+    pub fn get_stack_values(&mut self, num_of_values: &u32) -> Vec<Value> {
+        let mut counter = 0;
+        let mut args = vec![];
+        while &counter < num_of_values {
+            if let Some(v) = self.operand_stack.pop() {
+                args.push(v);
+            } else {
+                panic!("Cannot get arg of call function")
+            }
+            counter += 1;
+        }
+
+        args.reverse();
+        args
     }
 
     pub fn debug_bytecode(&mut self) {

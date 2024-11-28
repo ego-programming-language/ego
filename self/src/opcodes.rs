@@ -58,7 +58,7 @@ impl Opcode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum DataType {
     I32,
     I64,
