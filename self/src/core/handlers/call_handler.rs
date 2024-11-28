@@ -1,3 +1,7 @@
 use crate::types::Value;
 
-pub fn call_handler(args: Vec<Value>) {}
+use super::foreign_handlers::ForeignHandlers;
+
+pub fn call_handler(handlers: &ForeignHandlers, args: Vec<Value>) {
+    println!("available handlers: {:#?}", handlers)
+}

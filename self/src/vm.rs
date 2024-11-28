@@ -3,6 +3,7 @@ use crate::core::handlers::call_handler::call_handler;
 use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::opcodes::DataType;
 use crate::translator::Translator;
+use crate::utils::foreign_handlers_utils::get_foreign_handlers;
 use crate::utils::from_bytes::bytes_to_data;
 
 use super::instructions::*;
@@ -26,7 +27,14 @@ impl Vm {
     pub fn new(bytecode: Vec<u8>) -> Vm {
         let mut translator = Translator::new(bytecode);
         let instructions = translator.translate();
-        let handlers = ForeignHandlers::new();
+        let mut handlers = ForeignHandlers::new();
+        let foreign_handlers = get_foreign_handlers();
+
+        if let Some(loaded_handlers) = foreign_handlers {
+            for handler in loaded_handlers.functions {
+                handlers.add(handler);
+            }
+        }
 
         Vm {
             operand_stack: vec![],
@@ -139,7 +147,7 @@ impl Vm {
                         if debug {
                             println!("CALL -> {}", args[0].to_string())
                         }
-                        call_handler(args)
+                        call_handler(&self.handlers, args)
                     } else {
                         panic!("Call first argument must be a string")
                     }

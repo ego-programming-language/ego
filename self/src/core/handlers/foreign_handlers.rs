@@ -1,27 +1,27 @@
+use serde::Deserialize;
 use std::collections::HashMap;
 
-use crate::types::Value;
-
-struct ForeignHandler {
-    name: String,
-    binary: bool,
-    interpreter: String,
-    args: Vec<Value>,
+#[derive(Debug, Deserialize)]
+pub struct Argument {
+    pub name: String,
+    pub arg_type: String,
 }
 
-impl ForeignHandler {
-    fn new(name: String, binary: bool, interpreter: String, args: Vec<Value>) -> ForeignHandler {
-        ForeignHandler {
-            name,
-            binary,
-            interpreter,
-            args,
-        }
-    }
+#[derive(Debug, Deserialize)]
+pub struct ForeignHandler {
+    pub name: String,
+    pub runtime: String,
+    pub args: Vec<Argument>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ForeignHandlersToml {
+    pub functions: Vec<ForeignHandler>,
+}
+
+#[derive(Debug)]
 pub struct ForeignHandlers {
-    handlers: HashMap<String, ForeignHandler>,
+    pub handlers: HashMap<String, ForeignHandler>,
 }
 
 impl ForeignHandlers {
@@ -31,10 +31,7 @@ impl ForeignHandlers {
         }
     }
 
-    pub fn add(&mut self, name: String, binary: bool, interpreter: String, args: Vec<Value>) {
-        self.handlers.insert(
-            name.clone(),
-            ForeignHandler::new(name, binary, interpreter, args),
-        );
+    pub fn add(&mut self, handler: ForeignHandler) {
+        self.handlers.insert(handler.name.clone(), handler);
     }
 }

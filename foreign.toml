@@ -1,0 +1,13 @@
+[[functions]]
+name = "sendEmail"
+runtime = "/Users/noreplydev/.nvm/versions/node/v20.17.0/bin/node"
+args = [
+  { name = "email", arg_type = "string" },
+  { name = "subject", arg_type = "string" },
+  { name = "body", arg_type = "string" },
+]
+
+[[functions]]
+name = "another"
+runtime = "/Users/noreplydev/.nvm/versions/node/v20.17.0/bin/node"
+args = [{ name = "email", arg_type = "string" }]
