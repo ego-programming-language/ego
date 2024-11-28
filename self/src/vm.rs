@@ -1,3 +1,6 @@
+use crate::core::handlers::call_handler;
+use crate::core::handlers::call_handler::call_handler;
+use crate::opcodes::DataType;
 use crate::translator::Translator;
 use crate::utils::from_bytes::bytes_to_data;
 
@@ -123,6 +126,18 @@ impl Vm {
                         } else {
                             print!("{}", arg.to_string());
                         }
+                    }
+                }
+                Instruction::Call { number_of_args } => {
+                    let args = self.get_stack_values(number_of_args);
+
+                    if let DataType::Utf8 = args[0].get_type() {
+                        if debug {
+                            println!("CALL -> {}", args[0].to_string())
+                        }
+                        call_handler(args)
+                    } else {
+                        panic!("Call first argument must be a string")
                     }
                 }
                 _ => {

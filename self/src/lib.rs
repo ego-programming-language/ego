@@ -1,3 +1,4 @@
+mod core;
 mod instructions;
 mod opcodes;
 mod symbol_table;
