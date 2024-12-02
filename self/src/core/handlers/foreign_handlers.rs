@@ -11,6 +11,7 @@ pub struct Argument {
 pub struct ForeignHandler {
     pub name: String,
     pub runtime: String,
+    pub script: String,
     pub args: Vec<Argument>,
 }
 

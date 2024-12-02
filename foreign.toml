@@ -1,6 +1,7 @@
 [[functions]]
 name = "sendEmail"
 runtime = "/Users/noreplydev/.nvm/versions/node/v20.17.0/bin/node"
+script = "wforeigns/sendMail.js"
 args = [
   { name = "email", arg_type = "string" },
   { name = "subject", arg_type = "string" },
@@ -10,4 +11,5 @@ args = [
 [[functions]]
 name = "another"
 runtime = "/Users/noreplydev/.nvm/versions/node/v20.17.0/bin/node"
+script = "wforeigns/sendMail.js"
 args = [{ name = "email", arg_type = "string" }]
