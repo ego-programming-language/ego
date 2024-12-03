@@ -34,6 +34,19 @@ impl Translator {
                         value: value_bytes,
                     });
                 }
+                Opcode::LoadVar => {
+                    if self.pc + 1 >= self.bytecode.len() {
+                        panic!("Invalid LOAD_VAR instruction at position {}", self.pc);
+                    }
+
+                    self.pc += 1;
+                    let (data_type, value_bytes) = self.get_value_length();
+
+                    instructions.push(Instruction::LoadVar {
+                        data_type,
+                        identifier: value_bytes,
+                    });
+                }
                 Opcode::Print => {
                     // get u32 value. 4 bytes based on the type plus the current
                     let value_length = 4;

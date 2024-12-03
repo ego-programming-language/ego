@@ -11,6 +11,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     // instructions opcodes - level: 0
     m.insert("zero".to_string(), 0x00);
     m.insert("load_const".to_string(), 0x01);
+    m.insert("load_var".to_string(), 0x05);
     m.insert("add".to_string(), 0x03);
     m.insert("store_var".to_string(), 0x04);
 
@@ -37,6 +38,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
 pub enum Opcode {
     Zero,
     LoadConst,
+    LoadVar,
     Print,
     Add,
     StoreVar,
@@ -53,6 +55,7 @@ impl Opcode {
             0x03 => Opcode::Add,
             0x04 => Opcode::StoreVar,
             0x06 => Opcode::Call,
+            0x05 => Opcode::LoadVar,
             _ => Opcode::Unknown,
         }
     }

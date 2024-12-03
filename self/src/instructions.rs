@@ -7,6 +7,10 @@ pub enum Instruction {
         data_type: DataType,
         value: Vec<u8>,
     },
+    LoadVar {
+        data_type: DataType,
+        identifier: Vec<u8>,
+    },
     StoreVar {
         identifier: String,
         data_type: DataType,

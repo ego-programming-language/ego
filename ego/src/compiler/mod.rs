@@ -140,6 +140,9 @@ impl Compiler {
 
                 bytecode
             }
+            Expression::Identifier(v) => Compiler::compile_expression(&Expression::StringLiteral(
+                StringLiteral::new(v.name.clone(), v.name.clone(), v.at, v.line),
+            )),
             _ => {
                 panic!("unhandled expression type")
             }
@@ -147,14 +150,17 @@ impl Compiler {
     }
 
     fn compile_group(node: &Group) -> (usize, Vec<u8>) {
-        // todo: handle different var types, not only conts
         let mut bytecode = vec![];
         let load_const_bytecode = get_bytecode("load_const".to_string());
+        let load_var_bytecode = get_bytecode("load_var".to_string());
+
         for argument in &node.children {
             if let Some(arg) = argument {
-                // todo: handle different var types, not only conts
-                // refactor: create a function to compile expressions to bytecode
-                bytecode.push(load_const_bytecode);
+                match arg {
+                    Expression::Identifier(_) => bytecode.push(load_var_bytecode),
+                    _ => bytecode.push(load_const_bytecode),
+                };
+
                 bytecode.extend_from_slice(&Compiler::compile_expression(&arg))
             } else {
                 // push nothing to bytecode

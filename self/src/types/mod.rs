@@ -14,7 +14,7 @@ use utf8::Utf8;
 
 use super::opcodes::DataType;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Value {
     I32(I32),
     I64(I64),

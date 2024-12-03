@@ -57,6 +57,27 @@ impl Vm {
                         println!("LOAD_CONST <- {:?}({printable_value})", data_type);
                     }
                 }
+                Instruction::LoadVar {
+                    data_type,
+                    identifier,
+                } => {
+                    let (identifier_name, printable_value) = bytes_to_data(data_type, identifier);
+
+                    if let Value::Utf8(v) = identifier_name {
+                        let identifier_value = self.symbol_table.get_value(v.value);
+                        if let Some(v) = identifier_value {
+                            self.operand_stack.push(v);
+                            if debug {
+                                println!("LOAD_VAR <- {:?}({printable_value})", data_type);
+                            }
+                        } else {
+                            // should be handled with ego errors
+                            panic!("{printable_value} is not defined")
+                        }
+                    } else {
+                        panic!("LOAD_VAR identifier should be a string")
+                    }
+                }
                 Instruction::StoreVar {
                     identifier,
                     data_type,
