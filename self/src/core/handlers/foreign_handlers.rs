@@ -12,7 +12,7 @@ pub struct ForeignHandler {
     pub name: String,
     pub runtime: String,
     pub script: String,
-    pub args: Vec<Argument>,
+    // pub args: Vec<Argument>,
 }
 
 #[derive(Debug, Deserialize)]

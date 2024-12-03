@@ -19,18 +19,11 @@ pub fn call_handler(foreign_handlers: &ForeignHandlers, args: Vec<Value>) {
         None => panic!("Calling an unset handler"),
     };
 
-    // parsed_args must be populated with the ego
-    // call builtin handler args and match with the
-    // foreign handler definition args
-    let mut parsed_args: Vec<&String> = vec![];
-    // for arg in &handler.args {
-    //     parsed_args.push(&arg.name);
-    // }
-
+    let parsed_args: Vec<String> = args[1..].iter().map(|arg| arg.to_string()).collect();
     spawn_process(&handler.runtime, &handler.script, parsed_args);
 }
 
-fn spawn_process(binary: &String, script: &String, args: Vec<&String>) {
+fn spawn_process(binary: &String, script: &String, args: Vec<String>) {
     let output = Command::new(binary).arg(script).args(args).output();
     let output = match output {
         Ok(val) => val,
