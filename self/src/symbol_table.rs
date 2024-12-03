@@ -1,6 +1,7 @@
 use crate::types::Value;
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct SymbolTable {
     scopes: Vec<HashMap<String, Value>>,
     sc: usize,

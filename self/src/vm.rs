@@ -64,7 +64,8 @@ impl Vm {
                     mutable,
                 } => {
                     let (value, printable_value) = bytes_to_data(data_type, value);
-                    // todo: self.symbol_table.add_key_value("", value);
+                    self.symbol_table.add_key_value(identifier.clone(), value);
+
                     if debug {
                         println!(
                             "STORE_VAR[{}] <- {:?}({}) as {}",
