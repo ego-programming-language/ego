@@ -1,4 +1,6 @@
 use std::fs;
+use std::fs::File;
+use std::io::Write;
 
 use crate::ast::lex;
 use crate::ast::Module;
@@ -48,7 +50,30 @@ impl Run {
             println!("\nAst nodes: \n---------------\n{:#?}", ast);
         }
 
-        if self.args.contains(&"-vm".to_string()) {
+        if self.args.contains(&"--bytes".to_string()) {
+            let mut compiler = Compiler::new(ast);
+            let bytecode = compiler.gen_bytecode();
+            let bytecode_string: String = bytecode
+                .iter()
+                .map(|byte| format!("{:#?}", byte))
+                .collect::<Vec<String>>()
+                .join(" ");
+
+            let mut file = match File::create("bytecode.bin") {
+                Ok(file) => file,
+                Err(_) => {
+                    error::throw(ErrorType::SyntaxError, "Cannot write file", None);
+                    unreachable!()
+                }
+            };
+            match file.write_all(&bytecode) {
+                Ok(_) => println!("{}", bytecode_string),
+                Err(_) => {
+                    error::throw(ErrorType::SyntaxError, "Cannot write file", None);
+                    unreachable!()
+                }
+            };
+        } else if self.args.contains(&"-vm".to_string()) {
             let mut compiler = Compiler::new(ast);
             let bytecode = compiler.gen_bytecode();
             let mut vm = self_vm::new(bytecode);

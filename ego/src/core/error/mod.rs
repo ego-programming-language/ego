@@ -12,6 +12,7 @@ pub enum ErrorType {
     TypeError,
     InvalidTypeAnnotation,
     CompilationError,
+    IOError,
 }
 
 pub fn throw(error_type: ErrorType, error_message: &str, line: Option<usize>) {
@@ -27,6 +28,7 @@ pub fn throw(error_type: ErrorType, error_message: &str, line: Option<usize>) {
         ErrorType::TypeError => "Type Error: ",
         ErrorType::InvalidTypeAnnotation => "Invalid type annotation: ",
         ErrorType::CompilationError => "Compilation error: ",
+        ErrorType::IOError => "IO error: ",
     };
 
     log!("\n[ego] {error_string} {error_message}");

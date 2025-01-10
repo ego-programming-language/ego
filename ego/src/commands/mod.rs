@@ -38,7 +38,12 @@ impl Command {
             "run" => Command::Run(Run::new(args)),
             "logo" => Command::Logo(Logo::new(args)),
             "new" => Command::New(New::new(args)),
-            _ => Command::Run(Run::new(args)), // if unknown command, assumes it's a .ego file
+            _ => Command::Run(Run::new(
+                [command.to_string()]
+                    .into_iter()
+                    .chain(args.into_iter())
+                    .collect(),
+            )), // if unknown command, assumes it's a .ego file
         }
     }
     pub fn exec(&self) {
