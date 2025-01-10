@@ -55,7 +55,7 @@ impl Run {
             let bytecode = compiler.gen_bytecode();
             let bytecode_string: String = bytecode
                 .iter()
-                .map(|byte| format!("{:#?}", byte))
+                .map(|byte| format!("{:02X}", byte))
                 .collect::<Vec<String>>()
                 .join(" ");
 
