@@ -38,14 +38,7 @@ impl Command {
             "run" => Command::Run(Run::new(args)),
             "logo" => Command::Logo(Logo::new(args)),
             "new" => Command::New(New::new(args)),
-            _ => {
-                error::throw(
-                    ErrorType::EgoUsageError,
-                    format!("Unknown command {}", command).as_str(),
-                    None,
-                );
-                std::process::exit(1);
-            }
+            _ => Command::Run(Run::new(args)), // if unknown command, assumes it's a .ego file
         }
     }
     pub fn exec(&self) {
