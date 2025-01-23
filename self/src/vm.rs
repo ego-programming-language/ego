@@ -158,7 +158,17 @@ impl Vm {
                                 // Handle other types as necessary
                             }
                         } else {
-                            print!("{}", arg.to_string());
+                            // print with newlines
+                            let arg = arg.to_string();
+                            let mut iter = arg.split("\\n").enumerate().peekable();
+
+                            while let Some((_index, string)) = iter.next() {
+                                if iter.peek().is_none() {
+                                    print!("{}", string);
+                                } else {
+                                    println!("{}", string);
+                                }
+                            }
                         }
                     }
                 }
