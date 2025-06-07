@@ -87,16 +87,10 @@ impl Translator {
 
                     let identifier_name = String::from_utf8(identifier_bytes)
                         .expect("Identifier bytes should be valid UTF-8");
-                    self.pc += 1;
-
-                    // value
-                    let (value_data_type, value_bytes) = self.get_value_length();
 
                     instructions.push(Instruction::StoreVar {
                         identifier: identifier_name,
-                        data_type: value_data_type,
                         mutable,
-                        value: value_bytes,
                     });
                 }
                 Opcode::Call => {

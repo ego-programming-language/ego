@@ -10,9 +10,7 @@ use self_vm::utils::{
 use crate::ast::{
     assignament_statement::{AssignamentNode, VarType},
     group::Group,
-    identifier,
     module::ModuleAst,
-    string_literal::StringLiteral,
     AstNodeType, Expression,
 };
 
@@ -52,33 +50,28 @@ impl Compiler {
 
     fn compile_assignament_statement(node: &AssignamentNode) -> Vec<u8> {
         let mut operation_bytecode = vec![];
+        // load value
+        operation_bytecode.extend_from_slice(&Compiler::compile_expression(&node.init));
 
         // op
         operation_bytecode.push(get_bytecode("store_var".to_string()));
+
         // var_type
         operation_bytecode.push(match node.var_type {
             VarType::Const => get_bytecode("inmut".to_string()),
             _ => get_bytecode("mut".to_string()),
         });
-        // identifier
-        // create a Expression node from identifier string to avoid
-        // code duplication handling identifier name string
-        operation_bytecode.extend_from_slice(&Compiler::compile_expression(
-            &Expression::StringLiteral(StringLiteral::new(
-                node.identifier.name.clone(),
-                node.identifier.name.clone(),
-                node.identifier.at,
-                node.identifier.line,
-            )),
-        ));
 
-        // value
-        operation_bytecode.extend_from_slice(&Compiler::compile_expression(&node.init));
+        // identifier raw string
+        operation_bytecode
+            .extend_from_slice(&Compiler::compile_raw_string(node.identifier.name.clone()));
 
         operation_bytecode
     }
 
     fn compile_expression(node: &Expression) -> Vec<u8> {
+        // all expressions push a load_const opcode
+        // except of identifier which loads a load_var opcode
         match node {
             Expression::CallExpression(v) => {
                 let call_expression_bytecode = match v.identifier.name.as_str() {
@@ -119,8 +112,10 @@ impl Compiler {
             }
             Expression::StringLiteral(v) => {
                 let mut bytecode = vec![];
-                let string_bytes = v.raw_value.as_bytes();
+                bytecode.push(get_bytecode("load_const".to_string()));
+
                 // todo: handle larger string
+                let string_bytes = v.raw_value.as_bytes();
                 let string_length = string_bytes.len() as u32;
 
                 bytecode.push(get_bytecode("utf8".to_string()));
@@ -140,15 +135,22 @@ impl Compiler {
 
                 bytecode
             }
-            Expression::Identifier(v) => Compiler::compile_expression(&Expression::StringLiteral(
-                StringLiteral::new(v.name.clone(), v.name.clone(), v.at, v.line),
-            )),
+            Expression::Identifier(v) => {
+                let mut bytecode = vec![];
+                bytecode.push(get_bytecode("load_var".to_string()));
+
+                let identifier_bytecode = Compiler::compile_raw_string(v.name.clone());
+                bytecode.extend_from_slice(&identifier_bytecode);
+                bytecode
+            }
             _ => {
                 panic!("unhandled expression type")
             }
         }
     }
 
+    // probably a refactor should be made here now that expression handle
+    // themselves what type of load they should made
     fn compile_group(node: &Group) -> (usize, Vec<u8>) {
         let mut bytecode = vec![];
         let load_const_bytecode = get_bytecode("load_const".to_string());
@@ -168,5 +170,19 @@ impl Compiler {
         }
 
         (node.children.len(), bytecode)
+    }
+
+    fn compile_raw_string(v: String) -> Vec<u8> {
+        let mut bytecode = vec![];
+
+        // todo: handle larger string
+        let string_bytes = v.as_bytes();
+        let string_length = string_bytes.len() as u32;
+
+        bytecode.push(get_bytecode("utf8".to_string()));
+        bytecode.push(get_bytecode("u32".to_string()));
+        bytecode.extend_from_slice(&string_length.to_le_bytes());
+        bytecode.extend_from_slice(string_bytes);
+        bytecode
     }
 }

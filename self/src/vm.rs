@@ -80,21 +80,25 @@ impl Vm {
                 }
                 Instruction::StoreVar {
                     identifier,
-                    data_type,
-                    value,
                     mutable,
                 } => {
-                    let (value, printable_value) = bytes_to_data(data_type, value);
-                    self.symbol_table.add_key_value(identifier.clone(), value);
-
-                    if debug {
-                        println!(
-                            "STORE_VAR[{}] <- {:?}({}) as {}",
-                            if *mutable { "MUT" } else { "INMUT" },
-                            data_type,
-                            printable_value,
-                            identifier,
-                        );
+                    let stack_stored_value = self.operand_stack.pop();
+                    if let Some(v) = stack_stored_value {
+                        let datatype = v.get_type();
+                        let printable_value = v.to_string();
+                        self.symbol_table.add_key_value(identifier.clone(), v);
+                        if debug {
+                            println!(
+                                "STORE_VAR[{}] <- {:?}({}) as {}",
+                                if *mutable { "MUT" } else { "INMUT" },
+                                datatype,
+                                printable_value,
+                                identifier,
+                            );
+                        }
+                    } else {
+                        // todo: use self-vm errors
+                        panic!("STACK UNDERFLOW")
                     }
                 }
                 Instruction::Add => {

@@ -13,8 +13,6 @@ pub enum Instruction {
     },
     StoreVar {
         identifier: String,
-        data_type: DataType,
-        value: Vec<u8>,
         mutable: bool,
     },
     Add,
