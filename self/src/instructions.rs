@@ -19,6 +19,9 @@ pub enum Instruction {
     Print {
         number_of_args: u32,
     },
+    Println {
+        number_of_args: u32,
+    },
     Call {
         number_of_args: u32,
     },

@@ -61,6 +61,20 @@ impl Translator {
                     instructions.push(Instruction::Print { number_of_args });
                     self.pc += 4;
                 }
+                Opcode::Println => {
+                    // get u32 value. 4 bytes based on the type plus the current
+                    let value_length = 4;
+                    if self.pc + value_length >= self.bytecode.len() {
+                        panic!("Invalid print instruction at position {}", self.pc);
+                    }
+
+                    let value_bytes = &self.bytecode[self.pc + 1..self.pc + 5];
+                    let number_of_args = u32::from_le_bytes(
+                        value_bytes.try_into().expect("Provided value is incorrect"),
+                    );
+                    instructions.push(Instruction::Println { number_of_args });
+                    self.pc += 4;
+                }
                 Opcode::Add => instructions.push(Instruction::Add),
                 Opcode::StoreVar => {
                     if self.pc + 1 >= self.bytecode.len() {

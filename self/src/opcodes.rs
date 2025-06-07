@@ -17,6 +17,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
 
     // builtin functions opcode - level: 0
     m.insert("print".to_string(), 0x02);
+    m.insert("println".to_string(), 0x07);
     m.insert("call".to_string(), 0x06);
 
     // params - level 1
@@ -40,6 +41,7 @@ pub enum Opcode {
     LoadConst,
     LoadVar,
     Print,
+    Println,
     Add,
     StoreVar,
     Call,
@@ -52,6 +54,7 @@ impl Opcode {
             0x00 => Opcode::Zero,
             0x01 => Opcode::LoadConst,
             0x02 => Opcode::Print,
+            0x07 => Opcode::Println,
             0x03 => Opcode::Add,
             0x04 => Opcode::StoreVar,
             0x06 => Opcode::Call,

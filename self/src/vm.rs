@@ -1,6 +1,6 @@
-use crate::core::handlers::call_handler;
 use crate::core::handlers::call_handler::call_handler;
 use crate::core::handlers::foreign_handlers::ForeignHandlers;
+use crate::core::handlers::print_handler::print_handler;
 use crate::opcodes::DataType;
 use crate::translator::Translator;
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
@@ -149,32 +149,11 @@ impl Vm {
                 }
                 Instruction::Print { number_of_args } => {
                     let args = self.get_stack_values(number_of_args);
-                    for arg in args {
-                        if debug {
-                            match arg {
-                                Value::I32(x) => println!("PRINT -> {}", x.value),
-                                Value::I64(x) => println!("PRINT -> {}", x.value),
-                                Value::U32(x) => println!("PRINT -> {}", x.value),
-                                Value::U64(x) => println!("PRINT -> {}", x.value),
-                                Value::Utf8(x) => println!("PRINT -> {}", x.value),
-                                Value::Bool(x) => println!("PRINT -> {}", x.value),
-                                Value::Nothing => println!("PRINT -> nothing"),
-                                // Handle other types as necessary
-                            }
-                        } else {
-                            // print with newlines
-                            let arg = arg.to_string();
-                            let mut iter = arg.split("\\n").enumerate().peekable();
-
-                            while let Some((_index, string)) = iter.next() {
-                                if iter.peek().is_none() {
-                                    print!("{}", string);
-                                } else {
-                                    println!("{}", string);
-                                }
-                            }
-                        }
-                    }
+                    print_handler(args, debug, false)
+                }
+                Instruction::Println { number_of_args } => {
+                    let args = self.get_stack_values(number_of_args);
+                    print_handler(args, debug, true)
                 }
                 Instruction::Call { number_of_args } => {
                     let args = self.get_stack_values(number_of_args);
