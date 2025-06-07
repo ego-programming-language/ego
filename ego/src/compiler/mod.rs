@@ -149,20 +149,10 @@ impl Compiler {
         }
     }
 
-    // probably a refactor should be made here now that expression handle
-    // themselves what type of load they should made
     fn compile_group(node: &Group) -> (usize, Vec<u8>) {
         let mut bytecode = vec![];
-        let load_const_bytecode = get_bytecode("load_const".to_string());
-        let load_var_bytecode = get_bytecode("load_var".to_string());
-
         for argument in &node.children {
             if let Some(arg) = argument {
-                match arg {
-                    Expression::Identifier(_) => bytecode.push(load_var_bytecode),
-                    _ => bytecode.push(load_const_bytecode),
-                };
-
                 bytecode.extend_from_slice(&Compiler::compile_expression(&arg))
             } else {
                 // push nothing to bytecode
