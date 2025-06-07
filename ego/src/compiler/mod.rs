@@ -88,6 +88,8 @@ impl Compiler {
             }
             Expression::Number(v) => {
                 let mut bytecode = vec![];
+                bytecode.push(get_bytecode("load_const".to_string()));
+
                 if v.value.is_sign_negative() {
                     panic!("Cannot compile negative numbers on self");
                 }
@@ -127,6 +129,7 @@ impl Compiler {
             }
             Expression::Bool(v) => {
                 let mut bytecode = vec![];
+                bytecode.push(get_bytecode("load_const".to_string()));
                 bytecode.push(get_bytecode("bool".to_string()));
                 if v.value {
                     bytecode.push(0x01);
