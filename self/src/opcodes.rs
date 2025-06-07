@@ -32,6 +32,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     m.insert("u64".to_string(), 0x04);
     m.insert("utf8".to_string(), 0x05);
     m.insert("bool".to_string(), 0x06);
+    m.insert("f64".to_string(), 0x07);
     m
 }
 
@@ -70,6 +71,7 @@ pub enum DataType {
     I64,
     U32,
     U64,
+    F64,
     Utf8,
     Nothing,
     Bool,
@@ -86,6 +88,7 @@ impl DataType {
             0x04 => DataType::U64,
             0x05 => DataType::Utf8,
             0x06 => DataType::Bool,
+            0x07 => DataType::F64,
             _ => DataType::Unknown,
         }
     }

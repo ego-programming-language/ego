@@ -3,7 +3,7 @@ mod handlers;
 
 use bytecode::get_bytecode;
 use self_vm::utils::{
-    to_bytes::{bytes_from_32, bytes_from_64, bytes_from_utf8},
+    to_bytes::{bytes_from_32, bytes_from_64, bytes_from_float, bytes_from_utf8},
     Number,
 };
 
@@ -94,16 +94,23 @@ impl Compiler {
                     panic!("Cannot compile negative numbers on self");
                 }
 
-                let (num_bytecode, num_type_bytecode) = match v.value {
-                    value if value >= i32::MIN as f64 && value <= i32::MAX as f64 => (
-                        bytes_from_32(Number::I32(value as i32)).to_vec(),
+                let (num_bytecode, num_type_bytecode) = if v.value.fract() != 0.0 {
+                    (
+                        bytes_from_float(Number::F64(v.value)).to_vec(),
+                        get_bytecode("f64".to_string()),
+                    )
+                } else if v.value >= i32::MIN as f64 && v.value <= i32::MAX as f64 {
+                    (
+                        bytes_from_32(Number::I32(v.value as i32)).to_vec(),
                         get_bytecode("i32".to_string()),
-                    ),
-                    value if value >= i64::MIN as f64 && value <= i64::MAX as f64 => (
-                        bytes_from_64(Number::I64(value as i64)).to_vec(),
+                    )
+                } else if v.value >= i64::MIN as f64 && v.value <= i64::MAX as f64 {
+                    (
+                        bytes_from_64(Number::I64(v.value as i64)).to_vec(),
                         get_bytecode("i64".to_string()),
-                    ),
-                    _ => panic!("Unsupported number type or out of range"),
+                    )
+                } else {
+                    panic!("Unsupported number type or out of range");
                 };
 
                 // type

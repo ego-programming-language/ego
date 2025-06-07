@@ -7,4 +7,5 @@ pub enum Number {
     U32(u32),
     I64(i64),
     I32(i32),
+    F64(f64),
 }

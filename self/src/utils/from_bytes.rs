@@ -1,6 +1,6 @@
 use crate::{
     opcodes::DataType,
-    types::{bool::Bool, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8, Value},
+    types::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8, Value},
 };
 
 pub fn bytes_to_data(data_type: &DataType, value: &Vec<u8>) -> (Value, String) {
@@ -45,6 +45,16 @@ pub fn bytes_to_data(data_type: &DataType, value: &Vec<u8>) -> (Value, String) {
             );
             printable_value = value.to_string();
             Value::U64(U64::new(value))
+        }
+        DataType::F64 => {
+            let value = f64::from_le_bytes(
+                value
+                    .as_slice()
+                    .try_into()
+                    .expect("Provided value is incorrect"),
+            );
+            printable_value = value.to_string();
+            Value::F64(F64::new(value))
         }
         DataType::Utf8 => {
             let value =

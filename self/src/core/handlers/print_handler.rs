@@ -8,6 +8,7 @@ pub fn print_handler(args: Vec<Value>, debug: bool, newline_end: bool) {
                 Value::I64(x) => println!("PRINTLN -> {}", x.value),
                 Value::U32(x) => println!("PRINTLN -> {}", x.value),
                 Value::U64(x) => println!("PRINTLN -> {}", x.value),
+                Value::F64(x) => println!("PRINTLN -> {}", x.value),
                 Value::Utf8(x) => println!("PRINTLN -> {}", x.value),
                 Value::Bool(x) => println!("PRINTLN -> {}", x.value),
                 Value::Nothing => println!("PRINTLN -> nothing"),

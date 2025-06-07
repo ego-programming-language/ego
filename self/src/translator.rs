@@ -137,6 +137,7 @@ impl Translator {
             DataType::I64 => 8,
             DataType::U32 => 4,
             DataType::U64 => 8,
+            DataType::F64 => 8,
             DataType::Nothing => 0,
             DataType::Bool => 1,
             DataType::Utf8 => {
