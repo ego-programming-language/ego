@@ -5,6 +5,7 @@ use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::core::handlers::print_handler::print_handler;
 use crate::opcodes::DataType;
 use crate::translator::Translator;
+use crate::types::bool::Bool;
 use crate::types::f64::F64;
 use crate::types::u64::U64;
 use crate::types::utf8::Utf8;
@@ -175,6 +176,14 @@ impl Vm {
                                 println!("ADD -> {:?}", l.value.to_string() + r.value.as_str());
                             }
                         }
+                        (Value::Bool(l), Value::Bool(r)) => {
+                            let result = l.value || r.value;
+                            self.push_to_stack(Value::Bool(Bool::new(result)), None);
+                            if debug {
+                                println!("ADD -> {:?}", result);
+                            }
+                        }
+
                         _ => unreachable!(),
                     }
                 }
