@@ -154,6 +154,23 @@ impl Compiler {
                 bytecode.extend_from_slice(&identifier_bytecode);
                 bytecode
             }
+            Expression::BinaryExpression(v) => {
+                let mut bytecode = vec![];
+
+                // operands
+                let left_operand = *v.left.clone();
+                let right_operand = *v.right.clone();
+                bytecode.extend_from_slice(&Compiler::compile_expression(&left_operand));
+                bytecode.extend_from_slice(&Compiler::compile_expression(&right_operand));
+
+                // operator
+                match v.operator.as_str() {
+                    "+" => bytecode.push(get_bytecode("add".to_string())),
+                    _ => {}
+                };
+
+                bytecode
+            }
             _ => {
                 panic!("unhandled expression type")
             }
