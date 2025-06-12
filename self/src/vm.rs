@@ -5,6 +5,7 @@ use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::core::handlers::print_handler::print_handler;
 use crate::opcodes::DataType;
 use crate::translator::Translator;
+use crate::types::utf8::Utf8;
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
 use crate::utils::from_bytes::bytes_to_data;
 
@@ -149,6 +150,15 @@ impl Vm {
                             self.push_to_stack(Value::Nothing, None);
                             if debug {
                                 println!("ADD -> nothing");
+                            }
+                        }
+                        (Value::Utf8(l), Value::Utf8(r)) => {
+                            self.push_to_stack(
+                                Value::Utf8(Utf8::new(l.value.to_string() + r.value.as_str())),
+                                None,
+                            );
+                            if debug {
+                                println!("ADD -> {:?}", l.value.to_string() + r.value.as_str());
                             }
                         }
                         _ => unreachable!(),
