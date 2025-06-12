@@ -19,9 +19,9 @@ impl SymbolTable {
         self.scopes[self.sc].insert(key, value)
     }
 
-    pub fn get_value(&mut self, key: String) -> Option<Value> {
+    pub fn get_value(&mut self, key: &String) -> Option<Value> {
         for scope in self.scopes.iter().rev() {
-            if let Some(var) = scope.get(&key) {
+            if let Some(var) = scope.get(key) {
                 return Some(var.clone());
             }
         }

@@ -1,4 +1,4 @@
-use crate::core::error::VMError;
+use crate::core::error::VMErrorType;
 use crate::core::execution::VMExecutionResult;
 use crate::core::handlers::call_handler::call_handler;
 use crate::core::handlers::foreign_handlers::ForeignHandlers;
@@ -17,11 +17,16 @@ use self::i64::I64;
 use self::u32::U32;
 
 pub struct Vm {
-    operand_stack: Vec<Value>,
+    operand_stack: Vec<StackValue>,
     symbol_table: SymbolTable,
     instructions: Vec<Instruction>,
     pc: usize,
     handlers: ForeignHandlers,
+}
+
+pub struct StackValue {
+    pub value: Value,
+    pub origin: Option<String>,
 }
 
 impl Vm {
@@ -53,7 +58,7 @@ impl Vm {
             match &instruction {
                 Instruction::LoadConst { data_type, value } => {
                     let (value, printable_value) = bytes_to_data(data_type, value);
-                    self.operand_stack.push(value);
+                    self.push_to_stack(value, None);
                     if debug {
                         println!("LOAD_CONST <- {:?}({printable_value})", data_type);
                     }
@@ -64,10 +69,10 @@ impl Vm {
                 } => {
                     let (identifier_name, printable_value) = bytes_to_data(data_type, identifier);
 
-                    if let Value::Utf8(v) = identifier_name {
-                        let identifier_value = self.symbol_table.get_value(v.value);
+                    if let Value::Utf8(i) = identifier_name {
+                        let identifier_value = self.symbol_table.get_value(&i.value);
                         if let Some(v) = identifier_value {
-                            self.operand_stack.push(v);
+                            self.push_to_stack(v, Some(i.value));
                             if debug {
                                 println!("LOAD_VAR <- {:?}({printable_value})", data_type);
                             }
@@ -85,9 +90,9 @@ impl Vm {
                 } => {
                     let stack_stored_value = self.operand_stack.pop();
                     if let Some(v) = stack_stored_value {
-                        let datatype = v.get_type();
-                        let printable_value = v.to_string();
-                        self.symbol_table.add_key_value(identifier.clone(), v);
+                        let datatype = v.value.get_type();
+                        let printable_value = v.value.to_string();
+                        self.symbol_table.add_key_value(identifier.clone(), v.value);
                         if debug {
                             println!(
                                 "STORE_VAR[{}] <- {:?}({}) as {}",
@@ -111,36 +116,37 @@ impl Vm {
                     };
 
                     let operands = (left_operand.unwrap(), right_operand.unwrap());
-                    let operands_types = (operands.0.get_type(), operands.1.get_type());
+                    let operands_values = (&operands.0.value, &operands.1.value);
+                    let operands_types =
+                        (operands_values.0.get_type(), operands_values.1.get_type());
 
                     if operands_types.0 != operands_types.1 {
-                        panic!("No explicit coercion. Operands type mismatch.");
+                        return VMExecutionResult::terminate_with_errors(
+                            VMErrorType::TypeCoercionError(operands.1),
+                        );
                     }
 
-                    match operands {
+                    match operands_values {
                         (Value::I32(l), Value::I32(r)) => {
-                            self.operand_stack
-                                .push(Value::I32(I32::new(l.value + r.value)));
+                            self.push_to_stack(Value::I32(I32::new(l.value + r.value)), None);
                             if debug {
                                 println!("ADD -> {:?}", l.value + r.value);
                             }
                         }
                         (Value::I64(l), Value::I64(r)) => {
-                            self.operand_stack
-                                .push(Value::I64(I64::new(l.value + r.value)));
+                            self.push_to_stack(Value::I64(I64::new(l.value + r.value)), None);
                             if debug {
                                 println!("ADD -> {:?}", l.value + r.value);
                             }
                         }
                         (Value::U32(l), Value::U32(r)) => {
-                            self.operand_stack
-                                .push(Value::U32(U32::new(l.value + r.value)));
+                            self.push_to_stack(Value::U32(U32::new(l.value + r.value)), None);
                             if debug {
                                 println!("ADD -> {:?}", l.value + r.value);
                             }
                         }
                         (Value::Nothing, Value::Nothing) => {
-                            self.operand_stack.push(Value::Nothing);
+                            self.push_to_stack(Value::Nothing, None);
                             if debug {
                                 println!("ADD -> nothing");
                             }
@@ -180,19 +186,21 @@ impl Vm {
     }
 
     pub fn get_stack_values(&mut self, num_of_values: &u32) -> Vec<Value> {
-        let mut counter = 0;
-        let mut args = vec![];
-        while &counter < num_of_values {
-            if let Some(v) = self.operand_stack.pop() {
-                args.push(v);
-            } else {
-                panic!("Cannot get arg of call function")
+        let mut args = Vec::with_capacity(*num_of_values as usize);
+
+        for _ in 0..*num_of_values {
+            match self.operand_stack.pop() {
+                Some(v) => args.push(v.value),
+                None => panic!("Cannot get argument for function call: stack underflow"),
             }
-            counter += 1;
         }
 
-        args.reverse();
+        args.reverse(); // invocation order
         args
+    }
+
+    pub fn push_to_stack(&mut self, value: Value, origin: Option<String>) {
+        self.operand_stack.push(StackValue { value, origin });
     }
 
     pub fn debug_bytecode(&mut self) {

@@ -16,5 +16,9 @@ fn main() {
         vm.debug_bytecode();
         println!("\n--- RUNTIME ----------\n");
     }
-    vm.run(&args);
+    let execution = vm.run(&args);
+    if let Some(err) = execution.error {
+        let error_msg = format!("[runtime error] {}: {}", err.message, err.semantic_message);
+        println!("{error_msg}");
+    }
 }
