@@ -1,3 +1,5 @@
+use crate::core::error::VMError;
+use crate::core::execution::VMExecutionResult;
 use crate::core::handlers::call_handler::call_handler;
 use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::core::handlers::print_handler::print_handler;
@@ -13,7 +15,6 @@ use super::types::*;
 use self::i32::I32;
 use self::i64::I64;
 use self::u32::U32;
-use self::u64::U64;
 
 pub struct Vm {
     operand_stack: Vec<Value>,
@@ -45,7 +46,7 @@ impl Vm {
         }
     }
 
-    pub fn run(&mut self, args: &Vec<String>) {
+    pub fn run(&mut self, args: &Vec<String>) -> VMExecutionResult {
         let debug = args.contains(&"-d".to_string());
         while self.pc < self.instructions.len() {
             let instruction = self.instructions[self.pc].clone();
@@ -174,6 +175,8 @@ impl Vm {
 
             self.pc += 1; // increment program counter
         }
+
+        VMExecutionResult::terminate()
     }
 
     pub fn get_stack_values(&mut self, num_of_values: &u32) -> Vec<Value> {
