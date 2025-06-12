@@ -5,6 +5,8 @@ use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::core::handlers::print_handler::print_handler;
 use crate::opcodes::DataType;
 use crate::translator::Translator;
+use crate::types::f64::F64;
+use crate::types::u64::U64;
 use crate::types::utf8::Utf8;
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
 use crate::utils::from_bytes::bytes_to_data;
@@ -142,6 +144,18 @@ impl Vm {
                         }
                         (Value::U32(l), Value::U32(r)) => {
                             self.push_to_stack(Value::U32(U32::new(l.value + r.value)), None);
+                            if debug {
+                                println!("ADD -> {:?}", l.value + r.value);
+                            }
+                        }
+                        (Value::U64(l), Value::U64(r)) => {
+                            self.push_to_stack(Value::U64(U64::new(l.value + r.value)), None);
+                            if debug {
+                                println!("ADD -> {:?}", l.value + r.value);
+                            }
+                        }
+                        (Value::F64(l), Value::F64(r)) => {
+                            self.push_to_stack(Value::F64(F64::new(l.value + r.value)), None);
                             if debug {
                                 println!("ADD -> {:?}", l.value + r.value);
                             }

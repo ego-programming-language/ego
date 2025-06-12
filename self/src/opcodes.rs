@@ -101,6 +101,7 @@ impl PartialEq for DataType {
             (DataType::I64, DataType::I64) => true,
             (DataType::U32, DataType::U32) => true,
             (DataType::U64, DataType::U64) => true,
+            (DataType::F64, DataType::F64) => true,
             (DataType::Utf8, DataType::Utf8) => true,
             (DataType::Bool, DataType::Bool) => true,
             (DataType::Nothing, DataType::Nothing) => true,
