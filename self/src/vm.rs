@@ -347,6 +347,111 @@ impl Vm {
                         _ => unreachable!(),
                     }
                 }
+                Instruction::Divide => {
+                    let right_operand = self.operand_stack.pop();
+                    let left_operand = self.operand_stack.pop();
+
+                    if left_operand.is_none() || right_operand.is_none() {
+                        panic!("Operands stack underflow");
+                    };
+
+                    let operands = (left_operand.unwrap(), right_operand.unwrap());
+                    let operands_values = (&operands.0.value, &operands.1.value);
+                    let operands_types =
+                        (operands_values.0.get_type(), operands_values.1.get_type());
+
+                    if operands_types.0 != operands_types.1 {
+                        return VMExecutionResult::terminate_with_errors(
+                            VMErrorType::TypeCoercionError(operands.1),
+                        );
+                    }
+
+                    match operands_values {
+                        (Value::I32(l), Value::I32(r)) => {
+                            if r.value == 0 {
+                                return VMExecutionResult::terminate_with_errors(
+                                    VMErrorType::DivisionByZero(operands.0),
+                                );
+                            }
+                            self.push_to_stack(Value::I32(I32::new(l.value / r.value)), None);
+                            if debug {
+                                println!("DIVIDE -> {:?}", l.value / r.value);
+                            }
+                        }
+                        (Value::I64(l), Value::I64(r)) => {
+                            if r.value == 0 {
+                                return VMExecutionResult::terminate_with_errors(
+                                    VMErrorType::DivisionByZero(operands.0),
+                                );
+                            }
+                            self.push_to_stack(Value::I64(I64::new(l.value / r.value)), None);
+                            if debug {
+                                println!("DIVIDE -> {:?}", l.value / r.value);
+                            }
+                        }
+                        (Value::U32(l), Value::U32(r)) => {
+                            if r.value == 0 {
+                                return VMExecutionResult::terminate_with_errors(
+                                    VMErrorType::DivisionByZero(operands.0),
+                                );
+                            }
+                            self.push_to_stack(Value::U32(U32::new(l.value / r.value)), None);
+                            if debug {
+                                println!("DIVIDE -> {:?}", l.value / r.value);
+                            }
+                        }
+                        (Value::U64(l), Value::U64(r)) => {
+                            if r.value == 0 {
+                                return VMExecutionResult::terminate_with_errors(
+                                    VMErrorType::DivisionByZero(operands.0),
+                                );
+                            }
+                            self.push_to_stack(Value::U64(U64::new(l.value / r.value)), None);
+                            if debug {
+                                println!("DIVIDE -> {:?}", l.value / r.value);
+                            }
+                        }
+                        (Value::F64(l), Value::F64(r)) => {
+                            if r.value == 0.0 {
+                                return VMExecutionResult::terminate_with_errors(
+                                    VMErrorType::DivisionByZero(operands.0),
+                                );
+                            }
+                            self.push_to_stack(Value::F64(F64::new(l.value / r.value)), None);
+                            if debug {
+                                println!("DIVIDE -> {:?}", l.value / r.value);
+                            }
+                        }
+                        (Value::Nothing, Value::Nothing) => {
+                            return VMExecutionResult::terminate_with_errors(
+                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                                    left: DataType::Nothing,
+                                    right: DataType::Nothing,
+                                    operator: "/".to_string(),
+                                }),
+                            );
+                        }
+                        (Value::Utf8(_), Value::Utf8(_)) => {
+                            return VMExecutionResult::terminate_with_errors(
+                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                                    left: DataType::Utf8,
+                                    right: DataType::Utf8,
+                                    operator: "/".to_string(),
+                                }),
+                            );
+                        }
+                        (Value::Bool(_), Value::Bool(_)) => {
+                            return VMExecutionResult::terminate_with_errors(
+                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                                    left: DataType::Bool,
+                                    right: DataType::Bool,
+                                    operator: "/".to_string(),
+                                }),
+                            );
+                        }
+                        _ => unreachable!(),
+                    }
+                }
                 Instruction::Print { number_of_args } => {
                     let args = self.get_stack_values(number_of_args);
                     print_handler(args, debug, false)

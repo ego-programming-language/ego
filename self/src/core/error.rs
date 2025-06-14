@@ -3,6 +3,7 @@ use crate::{opcodes::DataType, vm::StackValue};
 pub enum VMErrorType {
     TypeCoercionError(StackValue), // maybe here we should have a more generic value, we'll see with time
     InvalidBinaryOperation(InvalidBinaryOperation),
+    DivisionByZero(StackValue),
 }
 
 pub struct VMError {
@@ -31,6 +32,18 @@ pub fn throw(error_type: VMErrorType) -> VMError {
             "Invalid binary operation".to_string(),
             format!("{} {} {}", v.left.as_str(), v.operator, v.right.as_str()),
         ),
+        VMErrorType::DivisionByZero(v) => {
+            let source = if let Some(origin) = &v.origin {
+                origin
+            } else {
+                &v.value.to_string()
+            };
+
+            (
+                "Invalid division".to_string(),
+                format!("Cannot devide {source} by 0",),
+            )
+        }
     };
 
     VMError {

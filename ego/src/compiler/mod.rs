@@ -168,6 +168,7 @@ impl Compiler {
                     "+" => bytecode.push(get_bytecode("add".to_string())),
                     "-" => bytecode.push(get_bytecode("substract".to_string())),
                     "*" => bytecode.push(get_bytecode("multiply".to_string())),
+                    "/" => bytecode.push(get_bytecode("divide".to_string())),
                     _ => {}
                 };
 

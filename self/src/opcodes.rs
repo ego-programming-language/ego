@@ -15,6 +15,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     m.insert("add".to_string(), 0x03);
     m.insert("substract".to_string(), 0x08);
     m.insert("multiply".to_string(), 0x09);
+    m.insert("divide".to_string(), 0x10);
     m.insert("store_var".to_string(), 0x04);
 
     // builtin functions opcode - level: 0
@@ -48,6 +49,7 @@ pub enum Opcode {
     Add,
     Substract,
     Multiply,
+    Divide,
     StoreVar,
     Call,
     Unknown,
@@ -63,6 +65,7 @@ impl Opcode {
             0x03 => Opcode::Add,
             0x08 => Opcode::Substract,
             0x09 => Opcode::Multiply,
+            0x10 => Opcode::Divide,
             0x04 => Opcode::StoreVar,
             0x06 => Opcode::Call,
             0x05 => Opcode::LoadVar,
