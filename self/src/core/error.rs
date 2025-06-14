@@ -29,12 +29,7 @@ pub fn throw(error_type: VMErrorType) -> VMError {
         }
         VMErrorType::InvalidBinaryOperation(v) => (
             "Invalid binary operation".to_string(),
-            format!(
-                "Invalid operation: {} {} {}",
-                v.left.as_str(),
-                v.operator,
-                v.right.as_str()
-            ),
+            format!("{} {} {}", v.left.as_str(), v.operator, v.right.as_str()),
         ),
     };
 

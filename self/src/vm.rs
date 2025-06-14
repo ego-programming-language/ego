@@ -238,10 +238,13 @@ impl Vm {
                             }
                         }
                         (Value::Nothing, Value::Nothing) => {
-                            self.push_to_stack(Value::Nothing, None);
-                            if debug {
-                                println!("SUBSTRACT -> nothing");
-                            }
+                            return VMExecutionResult::terminate_with_errors(
+                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                                    left: DataType::Nothing,
+                                    right: DataType::Nothing,
+                                    operator: "-".to_string(),
+                                }),
+                            );
                         }
                         (Value::Utf8(_), Value::Utf8(_)) => {
                             return VMExecutionResult::terminate_with_errors(
@@ -253,11 +256,13 @@ impl Vm {
                             );
                         }
                         (Value::Bool(l), Value::Bool(r)) => {
-                            let result = l.value || r.value;
-                            self.push_to_stack(Value::Bool(Bool::new(result)), None);
-                            if debug {
-                                println!("SUBSTRACT -> {:?}", result);
-                            }
+                            return VMExecutionResult::terminate_with_errors(
+                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                                    left: DataType::Bool,
+                                    right: DataType::Bool,
+                                    operator: "-".to_string(),
+                                }),
+                            );
                         }
                         _ => unreachable!(),
                     }

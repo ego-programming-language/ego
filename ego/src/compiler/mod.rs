@@ -172,6 +172,13 @@ impl Compiler {
 
                 bytecode
             }
+            Expression::Nothing(_) => {
+                let mut bytecode = vec![];
+                bytecode.push(get_bytecode("load_const".to_string()));
+                bytecode.push(get_bytecode("nothing".to_string()));
+
+                bytecode
+            }
             _ => {
                 panic!("unhandled expression type")
             }
