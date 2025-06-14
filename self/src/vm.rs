@@ -1,3 +1,4 @@
+use crate::core::error::InvalidBinaryOperation;
 use crate::core::error::VMErrorType;
 use crate::core::execution::VMExecutionResult;
 use crate::core::handlers::call_handler::call_handler;
@@ -183,7 +184,81 @@ impl Vm {
                                 println!("ADD -> {:?}", result);
                             }
                         }
+                        _ => unreachable!(),
+                    }
+                }
+                Instruction::Substract => {
+                    let right_operand = self.operand_stack.pop();
+                    let left_operand = self.operand_stack.pop();
 
+                    if left_operand.is_none() || right_operand.is_none() {
+                        panic!("Operands stack underflow");
+                    };
+
+                    let operands = (left_operand.unwrap(), right_operand.unwrap());
+                    let operands_values = (&operands.0.value, &operands.1.value);
+                    let operands_types =
+                        (operands_values.0.get_type(), operands_values.1.get_type());
+
+                    if operands_types.0 != operands_types.1 {
+                        return VMExecutionResult::terminate_with_errors(
+                            VMErrorType::TypeCoercionError(operands.1),
+                        );
+                    }
+
+                    match operands_values {
+                        (Value::I32(l), Value::I32(r)) => {
+                            self.push_to_stack(Value::I32(I32::new(l.value - r.value)), None);
+                            if debug {
+                                println!("SUBSTRACT -> {:?}", l.value - r.value);
+                            }
+                        }
+                        (Value::I64(l), Value::I64(r)) => {
+                            self.push_to_stack(Value::I64(I64::new(l.value - r.value)), None);
+                            if debug {
+                                println!("SUBSTRACT -> {:?}", l.value - r.value);
+                            }
+                        }
+                        (Value::U32(l), Value::U32(r)) => {
+                            self.push_to_stack(Value::U32(U32::new(l.value - r.value)), None);
+                            if debug {
+                                println!("SUBSTRACT -> {:?}", l.value - r.value);
+                            }
+                        }
+                        (Value::U64(l), Value::U64(r)) => {
+                            self.push_to_stack(Value::U64(U64::new(l.value - r.value)), None);
+                            if debug {
+                                println!("SUBSTRACT -> {:?}", l.value - r.value);
+                            }
+                        }
+                        (Value::F64(l), Value::F64(r)) => {
+                            self.push_to_stack(Value::F64(F64::new(l.value - r.value)), None);
+                            if debug {
+                                println!("SUBSTRACT -> {:?}", l.value - r.value);
+                            }
+                        }
+                        (Value::Nothing, Value::Nothing) => {
+                            self.push_to_stack(Value::Nothing, None);
+                            if debug {
+                                println!("SUBSTRACT -> nothing");
+                            }
+                        }
+                        (Value::Utf8(_), Value::Utf8(_)) => {
+                            return VMExecutionResult::terminate_with_errors(
+                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                                    left: DataType::Utf8,
+                                    right: DataType::Utf8,
+                                    operator: "-".to_string(),
+                                }),
+                            );
+                        }
+                        (Value::Bool(l), Value::Bool(r)) => {
+                            let result = l.value || r.value;
+                            self.push_to_stack(Value::Bool(Bool::new(result)), None);
+                            if debug {
+                                println!("SUBSTRACT -> {:?}", result);
+                            }
+                        }
                         _ => unreachable!(),
                     }
                 }

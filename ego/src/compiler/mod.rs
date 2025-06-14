@@ -166,6 +166,7 @@ impl Compiler {
                 // operator
                 match v.operator.as_str() {
                     "+" => bytecode.push(get_bytecode("add".to_string())),
+                    "-" => bytecode.push(get_bytecode("substract".to_string())),
                     _ => {}
                 };
 

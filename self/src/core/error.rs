@@ -1,7 +1,8 @@
-use crate::vm::StackValue;
+use crate::{opcodes::DataType, vm::StackValue};
 
 pub enum VMErrorType {
     TypeCoercionError(StackValue), // maybe here we should have a more generic value, we'll see with time
+    InvalidBinaryOperation(InvalidBinaryOperation),
 }
 
 pub struct VMError {
@@ -26,6 +27,15 @@ pub fn throw(error_type: VMErrorType) -> VMError {
                 ),
             )
         }
+        VMErrorType::InvalidBinaryOperation(v) => (
+            "Invalid binary operation".to_string(),
+            format!(
+                "Invalid operation: {} {} {}",
+                v.left.as_str(),
+                v.operator,
+                v.right.as_str()
+            ),
+        ),
     };
 
     VMError {
@@ -33,4 +43,10 @@ pub fn throw(error_type: VMErrorType) -> VMError {
         message: error.0,
         semantic_message: error.1,
     }
+}
+
+pub struct InvalidBinaryOperation {
+    pub left: DataType,
+    pub right: DataType,
+    pub operator: String,
 }

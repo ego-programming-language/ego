@@ -16,6 +16,7 @@ pub enum Instruction {
         mutable: bool,
     },
     Add,
+    Substract,
     Print {
         number_of_args: u32,
     },

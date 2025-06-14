@@ -13,6 +13,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     m.insert("load_const".to_string(), 0x01);
     m.insert("load_var".to_string(), 0x05);
     m.insert("add".to_string(), 0x03);
+    m.insert("substract".to_string(), 0x08);
     m.insert("store_var".to_string(), 0x04);
 
     // builtin functions opcode - level: 0
@@ -44,6 +45,7 @@ pub enum Opcode {
     Print,
     Println,
     Add,
+    Substract,
     StoreVar,
     Call,
     Unknown,
@@ -57,6 +59,7 @@ impl Opcode {
             0x02 => Opcode::Print,
             0x07 => Opcode::Println,
             0x03 => Opcode::Add,
+            0x08 => Opcode::Substract,
             0x04 => Opcode::StoreVar,
             0x06 => Opcode::Call,
             0x05 => Opcode::LoadVar,
@@ -90,6 +93,20 @@ impl DataType {
             0x06 => DataType::Bool,
             0x07 => DataType::F64,
             _ => DataType::Unknown,
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            DataType::Bool => "bool",
+            DataType::I32 => "i32",
+            DataType::I64 => "i64",
+            DataType::U32 => "u32",
+            DataType::U64 => "u64",
+            DataType::F64 => "f64",
+            DataType::Utf8 => "utf8",
+            DataType::Nothing => "nothing",
+            DataType::Unknown => "unknown",
         }
     }
 }
