@@ -17,6 +17,7 @@ pub enum Instruction {
     },
     Add,
     Substract,
+    Multiply,
     Print {
         number_of_args: u32,
     },
