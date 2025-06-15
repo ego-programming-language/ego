@@ -9,8 +9,11 @@ use self_vm::utils::{
 
 use crate::ast::{
     assignament_statement::{AssignamentNode, VarType},
+    block::Block,
     group::Group,
+    if_statement::IfStatement,
     module::ModuleAst,
+    number::Number as ASTNumber,
     AstNodeType, Expression,
 };
 
@@ -31,13 +34,14 @@ impl Compiler {
         let mut counter = 0;
         while counter < self.ast.children.len() {
             let node_bytecode = match &self.ast.children[counter] {
-                // [op][var_type][identifier][value]
                 AstNodeType::AssignamentStatement(node) => {
                     Compiler::compile_assignament_statement(node)
                 }
+                AstNodeType::IfStatement(node) => Compiler::compile_if_statement(node),
                 AstNodeType::Expression(node) => Compiler::compile_expression(node),
                 _ => {
                     // panic!("unhandled node type")
+                    // here we should, in the near future throw an error
                     vec![]
                 }
             };
@@ -67,6 +71,28 @@ impl Compiler {
             .extend_from_slice(&Compiler::compile_raw_string(node.identifier.name.clone()));
 
         operation_bytecode
+    }
+
+    fn compile_if_statement(node: &IfStatement) -> Vec<u8> {
+        let mut bytecode = vec![];
+        // load the expression
+        bytecode.extend_from_slice(&Compiler::compile_expression(&node.condition));
+        let then_bytecode = Compiler::compile_block(&node.body);
+        let else_bytecode = if let Some(else_node) = &node.else_node {
+            Compiler::compile_block(&else_node.body)
+        } else {
+            vec![]
+        };
+        // compile the jump to the pc + <instructions> + 1 offset
+        bytecode.extend_from_slice(&&Compiler::compile_expression(&Expression::Number(
+            ASTNumber::new((node.body.children.len() + 1) as f64, 0, 0),
+        )));
+        bytecode.push(get_bytecode("jump_if_false".to_string()));
+
+        bytecode.extend_from_slice(&then_bytecode);
+        bytecode.extend_from_slice(&else_bytecode);
+
+        bytecode
     }
 
     fn compile_expression(node: &Expression) -> Vec<u8> {
@@ -185,6 +211,26 @@ impl Compiler {
                 panic!("unhandled expression type")
             }
         }
+    }
+
+    fn compile_block(node: &Block) -> Vec<u8> {
+        let mut bytecode = vec![];
+        for node in &node.children {
+            let node_bytecode = match node {
+                AstNodeType::AssignamentStatement(node) => {
+                    Compiler::compile_assignament_statement(node)
+                }
+                AstNodeType::IfStatement(node) => Compiler::compile_if_statement(node),
+                AstNodeType::Expression(node) => Compiler::compile_expression(node),
+                _ => {
+                    panic!("unhandled node type");
+                }
+            };
+
+            bytecode.extend_from_slice(&node_bytecode);
+        }
+
+        bytecode
     }
 
     fn compile_group(node: &Group) -> (usize, Vec<u8>) {
