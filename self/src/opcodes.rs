@@ -12,6 +12,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     m.insert("zero".to_string(), 0x00);
     m.insert("load_const".to_string(), 0x01);
     m.insert("load_var".to_string(), 0x05);
+    m.insert("jump_if_false".to_string(), 0x11);
     m.insert("add".to_string(), 0x03);
     m.insert("substract".to_string(), 0x08);
     m.insert("multiply".to_string(), 0x09);
@@ -44,6 +45,7 @@ pub enum Opcode {
     Zero,
     LoadConst,
     LoadVar,
+    JumpIfFalse,
     Print,
     Println,
     Add,
@@ -60,6 +62,7 @@ impl Opcode {
         match opcode {
             0x00 => Opcode::Zero,
             0x01 => Opcode::LoadConst,
+            0x11 => Opcode::JumpIfFalse,
             0x02 => Opcode::Print,
             0x07 => Opcode::Println,
             0x03 => Opcode::Add,
