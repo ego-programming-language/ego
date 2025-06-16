@@ -5,6 +5,7 @@ use crate::core::handlers::call_handler::call_handler;
 use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::core::handlers::print_handler::print_handler;
 use crate::opcodes::DataType;
+use crate::opcodes::Opcode;
 use crate::translator::Translator;
 use crate::types::bool::Bool;
 use crate::types::f64::F64;
@@ -13,7 +14,6 @@ use crate::types::utf8::Utf8;
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
 use crate::utils::from_bytes::bytes_to_data;
 
-use super::instructions::*;
 use super::symbol_table::*;
 use super::types::*;
 
@@ -24,7 +24,7 @@ use self::u32::U32;
 pub struct Vm {
     operand_stack: Vec<StackValue>,
     symbol_table: SymbolTable,
-    instructions: Vec<Instruction>,
+    bytecode: Vec<u8>,
     pc: usize,
     handlers: ForeignHandlers,
 }
@@ -36,8 +36,8 @@ pub struct StackValue {
 
 impl Vm {
     pub fn new(bytecode: Vec<u8>) -> Vm {
-        let mut translator = Translator::new(bytecode);
-        let instructions = translator.translate();
+        //let mut translator = Translator::new(bytecode);
+        //let instructions = translator.translate();
         let mut handlers = ForeignHandlers::new();
         let foreign_handlers = get_foreign_handlers();
 
@@ -50,7 +50,7 @@ impl Vm {
         Vm {
             operand_stack: vec![],
             symbol_table: SymbolTable::new(),
-            instructions,
+            bytecode,
             pc: 0,
             handlers,
         }
@@ -58,22 +58,42 @@ impl Vm {
 
     pub fn run(&mut self, args: &Vec<String>) -> VMExecutionResult {
         let debug = args.contains(&"-d".to_string());
-        while self.pc < self.instructions.len() {
-            let instruction = self.instructions[self.pc].clone();
-            match &instruction {
-                Instruction::LoadConst { data_type, value } => {
-                    let (value, printable_value) = bytes_to_data(data_type, value);
+        if debug {
+            println!("last PC value: {}", self.bytecode.len());
+            println!("-");
+        }
+        while self.pc < self.bytecode.len() {
+            match Opcode::to_opcode(self.bytecode[self.pc]) {
+                Opcode::LoadConst => {
+                    // parsing
+                    if self.pc + 1 >= self.bytecode.len() {
+                        panic!("Invalid LOAD_CONST instruction at position {}", self.pc);
+                    }
+
+                    self.pc += 1;
+                    let (data_type, value_bytes) = self.get_value_length();
+
+                    // execution
+                    let (value, printable_value) = bytes_to_data(&data_type, &value_bytes);
                     self.push_to_stack(value, None);
                     if debug {
                         println!("LOAD_CONST <- {:?}({printable_value})", data_type);
                     }
                 }
-                Instruction::LoadVar {
-                    data_type,
-                    identifier,
-                } => {
-                    let (identifier_name, printable_value) = bytes_to_data(data_type, identifier);
+                Opcode::LoadVar => {
+                    // parsing
+                    if self.pc + 1 >= self.bytecode.len() {
+                        panic!("Invalid LOAD_VAR instruction at position {}", self.pc);
+                    }
 
+                    self.pc += 1;
+                    let (data_type, value_bytes) = self.get_value_length();
+
+                    // execution
+                    let (identifier_name, printable_value) =
+                        bytes_to_data(&data_type, &value_bytes);
+
+                    println!("{}-{}", identifier_name.to_string(), printable_value);
                     if let Value::Utf8(i) = identifier_name {
                         let identifier_value = self.symbol_table.get_value(&i.value);
                         if let Some(v) = identifier_value {
@@ -89,30 +109,83 @@ impl Vm {
                         panic!("LOAD_VAR identifier should be a string")
                     }
                 }
-                Instruction::StoreVar {
-                    identifier,
-                    mutable,
-                } => {
-                    let stack_stored_value = self.operand_stack.pop();
-                    if let Some(v) = stack_stored_value {
-                        let datatype = v.value.get_type();
-                        let printable_value = v.value.to_string();
-                        self.symbol_table.add_key_value(identifier.clone(), v.value);
-                        if debug {
-                            println!(
-                                "STORE_VAR[{}] <- {:?}({}) as {}",
-                                if *mutable { "MUT" } else { "INMUT" },
-                                datatype,
-                                printable_value,
-                                identifier,
-                            );
+                Opcode::JumpIfFalse => {
+                    // execution
+                    let pc_offset = self.operand_stack.pop();
+                    let condition = self.operand_stack.pop();
+                    if pc_offset.is_none() || condition.is_none() {
+                        panic!("stack underflow");
+                    };
+
+                    let pc_offset = pc_offset.unwrap().value.as_usize();
+                    let condition = condition.unwrap();
+                    match condition.value {
+                        Value::Bool(execute_if) => {
+                            if debug {
+                                println!("JUMP_IF_FALSE <- {:?}", execute_if.value);
+                            }
+                            if !execute_if.value && pc_offset.is_some() {
+                                self.pc += pc_offset.unwrap();
+                            }
                         }
-                    } else {
-                        // todo: use self-vm errors
-                        panic!("STACK UNDERFLOW")
+                        _ => {
+                            panic!("invalid expression type as condition to jump")
+                        }
+                    };
+                }
+                Opcode::Jump => {
+                    // execution
+                    let pc_offset = self.operand_stack.pop();
+                    if pc_offset.is_none() {
+                        panic!("stack underflow");
+                    };
+
+                    let pc_offset = pc_offset.unwrap().value.as_usize();
+                    if let Some(offset) = pc_offset {
+                        if debug {
+                            println!("JUMP <- {:?}", offset);
+                        }
+                        self.pc += offset;
                     }
                 }
-                Instruction::Add => {
+                Opcode::Print => {
+                    // parsing
+                    // get u32 value. 4 bytes based on the type plus the current
+                    let value_length = 4;
+                    if self.pc + value_length >= self.bytecode.len() {
+                        panic!("Invalid print instruction at position {}", self.pc);
+                    }
+
+                    let value_bytes = &self.bytecode[self.pc + 1..self.pc + 5];
+                    let number_of_args = u32::from_le_bytes(
+                        value_bytes.try_into().expect("Provided value is incorrect"),
+                    );
+                    self.pc += 4;
+
+                    // execution
+                    let args = self.get_stack_values(&number_of_args);
+                    print_handler(args, debug, false)
+                }
+                Opcode::Println => {
+                    // parsing
+                    // get u32 value. 4 bytes based on the type plus the current
+                    let value_length = 4;
+                    if self.pc + value_length >= self.bytecode.len() {
+                        panic!("Invalid print instruction at position {}", self.pc);
+                    }
+
+                    let value_bytes = &self.bytecode[self.pc + 1..self.pc + 5];
+                    let number_of_args = u32::from_le_bytes(
+                        value_bytes.try_into().expect("Provided value is incorrect"),
+                    );
+                    self.pc += 4;
+
+                    // execution
+                    let args = self.get_stack_values(&number_of_args);
+                    print_handler(args, debug, true)
+                }
+                Opcode::Add => {
+                    // execution
                     let right_operand = self.operand_stack.pop();
                     let left_operand = self.operand_stack.pop();
 
@@ -187,7 +260,8 @@ impl Vm {
                         _ => unreachable!(),
                     }
                 }
-                Instruction::Substract => {
+                Opcode::Substract => {
+                    // execution
                     let right_operand = self.operand_stack.pop();
                     let left_operand = self.operand_stack.pop();
 
@@ -267,7 +341,8 @@ impl Vm {
                         _ => unreachable!(),
                     }
                 }
-                Instruction::Multiply => {
+                Opcode::Multiply => {
+                    // execution
                     let right_operand = self.operand_stack.pop();
                     let left_operand = self.operand_stack.pop();
 
@@ -347,7 +422,8 @@ impl Vm {
                         _ => unreachable!(),
                     }
                 }
-                Instruction::Divide => {
+                Opcode::Divide => {
+                    // execution
                     let right_operand = self.operand_stack.pop();
                     let left_operand = self.operand_stack.pop();
 
@@ -452,16 +528,69 @@ impl Vm {
                         _ => unreachable!(),
                     }
                 }
-                Instruction::Print { number_of_args } => {
-                    let args = self.get_stack_values(number_of_args);
-                    print_handler(args, debug, false)
+                Opcode::StoreVar => {
+                    // parsing
+                    if self.pc + 1 >= self.bytecode.len() {
+                        panic!("Invalid STORE_VAR instruction at position {}.", self.pc);
+                    } else {
+                        self.pc += 1;
+                    }
+
+                    // 0x00 inmutable | 0x00 mutable
+                    let mutable = match self.bytecode[self.pc] {
+                        0x00 => false,
+                        0x01 => true,
+                        _ => {
+                            panic!("Invalid STORE_VAR instruction at position {}. Needed mutability property.", self.pc);
+                        }
+                    };
+                    self.pc += 1;
+
+                    // identifier
+                    let (identifier_data_type, identifier_bytes) = self.get_value_length();
+                    if identifier_data_type != DataType::Utf8 {
+                        panic!("Identifier type should be a string encoded as utf8")
+                    }
+                    let identifier_name = String::from_utf8(identifier_bytes)
+                        .expect("Identifier bytes should be valid UTF-8");
+
+                    // execution
+                    let stack_stored_value = self.operand_stack.pop();
+                    if let Some(v) = stack_stored_value {
+                        let datatype = v.value.get_type();
+                        let printable_value = v.value.to_string();
+                        self.symbol_table
+                            .add_key_value(identifier_name.clone(), v.value);
+                        if debug {
+                            println!(
+                                "STORE_VAR[{}] <- {:?}({}) as {}",
+                                if mutable { "MUT" } else { "INMUT" },
+                                datatype,
+                                printable_value,
+                                identifier_name,
+                            );
+                        }
+                    } else {
+                        // todo: use self-vm errors
+                        panic!("STACK UNDERFLOW")
+                    }
                 }
-                Instruction::Println { number_of_args } => {
-                    let args = self.get_stack_values(number_of_args);
-                    print_handler(args, debug, true)
-                }
-                Instruction::Call { number_of_args } => {
-                    let args = self.get_stack_values(number_of_args);
+                Opcode::Call => {
+                    // parsing
+                    // get u32 value. 4 bytes based on the type plus the current
+                    let value_length = 4;
+                    if self.pc + value_length >= self.bytecode.len() {
+                        panic!("Invalid print instruction at position {}", self.pc);
+                    }
+
+                    let value_bytes = &self.bytecode[self.pc + 1..self.pc + 5];
+                    let number_of_args = u32::from_le_bytes(
+                        value_bytes.try_into().expect("Provided value is incorrect"),
+                    );
+                    self.pc += 4;
+
+                    // execution
+                    let args = self.get_stack_values(&number_of_args);
 
                     if let DataType::Utf8 = args[0].get_type() {
                         if debug {
@@ -472,15 +601,52 @@ impl Vm {
                         panic!("Call first argument must be a string")
                     }
                 }
-                _ => {
-                    panic!("Unhandled instruction")
-                }
-            }
+                _ => {}
+            };
 
-            self.pc += 1; // increment program counter
+            self.pc += 1;
         }
 
         VMExecutionResult::terminate()
+    }
+
+    fn get_value_length(&mut self) -> (DataType, Vec<u8>) {
+        let data_type = DataType::to_opcode(self.bytecode[self.pc]);
+        let value_length = match data_type {
+            DataType::I32 => 4,
+            DataType::I64 => 8,
+            DataType::U32 => 4,
+            DataType::U64 => 8,
+            DataType::F64 => 8,
+            DataType::Nothing => 0,
+            DataType::Bool => 1,
+            DataType::Utf8 => {
+                self.pc += 1;
+                let (data_type, value) = self.get_value_length();
+                if data_type != DataType::U32 {
+                    panic!("bad utf8 value length")
+                }
+
+                let (string_length, _) = bytes_to_data(&DataType::U32, &value);
+                if let Value::U32(val) = string_length {
+                    val.value as usize
+                } else {
+                    panic!("Unexpected value type for string length");
+                }
+            } // hardcoded for the moment
+            _ => {
+                panic!("Unsupported datatype")
+            }
+        };
+
+        if (self.pc + value_length) >= self.bytecode.len() {
+            panic!("Invalid value size at position {}", self.pc + 1);
+        };
+
+        let value_bytes = self.bytecode[self.pc + 1..self.pc + 1 + value_length].to_vec();
+        self.pc += value_length;
+
+        (data_type, value_bytes)
     }
 
     pub fn get_stack_values(&mut self, num_of_values: &u32) -> Vec<Value> {
@@ -502,7 +668,9 @@ impl Vm {
     }
 
     pub fn debug_bytecode(&mut self) {
+        println!("\n--- BYTECODE ----------\n");
+        println!("{:#?}", self.bytecode.clone());
         println!("\n--- BYTECODE INSTRUCTIONS ----------\n");
-        println!("{:#?}", self.instructions)
+        println!("{:#?}", Translator::new(self.bytecode.clone()).translate());
     }
 }

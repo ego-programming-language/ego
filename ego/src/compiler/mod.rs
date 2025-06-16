@@ -75,21 +75,38 @@ impl Compiler {
 
     fn compile_if_statement(node: &IfStatement) -> Vec<u8> {
         let mut bytecode = vec![];
-        // load the expression
+        // condition
         bytecode.extend_from_slice(&Compiler::compile_expression(&node.condition));
+
         let then_bytecode = Compiler::compile_block(&node.body);
         let else_bytecode = if let Some(else_node) = &node.else_node {
             Compiler::compile_block(&else_node.body)
         } else {
             vec![]
         };
-        // compile the jump to the pc + <instructions> + 1 offset
-        bytecode.extend_from_slice(&&Compiler::compile_expression(&Expression::Number(
-            ASTNumber::new((node.body.children.len() + 1) as f64, 0, 0),
-        )));
-        bytecode.push(get_bytecode("jump_if_false".to_string()));
 
-        bytecode.extend_from_slice(&then_bytecode);
+        // offset to else node: then_bytecode_length + else_bytecode_num_bytecode_length + jump_opcode
+        let offset_to_else = then_bytecode.len()
+            + Compiler::compile_expression(&Expression::Number(ASTNumber::new(
+                else_bytecode.len() as f64,
+                0,
+                0,
+            )))
+            .len()
+            + 1;
+        bytecode.extend_from_slice(&Compiler::compile_expression(&Expression::Number(
+            ASTNumber::new(offset_to_else as f64, 0, 0),
+        )));
+
+        // then
+        bytecode.push(get_bytecode("jump_if_false".to_string()));
+        bytecode.extend_from_slice(&then_bytecode); // then body bytecode
+        bytecode.extend_from_slice(&Compiler::compile_expression(&Expression::Number(
+            ASTNumber::new(else_bytecode.len() as f64, 0, 0),
+        ))); // load const to jump the else bytecode
+
+        // else
+        bytecode.push(get_bytecode("jump".to_string()));
         bytecode.extend_from_slice(&else_bytecode);
 
         bytecode

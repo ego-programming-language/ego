@@ -54,4 +54,17 @@ impl Value {
             Value::Nothing => "nothing".to_string(),
         }
     }
+
+    pub fn as_usize(&self) -> Option<usize> {
+        match self {
+            Value::I32(x) => Some(x.value as usize),
+            Value::I64(x) => Some(x.value as usize),
+            Value::U32(x) => Some(x.value as usize),
+            Value::U64(x) => Some(x.value as usize),
+            Value::F64(_) => None,
+            Value::Utf8(_) => None,
+            Value::Bool(_) => None,
+            Value::Nothing => None,
+        }
+    }
 }

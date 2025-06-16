@@ -15,6 +15,8 @@ pub enum Instruction {
         identifier: String,
         mutable: bool,
     },
+    JumpIfFalse,
+    Jump,
     Add,
     Substract,
     Multiply,

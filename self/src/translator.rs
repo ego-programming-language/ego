@@ -47,6 +47,12 @@ impl Translator {
                         identifier: value_bytes,
                     });
                 }
+                Opcode::JumpIfFalse => {
+                    instructions.push(Instruction::JumpIfFalse);
+                }
+                Opcode::Jump => {
+                    instructions.push(Instruction::Jump);
+                }
                 Opcode::Print => {
                     // get u32 value. 4 bytes based on the type plus the current
                     let value_length = 4;
