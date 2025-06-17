@@ -29,6 +29,7 @@ pub struct Vm {
     handlers: ForeignHandlers,
 }
 
+#[derive(Debug)]
 pub struct StackValue {
     pub value: Value,
     pub origin: Option<String>,
@@ -79,6 +80,8 @@ impl Vm {
                     if debug {
                         println!("LOAD_CONST <- {:?}({printable_value})", data_type);
                     }
+
+                    self.pc += 1;
                 }
                 Opcode::LoadVar => {
                     // parsing
@@ -93,7 +96,6 @@ impl Vm {
                     let (identifier_name, printable_value) =
                         bytes_to_data(&data_type, &value_bytes);
 
-                    println!("{}-{}", identifier_name.to_string(), printable_value);
                     if let Value::Utf8(i) = identifier_name {
                         let identifier_value = self.symbol_table.get_value(&i.value);
                         if let Some(v) = identifier_value {
@@ -108,45 +110,45 @@ impl Vm {
                     } else {
                         panic!("LOAD_VAR identifier should be a string")
                     }
+
+                    self.pc += 1;
                 }
                 Opcode::JumpIfFalse => {
-                    // execution
-                    let pc_offset = self.operand_stack.pop();
+                    let offset = Vm::read_offset(&self.bytecode[self.pc + 1..self.pc + 5]);
+                    self.pc += 4;
+
                     let condition = self.operand_stack.pop();
-                    if pc_offset.is_none() || condition.is_none() {
+                    if condition.is_none() {
                         panic!("stack underflow");
                     };
 
-                    let pc_offset = pc_offset.unwrap().value.as_usize();
                     let condition = condition.unwrap();
                     match condition.value {
                         Value::Bool(execute_if) => {
                             if debug {
-                                println!("JUMP_IF_FALSE <- {:?}", execute_if.value);
+                                println!("JUMP_IF_FALSE <- {:?}({})", execute_if.value, offset);
                             }
-                            if !execute_if.value && pc_offset.is_some() {
-                                self.pc += pc_offset.unwrap();
+                            if !execute_if.value {
+                                self.pc += offset as usize;
                             }
                         }
                         _ => {
                             panic!("invalid expression type as condition to jump")
                         }
                     };
+
+                    self.pc += 1;
                 }
                 Opcode::Jump => {
                     // execution
-                    let pc_offset = self.operand_stack.pop();
-                    if pc_offset.is_none() {
-                        panic!("stack underflow");
-                    };
+                    let offset = Vm::read_offset(&self.bytecode[self.pc + 1..self.pc + 5]);
+                    self.pc += 4;
 
-                    let pc_offset = pc_offset.unwrap().value.as_usize();
-                    if let Some(offset) = pc_offset {
-                        if debug {
-                            println!("JUMP <- {:?}", offset);
-                        }
-                        self.pc += offset;
+                    let target_pc = (self.pc as isize) + offset as isize;
+                    if debug {
+                        println!("JUMP <- {:?}", target_pc);
                     }
+                    self.pc = target_pc as usize;
                 }
                 Opcode::Print => {
                     // parsing
@@ -164,7 +166,9 @@ impl Vm {
 
                     // execution
                     let args = self.get_stack_values(&number_of_args);
-                    print_handler(args, debug, false)
+                    print_handler(args, debug, false);
+
+                    self.pc += 1;
                 }
                 Opcode::Println => {
                     // parsing
@@ -182,7 +186,9 @@ impl Vm {
 
                     // execution
                     let args = self.get_stack_values(&number_of_args);
-                    print_handler(args, debug, true)
+                    print_handler(args, debug, true);
+
+                    self.pc += 1;
                 }
                 Opcode::Add => {
                     // execution
@@ -259,6 +265,8 @@ impl Vm {
                         }
                         _ => unreachable!(),
                     }
+
+                    self.pc += 1;
                 }
                 Opcode::Substract => {
                     // execution
@@ -340,6 +348,8 @@ impl Vm {
                         }
                         _ => unreachable!(),
                     }
+
+                    self.pc += 1;
                 }
                 Opcode::Multiply => {
                     // execution
@@ -421,6 +431,8 @@ impl Vm {
                         }
                         _ => unreachable!(),
                     }
+
+                    self.pc += 1;
                 }
                 Opcode::Divide => {
                     // execution
@@ -527,6 +539,8 @@ impl Vm {
                         }
                         _ => unreachable!(),
                     }
+
+                    self.pc += 1;
                 }
                 Opcode::StoreVar => {
                     // parsing
@@ -574,6 +588,8 @@ impl Vm {
                         // todo: use self-vm errors
                         panic!("STACK UNDERFLOW")
                     }
+
+                    self.pc += 1;
                 }
                 Opcode::Call => {
                     // parsing
@@ -600,11 +616,14 @@ impl Vm {
                     } else {
                         panic!("Call first argument must be a string")
                     }
-                }
-                _ => {}
-            };
 
-            self.pc += 1;
+                    self.pc += 1;
+                }
+                _ => {
+                    println!("unhandled opcode");
+                    self.pc += 1;
+                }
+            };
         }
 
         VMExecutionResult::terminate()
@@ -649,6 +668,11 @@ impl Vm {
         (data_type, value_bytes)
     }
 
+    fn read_offset(bytes: &[u8]) -> i32 {
+        let arr: [u8; 4] = bytes.try_into().expect("slice with incorrect length");
+        i32::from_le_bytes(arr)
+    }
+
     pub fn get_stack_values(&mut self, num_of_values: &u32) -> Vec<Value> {
         let mut args = Vec::with_capacity(*num_of_values as usize);
 
@@ -669,7 +693,9 @@ impl Vm {
 
     pub fn debug_bytecode(&mut self) {
         println!("\n--- BYTECODE ----------\n");
-        println!("{:#?}", self.bytecode.clone());
+        for i in 0..self.bytecode.len() {
+            println!("[{}] {:#?}", i + 1, self.bytecode[i]);
+        }
         println!("\n--- BYTECODE INSTRUCTIONS ----------\n");
         println!("{:#?}", Translator::new(self.bytecode.clone()).translate());
     }

@@ -55,10 +55,23 @@ impl Value {
         }
     }
 
+    pub fn as_isize(&self) -> Option<isize> {
+        match self {
+            Value::I32(x) => Some(x.value as isize),
+            Value::I64(x) => Some(x.value as isize),
+            Value::U32(_) => None,
+            Value::U64(_) => None,
+            Value::F64(_) => None,
+            Value::Utf8(_) => None,
+            Value::Bool(_) => None,
+            Value::Nothing => None,
+        }
+    }
+
     pub fn as_usize(&self) -> Option<usize> {
         match self {
-            Value::I32(x) => Some(x.value as usize),
-            Value::I64(x) => Some(x.value as usize),
+            Value::I32(_) => None,
+            Value::I64(_) => None,
             Value::U32(x) => Some(x.value as usize),
             Value::U64(x) => Some(x.value as usize),
             Value::F64(_) => None,

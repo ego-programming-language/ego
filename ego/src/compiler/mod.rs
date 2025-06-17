@@ -14,6 +14,7 @@ use crate::ast::{
     if_statement::IfStatement,
     module::ModuleAst,
     number::Number as ASTNumber,
+    while_statement::WhileStatement,
     AstNodeType, Expression,
 };
 
@@ -39,6 +40,7 @@ impl Compiler {
                 }
                 AstNodeType::IfStatement(node) => Compiler::compile_if_statement(node),
                 AstNodeType::Expression(node) => Compiler::compile_expression(node),
+                AstNodeType::WhileStatement(node) => Compiler::compile_while_statement(node),
                 _ => {
                     // panic!("unhandled node type")
                     // here we should, in the near future throw an error
@@ -75,40 +77,49 @@ impl Compiler {
 
     fn compile_if_statement(node: &IfStatement) -> Vec<u8> {
         let mut bytecode = vec![];
-        // condition
-        bytecode.extend_from_slice(&Compiler::compile_expression(&node.condition));
 
+        let condition_bytecode = &Compiler::compile_expression(&node.condition);
         let then_bytecode = Compiler::compile_block(&node.body);
         let else_bytecode = if let Some(else_node) = &node.else_node {
             Compiler::compile_block(&else_node.body)
         } else {
             vec![]
         };
+        let offset_to_else = Compiler::compile_offset((then_bytecode.len() + 4 + 1) as i32);
+        let offset_skip_else = Compiler::compile_offset((else_bytecode.len() + 1) as i32);
 
-        // offset to else node: then_bytecode_length + else_bytecode_num_bytecode_length + jump_opcode
-        let offset_to_else = then_bytecode.len()
-            + Compiler::compile_expression(&Expression::Number(ASTNumber::new(
-                else_bytecode.len() as f64,
-                0,
-                0,
-            )))
-            .len()
-            + 1;
-        bytecode.extend_from_slice(&Compiler::compile_expression(&Expression::Number(
-            ASTNumber::new(offset_to_else as f64, 0, 0),
-        )));
-
-        // then
+        bytecode.extend_from_slice(&condition_bytecode);
         bytecode.push(get_bytecode("jump_if_false".to_string()));
-        bytecode.extend_from_slice(&then_bytecode); // then body bytecode
-        bytecode.extend_from_slice(&Compiler::compile_expression(&Expression::Number(
-            ASTNumber::new(else_bytecode.len() as f64, 0, 0),
-        ))); // load const to jump the else bytecode
-
-        // else
+        bytecode.extend_from_slice(&offset_to_else);
+        bytecode.extend_from_slice(&then_bytecode);
         bytecode.push(get_bytecode("jump".to_string()));
+        bytecode.extend_from_slice(&offset_skip_else);
         bytecode.extend_from_slice(&else_bytecode);
 
+        bytecode
+    }
+
+    fn compile_while_statement(node: &WhileStatement) -> Vec<u8> {
+        // body offset and while offset are calculated based on
+        // two euristics to handle the circular reference
+        // "to calculate body offset you need while offset and
+        // viceversa"
+        // 4: offset bytecode size
+        // 1: opcode size
+        let mut bytecode = vec![];
+        let condition_bytecode = Compiler::compile_expression(&node.condition);
+        let body_bytecode = Compiler::compile_block(&node.body);
+        let body_offset = Compiler::compile_offset((body_bytecode.len() + 4 + 1) as i32);
+        let while_offset = Compiler::compile_offset(
+            -((condition_bytecode.len() + body_offset.len() + 1 + body_bytecode.len() + 4) as i32),
+        );
+
+        bytecode.extend_from_slice(&condition_bytecode);
+        bytecode.push(get_bytecode("jump_if_false".to_string()));
+        bytecode.extend_from_slice(&body_offset);
+        bytecode.extend_from_slice(&body_bytecode);
+        bytecode.push(get_bytecode("jump".to_string()));
+        bytecode.extend_from_slice(&while_offset);
         bytecode
     }
 
@@ -133,9 +144,9 @@ impl Compiler {
                 let mut bytecode = vec![];
                 bytecode.push(get_bytecode("load_const".to_string()));
 
-                if v.value.is_sign_negative() {
-                    panic!("Cannot compile negative numbers on self");
-                }
+                // if v.value.is_sign_negative() {
+                //     panic!("Cannot compile negative numbers on self");
+                // }
 
                 let (num_bytecode, num_type_bytecode) = if v.value.fract() != 0.0 {
                     (
@@ -274,6 +285,12 @@ impl Compiler {
         bytecode.push(get_bytecode("u32".to_string()));
         bytecode.extend_from_slice(&string_length.to_le_bytes());
         bytecode.extend_from_slice(string_bytes);
+        bytecode
+    }
+
+    fn compile_offset(v: i32) -> [u8; 4] {
+        let mut bytecode = [0u8; 4];
+        bytecode[0..4].copy_from_slice(&v.to_le_bytes());
         bytecode
     }
 }
