@@ -21,6 +21,7 @@ pub enum Instruction {
     Substract,
     Multiply,
     Divide,
+    GreaterThan,
     Print {
         number_of_args: u32,
     },
