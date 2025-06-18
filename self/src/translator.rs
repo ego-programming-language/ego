@@ -86,6 +86,7 @@ impl Translator {
                 Opcode::Multiply => instructions.push(Instruction::Multiply),
                 Opcode::Divide => instructions.push(Instruction::Divide),
                 Opcode::GreaterThan => instructions.push(Instruction::GreaterThan),
+                Opcode::LessThan => instructions.push(Instruction::LessThan),
                 Opcode::StoreVar => {
                     if self.pc + 1 >= self.bytecode.len() {
                         panic!("Invalid STORE_VAR instruction at position {}.", self.pc);

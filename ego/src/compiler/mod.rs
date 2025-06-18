@@ -224,6 +224,7 @@ impl Compiler {
                     "*" => bytecode.push(get_bytecode("multiply".to_string())),
                     "/" => bytecode.push(get_bytecode("divide".to_string())),
                     ">" => bytecode.push(get_bytecode("greater_than".to_string())),
+                    "<" => bytecode.push(get_bytecode("less_than".to_string())),
                     _ => {}
                 };
 

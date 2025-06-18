@@ -616,6 +616,80 @@ impl Vm {
                     }
                     self.pc += 1;
                 }
+                Opcode::LessThan => {
+                    // execution
+                    let right_operand = self.operand_stack.pop();
+                    let left_operand = self.operand_stack.pop();
+
+                    if left_operand.is_none() || right_operand.is_none() {
+                        panic!("Operands stack underflow");
+                    };
+
+                    let operands = (left_operand.unwrap(), right_operand.unwrap());
+                    let operands_values = (&operands.0.value, &operands.1.value);
+
+                    match operands_values {
+                        (Value::I32(l), Value::I32(r)) => {
+                            self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
+                            if debug {
+                                println!("LESS_THAN -> {:?}", l.value < r.value);
+                            }
+                        }
+                        (Value::I64(l), Value::I64(r)) => {
+                            self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
+                            if debug {
+                                println!("LESS_THAN -> {:?}", l.value < r.value);
+                            }
+                        }
+                        (Value::U32(l), Value::U32(r)) => {
+                            self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
+                            if debug {
+                                println!("LESS_THAN -> {:?}", l.value < r.value);
+                            }
+                        }
+                        (Value::U64(l), Value::U64(r)) => {
+                            self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
+                            if debug {
+                                println!("LESS_THAN -> {:?}", l.value < r.value);
+                            }
+                        }
+                        (Value::F64(l), Value::F64(r)) => {
+                            self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
+                            if debug {
+                                println!("LESS_THAN -> {:?}", l.value < r.value);
+                            }
+                        }
+                        (Value::Nothing, Value::Nothing) => {
+                            return VMExecutionResult::terminate_with_errors(
+                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                                    left: DataType::Nothing,
+                                    right: DataType::Nothing,
+                                    operator: "<".to_string(),
+                                }),
+                            );
+                        }
+                        (Value::Utf8(_), Value::Utf8(_)) => {
+                            return VMExecutionResult::terminate_with_errors(
+                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                                    left: DataType::Utf8,
+                                    right: DataType::Utf8,
+                                    operator: "<".to_string(),
+                                }),
+                            );
+                        }
+                        (Value::Bool(_), Value::Bool(_)) => {
+                            return VMExecutionResult::terminate_with_errors(
+                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                                    left: DataType::Bool,
+                                    right: DataType::Bool,
+                                    operator: "<".to_string(),
+                                }),
+                            );
+                        }
+                        _ => unreachable!(),
+                    }
+                    self.pc += 1;
+                }
                 Opcode::StoreVar => {
                     // parsing
                     if self.pc + 1 >= self.bytecode.len() {
