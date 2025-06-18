@@ -20,6 +20,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     m.insert("divide".to_string(), 0x10);
     m.insert("greater_than".to_string(), 0x13);
     m.insert("less_than".to_string(), 0x14);
+    m.insert("equals".to_string(), 0x15);
     m.insert("store_var".to_string(), 0x04);
 
     // builtin functions opcode - level: 0
@@ -58,6 +59,7 @@ pub enum Opcode {
     Divide,
     GreaterThan,
     LessThan,
+    Equals,
     StoreVar,
     Call,
     Unknown,
@@ -78,6 +80,7 @@ impl Opcode {
             0x10 => Opcode::Divide,
             0x13 => Opcode::GreaterThan,
             0x14 => Opcode::LessThan,
+            0x15 => Opcode::Equals,
             0x04 => Opcode::StoreVar,
             0x06 => Opcode::Call,
             0x05 => Opcode::LoadVar,
