@@ -989,10 +989,50 @@ impl Vm {
 
     pub fn debug_bytecode(&mut self) {
         println!("\n--- BYTECODE ----------\n");
-        for i in 0..self.bytecode.len() {
-            println!("[{}] {:#?}", i + 1, self.bytecode[i]);
+        let mut pc = 0;
+        let mut target_pc = 0;
+
+        let string_offset = self.bytecode.len().to_string();
+        while pc < self.bytecode.len() {
+            let index = (pc + 1).to_string();
+            let mut counter = 0;
+            let printable_index = string_offset
+                .chars()
+                .map(|_| {
+                    let mut result = "".to_string();
+                    if let Some(char) = index.chars().nth(counter) {
+                        result = char.to_string();
+                    } else {
+                        result = " ".to_string();
+                    }
+                    counter += 1;
+                    return result;
+                })
+                .collect::<String>();
+
+            if pc >= target_pc {
+                // print instruction
+                let (instruction, offset) = Translator::get_instruction(pc, &self.bytecode);
+                let raw_instruction = format!("{}|    {:#?}", printable_index, self.bytecode[pc]);
+                println!("{}-----{}", raw_instruction, instruction.get_type());
+                println!(
+                    "{}     {}",
+                    raw_instruction
+                        .chars()
+                        .map(|_| " ".to_string())
+                        .collect::<String>(),
+                    Translator::get_instruction_info(&instruction)
+                );
+                // + 1  the normal iteration increment over the bytecode
+                target_pc = pc + offset + 1;
+            } else {
+                // print bytecode index
+                println!("{}|    {:#?}", printable_index, self.bytecode[pc]);
+            }
+
+            pc += 1;
         }
-        println!("\n--- BYTECODE INSTRUCTIONS ----------\n");
-        println!("{:#?}", Translator::new(self.bytecode.clone()).translate());
+        //println!("\n--- BYTECODE INSTRUCTIONS ----------\n");
+        //println!("{:#?}", Translator::new(self.bytecode.clone()).translate());
     }
 }
