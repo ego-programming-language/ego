@@ -23,6 +23,8 @@ pub enum Instruction {
     Divide,
     GreaterThan,
     LessThan,
+    Equals,
+    NotEquals,
     Print {
         number_of_args: u32,
     },

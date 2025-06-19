@@ -226,6 +226,7 @@ impl Compiler {
                     ">" => bytecode.push(get_bytecode("greater_than".to_string())),
                     "<" => bytecode.push(get_bytecode("less_than".to_string())),
                     "==" => bytecode.push(get_bytecode("equals".to_string())),
+                    "!=" => bytecode.push(get_bytecode("not_equals".to_string())),
                     _ => {}
                 };
 

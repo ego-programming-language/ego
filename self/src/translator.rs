@@ -49,9 +49,11 @@ impl Translator {
                 }
                 Opcode::JumpIfFalse => {
                     instructions.push(Instruction::JumpIfFalse);
+                    self.pc += 4;
                 }
                 Opcode::Jump => {
                     instructions.push(Instruction::Jump);
+                    self.pc += 4;
                 }
                 Opcode::Print => {
                     // get u32 value. 4 bytes based on the type plus the current
@@ -87,6 +89,8 @@ impl Translator {
                 Opcode::Divide => instructions.push(Instruction::Divide),
                 Opcode::GreaterThan => instructions.push(Instruction::GreaterThan),
                 Opcode::LessThan => instructions.push(Instruction::LessThan),
+                Opcode::Equals => instructions.push(Instruction::Equals),
+                Opcode::NotEquals => instructions.push(Instruction::NotEquals),
                 Opcode::StoreVar => {
                     if self.pc + 1 >= self.bytecode.len() {
                         panic!("Invalid STORE_VAR instruction at position {}.", self.pc);
