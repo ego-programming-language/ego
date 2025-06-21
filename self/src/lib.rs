@@ -1,4 +1,5 @@
 mod core;
+mod heap;
 mod instructions;
 mod opcodes;
 mod symbol_table;
