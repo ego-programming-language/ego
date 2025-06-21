@@ -15,8 +15,7 @@ pub fn print_handler(args: Vec<Value>, debug: bool, newline_end: bool) {
                 // Handle other types as necessary
             }
         } else {
-            let line_end = if newline_end { "\n" } else { "" };
-            let arg = arg.to_string() + line_end;
+            let arg = arg.to_string();
             let mut iter = arg.split("\\n").enumerate().peekable();
 
             while let Some((_index, string)) = iter.next() {
@@ -28,4 +27,8 @@ pub fn print_handler(args: Vec<Value>, debug: bool, newline_end: bool) {
             }
         }
     }
+
+    if newline_end {
+        print!("\n")
+    };
 }
