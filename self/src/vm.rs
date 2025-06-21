@@ -7,19 +7,13 @@ use crate::core::handlers::print_handler::print_handler;
 use crate::opcodes::DataType;
 use crate::opcodes::Opcode;
 use crate::translator::Translator;
-use crate::types::bool::Bool;
-use crate::types::f64::F64;
-use crate::types::u64::U64;
-use crate::types::utf8::Utf8;
+use crate::types::raw::Value;
+use crate::types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8};
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
 use crate::utils::from_bytes::bytes_to_data;
 
 use super::symbol_table::*;
 use super::types::*;
-
-use self::i32::I32;
-use self::i64::I64;
-use self::u32::U32;
 
 pub struct Vm {
     operand_stack: Vec<StackValue>,

@@ -7,7 +7,7 @@
 use crate::{
     instructions::Instruction,
     opcodes::{DataType, Opcode},
-    types::{utf8::Utf8, Value},
+    types::raw::{utf8::Utf8, Value},
     utils::from_bytes::bytes_to_data,
 };
 

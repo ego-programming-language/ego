@@ -1,6 +1,6 @@
 use crate::{
     opcodes::DataType,
-    types::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8, Value},
+    types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8, Value},
 };
 
 pub fn bytes_to_data(data_type: &DataType, value: &Vec<u8>) -> (Value, String) {
