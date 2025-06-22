@@ -1,13 +1,16 @@
+use toml::to_string;
+
 use crate::core::error::InvalidBinaryOperation;
 use crate::core::error::VMErrorType;
 use crate::core::execution::VMExecutionResult;
 use crate::core::handlers::call_handler::call_handler;
 use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::core::handlers::print_handler::print_handler;
+use crate::heap::Heap;
 use crate::opcodes::DataType;
 use crate::opcodes::Opcode;
 use crate::translator::Translator;
-use crate::types::raw::Value;
+use crate::types::raw::RawValue;
 use crate::types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8};
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
 use crate::utils::from_bytes::bytes_to_data;
@@ -18,12 +21,13 @@ use super::types::*;
 pub struct Vm {
     operand_stack: Vec<StackValue>,
     symbol_table: SymbolTable,
+    heap: Heap,
     bytecode: Vec<u8>,
     pc: usize,
     handlers: ForeignHandlers,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StackValue {
     pub value: Value,
     pub origin: Option<String>,
@@ -45,6 +49,7 @@ impl Vm {
         Vm {
             operand_stack: vec![],
             symbol_table: SymbolTable::new(),
+            heap: Heap::new(),
             bytecode,
             pc: 0,
             handlers,
@@ -70,7 +75,7 @@ impl Vm {
 
                     // execution
                     let (value, printable_value) = bytes_to_data(&data_type, &value_bytes);
-                    self.push_to_stack(value, None);
+                    self.push_to_stack(Value::RawValue(value), None);
                     if debug {
                         println!("LOAD_CONST <- {:?}({printable_value})", data_type);
                     }
@@ -90,7 +95,7 @@ impl Vm {
                     let (identifier_name, printable_value) =
                         bytes_to_data(&data_type, &value_bytes);
 
-                    if let Value::Utf8(i) = identifier_name {
+                    if let RawValue::Utf8(i) = identifier_name {
                         let identifier_value = self.symbol_table.get_value(&i.value);
                         if let Some(v) = identifier_value {
                             self.push_to_stack(v, Some(i.value));
@@ -118,14 +123,17 @@ impl Vm {
 
                     let condition = condition.unwrap();
                     match condition.value {
-                        Value::Bool(execute_if) => {
-                            if debug {
-                                println!("JUMP_IF_FALSE <- {:?}({})", execute_if.value, offset);
+                        Value::RawValue(v) => match v {
+                            RawValue::Bool(execute_if) => {
+                                if debug {
+                                    println!("JUMP_IF_FALSE <- {:?}({})", execute_if.value, offset);
+                                }
+                                if !execute_if.value {
+                                    self.pc += offset as usize;
+                                }
                             }
-                            if !execute_if.value {
-                                self.pc += offset as usize;
-                            }
-                        }
+                            _ => panic!("invalid expression type as condition to jump"),
+                        },
                         _ => {
                             panic!("invalid expression type as condition to jump")
                         }
@@ -193,645 +201,585 @@ impl Vm {
                         panic!("Operands stack underflow");
                     };
 
-                    let operands = (left_operand.unwrap(), right_operand.unwrap());
-                    let operands_values = (&operands.0.value, &operands.1.value);
-                    let operands_types =
-                        (operands_values.0.get_type(), operands_values.1.get_type());
+                    let operands_stack_values = (left_operand.unwrap(), right_operand.unwrap());
 
-                    if operands_types.0 != operands_types.1 {
-                        return VMExecutionResult::terminate_with_errors(
-                            VMErrorType::TypeCoercionError(operands.1),
-                        );
-                    }
-
-                    match operands_values {
-                        (Value::I32(l), Value::I32(r)) => {
-                            self.push_to_stack(Value::I32(I32::new(l.value + r.value)), None);
-                            if debug {
-                                println!("ADD -> {:?}", l.value + r.value);
-                            }
-                        }
-                        (Value::I64(l), Value::I64(r)) => {
-                            self.push_to_stack(Value::I64(I64::new(l.value + r.value)), None);
-                            if debug {
-                                println!("ADD -> {:?}", l.value + r.value);
-                            }
-                        }
-                        (Value::U32(l), Value::U32(r)) => {
-                            self.push_to_stack(Value::U32(U32::new(l.value + r.value)), None);
-                            if debug {
-                                println!("ADD -> {:?}", l.value + r.value);
-                            }
-                        }
-                        (Value::U64(l), Value::U64(r)) => {
-                            self.push_to_stack(Value::U64(U64::new(l.value + r.value)), None);
-                            if debug {
-                                println!("ADD -> {:?}", l.value + r.value);
-                            }
-                        }
-                        (Value::F64(l), Value::F64(r)) => {
-                            self.push_to_stack(Value::F64(F64::new(l.value + r.value)), None);
-                            if debug {
-                                println!("ADD -> {:?}", l.value + r.value);
-                            }
-                        }
-                        (Value::Nothing, Value::Nothing) => {
-                            self.push_to_stack(Value::Nothing, None);
-                            if debug {
-                                println!("ADD -> nothing");
-                            }
-                        }
-                        (Value::Utf8(l), Value::Utf8(r)) => {
-                            self.push_to_stack(
-                                Value::Utf8(Utf8::new(l.value.to_string() + r.value.as_str())),
-                                None,
-                            );
-                            if debug {
-                                println!("ADD -> {:?}", l.value.to_string() + r.value.as_str());
-                            }
-                        }
-                        (Value::Bool(l), Value::Bool(r)) => {
-                            let result = l.value || r.value;
-                            self.push_to_stack(Value::Bool(Bool::new(result)), None);
-                            if debug {
-                                println!("ADD -> {:?}", result);
-                            }
-                        }
-                        _ => unreachable!(),
+                    let error = self.run_binary_expression("+", operands_stack_values);
+                    if let Some(err) = error {
+                        return VMExecutionResult::terminate_with_errors(err);
                     }
 
                     self.pc += 1;
                 }
-                Opcode::Substract => {
-                    // execution
-                    let right_operand = self.operand_stack.pop();
-                    let left_operand = self.operand_stack.pop();
+                // Opcode::Substract => {
+                //     // execution
+                //     let right_operand = self.operand_stack.pop();
+                //     let left_operand = self.operand_stack.pop();
 
-                    if left_operand.is_none() || right_operand.is_none() {
-                        panic!("Operands stack underflow");
-                    };
+                //     if left_operand.is_none() || right_operand.is_none() {
+                //         panic!("Operands stack underflow");
+                //     };
 
-                    let operands = (left_operand.unwrap(), right_operand.unwrap());
-                    let operands_values = (&operands.0.value, &operands.1.value);
-                    let operands_types =
-                        (operands_values.0.get_type(), operands_values.1.get_type());
+                //     let operands = (left_operand.unwrap(), right_operand.unwrap());
+                //     let operands_values = (&operands.0.value, &operands.1.value);
+                //     let operands_types =
+                //         (operands_values.0.get_type(), operands_values.1.get_type());
 
-                    if operands_types.0 != operands_types.1 {
-                        return VMExecutionResult::terminate_with_errors(
-                            VMErrorType::TypeCoercionError(operands.1),
-                        );
-                    }
+                //     if operands_types.0 != operands_types.1 {
+                //         return VMExecutionResult::terminate_with_errors(
+                //             VMErrorType::TypeCoercionError(operands.1),
+                //         );
+                //     }
 
-                    match operands_values {
-                        (Value::I32(l), Value::I32(r)) => {
-                            self.push_to_stack(Value::I32(I32::new(l.value - r.value)), None);
-                            if debug {
-                                println!("SUBSTRACT -> {:?}", l.value - r.value);
-                            }
-                        }
-                        (Value::I64(l), Value::I64(r)) => {
-                            self.push_to_stack(Value::I64(I64::new(l.value - r.value)), None);
-                            if debug {
-                                println!("SUBSTRACT -> {:?}", l.value - r.value);
-                            }
-                        }
-                        (Value::U32(l), Value::U32(r)) => {
-                            self.push_to_stack(Value::U32(U32::new(l.value - r.value)), None);
-                            if debug {
-                                println!("SUBSTRACT -> {:?}", l.value - r.value);
-                            }
-                        }
-                        (Value::U64(l), Value::U64(r)) => {
-                            self.push_to_stack(Value::U64(U64::new(l.value - r.value)), None);
-                            if debug {
-                                println!("SUBSTRACT -> {:?}", l.value - r.value);
-                            }
-                        }
-                        (Value::F64(l), Value::F64(r)) => {
-                            self.push_to_stack(Value::F64(F64::new(l.value - r.value)), None);
-                            if debug {
-                                println!("SUBSTRACT -> {:?}", l.value - r.value);
-                            }
-                        }
-                        (Value::Nothing, Value::Nothing) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Nothing,
-                                    right: DataType::Nothing,
-                                    operator: "-".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Utf8(_), Value::Utf8(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Utf8,
-                                    right: DataType::Utf8,
-                                    operator: "-".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Bool(_), Value::Bool(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Bool,
-                                    right: DataType::Bool,
-                                    operator: "-".to_string(),
-                                }),
-                            );
-                        }
-                        _ => unreachable!(),
-                    }
+                //     match operands_values {
+                //         (Value::I32(l), Value::I32(r)) => {
+                //             self.push_to_stack(Value::I32(I32::new(l.value - r.value)), None);
+                //             if debug {
+                //                 println!("SUBSTRACT -> {:?}", l.value - r.value);
+                //             }
+                //         }
+                //         (Value::I64(l), Value::I64(r)) => {
+                //             self.push_to_stack(Value::I64(I64::new(l.value - r.value)), None);
+                //             if debug {
+                //                 println!("SUBSTRACT -> {:?}", l.value - r.value);
+                //             }
+                //         }
+                //         (Value::U32(l), Value::U32(r)) => {
+                //             self.push_to_stack(Value::U32(U32::new(l.value - r.value)), None);
+                //             if debug {
+                //                 println!("SUBSTRACT -> {:?}", l.value - r.value);
+                //             }
+                //         }
+                //         (Value::U64(l), Value::U64(r)) => {
+                //             self.push_to_stack(Value::U64(U64::new(l.value - r.value)), None);
+                //             if debug {
+                //                 println!("SUBSTRACT -> {:?}", l.value - r.value);
+                //             }
+                //         }
+                //         (Value::F64(l), Value::F64(r)) => {
+                //             self.push_to_stack(Value::F64(F64::new(l.value - r.value)), None);
+                //             if debug {
+                //                 println!("SUBSTRACT -> {:?}", l.value - r.value);
+                //             }
+                //         }
+                //         (Value::Nothing, Value::Nothing) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Nothing,
+                //                     right: DataType::Nothing,
+                //                     operator: "-".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Utf8(_), Value::Utf8(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Utf8,
+                //                     right: DataType::Utf8,
+                //                     operator: "-".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Bool(_), Value::Bool(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Bool,
+                //                     right: DataType::Bool,
+                //                     operator: "-".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         _ => unreachable!(),
+                //     }
 
-                    self.pc += 1;
-                }
-                Opcode::Multiply => {
-                    // execution
-                    let right_operand = self.operand_stack.pop();
-                    let left_operand = self.operand_stack.pop();
+                //     self.pc += 1;
+                // }
+                // Opcode::Multiply => {
+                //     // execution
+                //     let right_operand = self.operand_stack.pop();
+                //     let left_operand = self.operand_stack.pop();
 
-                    if left_operand.is_none() || right_operand.is_none() {
-                        panic!("Operands stack underflow");
-                    };
+                //     if left_operand.is_none() || right_operand.is_none() {
+                //         panic!("Operands stack underflow");
+                //     };
 
-                    let operands = (left_operand.unwrap(), right_operand.unwrap());
-                    let operands_values = (&operands.0.value, &operands.1.value);
-                    let operands_types =
-                        (operands_values.0.get_type(), operands_values.1.get_type());
+                //     let operands = (left_operand.unwrap(), right_operand.unwrap());
+                //     let operands_values = (&operands.0.value, &operands.1.value);
+                //     let operands_types =
+                //         (operands_values.0.get_type(), operands_values.1.get_type());
 
-                    if operands_types.0 != operands_types.1 {
-                        return VMExecutionResult::terminate_with_errors(
-                            VMErrorType::TypeCoercionError(operands.1),
-                        );
-                    }
+                //     if operands_types.0 != operands_types.1 {
+                //         return VMExecutionResult::terminate_with_errors(
+                //             VMErrorType::TypeCoercionError(operands.1),
+                //         );
+                //     }
 
-                    match operands_values {
-                        (Value::I32(l), Value::I32(r)) => {
-                            self.push_to_stack(Value::I32(I32::new(l.value * r.value)), None);
-                            if debug {
-                                println!("MULTIPLY -> {:?}", l.value * r.value);
-                            }
-                        }
-                        (Value::I64(l), Value::I64(r)) => {
-                            self.push_to_stack(Value::I64(I64::new(l.value * r.value)), None);
-                            if debug {
-                                println!("MULTIPLY -> {:?}", l.value * r.value);
-                            }
-                        }
-                        (Value::U32(l), Value::U32(r)) => {
-                            self.push_to_stack(Value::U32(U32::new(l.value * r.value)), None);
-                            if debug {
-                                println!("MULTIPLY -> {:?}", l.value * r.value);
-                            }
-                        }
-                        (Value::U64(l), Value::U64(r)) => {
-                            self.push_to_stack(Value::U64(U64::new(l.value * r.value)), None);
-                            if debug {
-                                println!("MULTIPLY -> {:?}", l.value * r.value);
-                            }
-                        }
-                        (Value::F64(l), Value::F64(r)) => {
-                            self.push_to_stack(Value::F64(F64::new(l.value * r.value)), None);
-                            if debug {
-                                println!("MULTIPLY -> {:?}", l.value * r.value);
-                            }
-                        }
-                        (Value::Nothing, Value::Nothing) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Nothing,
-                                    right: DataType::Nothing,
-                                    operator: "*".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Utf8(_), Value::Utf8(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Utf8,
-                                    right: DataType::Utf8,
-                                    operator: "*".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Bool(_), Value::Bool(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Bool,
-                                    right: DataType::Bool,
-                                    operator: "*".to_string(),
-                                }),
-                            );
-                        }
-                        _ => unreachable!(),
-                    }
+                //     match operands_values {
+                //         (Value::I32(l), Value::I32(r)) => {
+                //             self.push_to_stack(Value::I32(I32::new(l.value * r.value)), None);
+                //             if debug {
+                //                 println!("MULTIPLY -> {:?}", l.value * r.value);
+                //             }
+                //         }
+                //         (Value::I64(l), Value::I64(r)) => {
+                //             self.push_to_stack(Value::I64(I64::new(l.value * r.value)), None);
+                //             if debug {
+                //                 println!("MULTIPLY -> {:?}", l.value * r.value);
+                //             }
+                //         }
+                //         (Value::U32(l), Value::U32(r)) => {
+                //             self.push_to_stack(Value::U32(U32::new(l.value * r.value)), None);
+                //             if debug {
+                //                 println!("MULTIPLY -> {:?}", l.value * r.value);
+                //             }
+                //         }
+                //         (Value::U64(l), Value::U64(r)) => {
+                //             self.push_to_stack(Value::U64(U64::new(l.value * r.value)), None);
+                //             if debug {
+                //                 println!("MULTIPLY -> {:?}", l.value * r.value);
+                //             }
+                //         }
+                //         (Value::F64(l), Value::F64(r)) => {
+                //             self.push_to_stack(Value::F64(F64::new(l.value * r.value)), None);
+                //             if debug {
+                //                 println!("MULTIPLY -> {:?}", l.value * r.value);
+                //             }
+                //         }
+                //         (Value::Nothing, Value::Nothing) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Nothing,
+                //                     right: DataType::Nothing,
+                //                     operator: "*".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Utf8(_), Value::Utf8(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Utf8,
+                //                     right: DataType::Utf8,
+                //                     operator: "*".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Bool(_), Value::Bool(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Bool,
+                //                     right: DataType::Bool,
+                //                     operator: "*".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         _ => unreachable!(),
+                //     }
 
-                    self.pc += 1;
-                }
-                Opcode::Divide => {
-                    // execution
-                    let right_operand = self.operand_stack.pop();
-                    let left_operand = self.operand_stack.pop();
+                //     self.pc += 1;
+                // }
+                // Opcode::Divide => {
+                //     // execution
+                //     let right_operand = self.operand_stack.pop();
+                //     let left_operand = self.operand_stack.pop();
 
-                    if left_operand.is_none() || right_operand.is_none() {
-                        panic!("Operands stack underflow");
-                    };
+                //     if left_operand.is_none() || right_operand.is_none() {
+                //         panic!("Operands stack underflow");
+                //     };
 
-                    let operands = (left_operand.unwrap(), right_operand.unwrap());
-                    let operands_values = (&operands.0.value, &operands.1.value);
-                    let operands_types =
-                        (operands_values.0.get_type(), operands_values.1.get_type());
+                //     let operands = (left_operand.unwrap(), right_operand.unwrap());
+                //     let operands_values = (&operands.0.value, &operands.1.value);
+                //     let operands_types =
+                //         (operands_values.0.get_type(), operands_values.1.get_type());
 
-                    if operands_types.0 != operands_types.1 {
-                        return VMExecutionResult::terminate_with_errors(
-                            VMErrorType::TypeCoercionError(operands.1),
-                        );
-                    }
+                //     if operands_types.0 != operands_types.1 {
+                //         return VMExecutionResult::terminate_with_errors(
+                //             VMErrorType::TypeCoercionError(operands.1),
+                //         );
+                //     }
 
-                    match operands_values {
-                        (Value::I32(l), Value::I32(r)) => {
-                            if r.value == 0 {
-                                return VMExecutionResult::terminate_with_errors(
-                                    VMErrorType::DivisionByZero(operands.0),
-                                );
-                            }
-                            self.push_to_stack(Value::I32(I32::new(l.value / r.value)), None);
-                            if debug {
-                                println!("DIVIDE -> {:?}", l.value / r.value);
-                            }
-                        }
-                        (Value::I64(l), Value::I64(r)) => {
-                            if r.value == 0 {
-                                return VMExecutionResult::terminate_with_errors(
-                                    VMErrorType::DivisionByZero(operands.0),
-                                );
-                            }
-                            self.push_to_stack(Value::I64(I64::new(l.value / r.value)), None);
-                            if debug {
-                                println!("DIVIDE -> {:?}", l.value / r.value);
-                            }
-                        }
-                        (Value::U32(l), Value::U32(r)) => {
-                            if r.value == 0 {
-                                return VMExecutionResult::terminate_with_errors(
-                                    VMErrorType::DivisionByZero(operands.0),
-                                );
-                            }
-                            self.push_to_stack(Value::U32(U32::new(l.value / r.value)), None);
-                            if debug {
-                                println!("DIVIDE -> {:?}", l.value / r.value);
-                            }
-                        }
-                        (Value::U64(l), Value::U64(r)) => {
-                            if r.value == 0 {
-                                return VMExecutionResult::terminate_with_errors(
-                                    VMErrorType::DivisionByZero(operands.0),
-                                );
-                            }
-                            self.push_to_stack(Value::U64(U64::new(l.value / r.value)), None);
-                            if debug {
-                                println!("DIVIDE -> {:?}", l.value / r.value);
-                            }
-                        }
-                        (Value::F64(l), Value::F64(r)) => {
-                            if r.value == 0.0 {
-                                return VMExecutionResult::terminate_with_errors(
-                                    VMErrorType::DivisionByZero(operands.0),
-                                );
-                            }
-                            self.push_to_stack(Value::F64(F64::new(l.value / r.value)), None);
-                            if debug {
-                                println!("DIVIDE -> {:?}", l.value / r.value);
-                            }
-                        }
-                        (Value::Nothing, Value::Nothing) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Nothing,
-                                    right: DataType::Nothing,
-                                    operator: "/".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Utf8(_), Value::Utf8(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Utf8,
-                                    right: DataType::Utf8,
-                                    operator: "/".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Bool(_), Value::Bool(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Bool,
-                                    right: DataType::Bool,
-                                    operator: "/".to_string(),
-                                }),
-                            );
-                        }
-                        _ => unreachable!(),
-                    }
+                //     match operands_values {
+                //         (Value::I32(l), Value::I32(r)) => {
+                //             if r.value == 0 {
+                //                 return VMExecutionResult::terminate_with_errors(
+                //                     VMErrorType::DivisionByZero(operands.0),
+                //                 );
+                //             }
+                //             self.push_to_stack(Value::I32(I32::new(l.value / r.value)), None);
+                //             if debug {
+                //                 println!("DIVIDE -> {:?}", l.value / r.value);
+                //             }
+                //         }
+                //         (Value::I64(l), Value::I64(r)) => {
+                //             if r.value == 0 {
+                //                 return VMExecutionResult::terminate_with_errors(
+                //                     VMErrorType::DivisionByZero(operands.0),
+                //                 );
+                //             }
+                //             self.push_to_stack(Value::I64(I64::new(l.value / r.value)), None);
+                //             if debug {
+                //                 println!("DIVIDE -> {:?}", l.value / r.value);
+                //             }
+                //         }
+                //         (Value::U32(l), Value::U32(r)) => {
+                //             if r.value == 0 {
+                //                 return VMExecutionResult::terminate_with_errors(
+                //                     VMErrorType::DivisionByZero(operands.0),
+                //                 );
+                //             }
+                //             self.push_to_stack(Value::U32(U32::new(l.value / r.value)), None);
+                //             if debug {
+                //                 println!("DIVIDE -> {:?}", l.value / r.value);
+                //             }
+                //         }
+                //         (Value::U64(l), Value::U64(r)) => {
+                //             if r.value == 0 {
+                //                 return VMExecutionResult::terminate_with_errors(
+                //                     VMErrorType::DivisionByZero(operands.0),
+                //                 );
+                //             }
+                //             self.push_to_stack(Value::U64(U64::new(l.value / r.value)), None);
+                //             if debug {
+                //                 println!("DIVIDE -> {:?}", l.value / r.value);
+                //             }
+                //         }
+                //         (Value::F64(l), Value::F64(r)) => {
+                //             if r.value == 0.0 {
+                //                 return VMExecutionResult::terminate_with_errors(
+                //                     VMErrorType::DivisionByZero(operands.0),
+                //                 );
+                //             }
+                //             self.push_to_stack(Value::F64(F64::new(l.value / r.value)), None);
+                //             if debug {
+                //                 println!("DIVIDE -> {:?}", l.value / r.value);
+                //             }
+                //         }
+                //         (Value::Nothing, Value::Nothing) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Nothing,
+                //                     right: DataType::Nothing,
+                //                     operator: "/".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Utf8(_), Value::Utf8(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Utf8,
+                //                     right: DataType::Utf8,
+                //                     operator: "/".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Bool(_), Value::Bool(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Bool,
+                //                     right: DataType::Bool,
+                //                     operator: "/".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         _ => unreachable!(),
+                //     }
 
-                    self.pc += 1;
-                }
-                Opcode::GreaterThan => {
-                    // execution
-                    let right_operand = self.operand_stack.pop();
-                    let left_operand = self.operand_stack.pop();
+                //     self.pc += 1;
+                // }
+                // Opcode::GreaterThan => {
+                //     // execution
+                //     let right_operand = self.operand_stack.pop();
+                //     let left_operand = self.operand_stack.pop();
 
-                    if left_operand.is_none() || right_operand.is_none() {
-                        panic!("Operands stack underflow");
-                    };
+                //     if left_operand.is_none() || right_operand.is_none() {
+                //         panic!("Operands stack underflow");
+                //     };
 
-                    let operands = (left_operand.unwrap(), right_operand.unwrap());
-                    let operands_values = (&operands.0.value, &operands.1.value);
+                //     let operands = (left_operand.unwrap(), right_operand.unwrap());
+                //     let operands_values = (&operands.0.value, &operands.1.value);
 
-                    match operands_values {
-                        (Value::I32(l), Value::I32(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value > r.value)), None);
-                            if debug {
-                                println!("GREATER_THAN -> {:?}", l.value > r.value);
-                            }
-                        }
-                        (Value::I64(l), Value::I64(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value > r.value)), None);
-                            if debug {
-                                println!("GREATER_THAN -> {:?}", l.value > r.value);
-                            }
-                        }
-                        (Value::U32(l), Value::U32(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value > r.value)), None);
-                            if debug {
-                                println!("GREATER_THAN -> {:?}", l.value > r.value);
-                            }
-                        }
-                        (Value::U64(l), Value::U64(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value > r.value)), None);
-                            if debug {
-                                println!("GREATER_THAN -> {:?}", l.value > r.value);
-                            }
-                        }
-                        (Value::F64(l), Value::F64(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value > r.value)), None);
-                            if debug {
-                                println!("GREATER_THAN -> {:?}", l.value > r.value);
-                            }
-                        }
-                        (Value::Nothing, Value::Nothing) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Nothing,
-                                    right: DataType::Nothing,
-                                    operator: ">".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Utf8(_), Value::Utf8(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Utf8,
-                                    right: DataType::Utf8,
-                                    operator: ">".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Bool(_), Value::Bool(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Bool,
-                                    right: DataType::Bool,
-                                    operator: ">".to_string(),
-                                }),
-                            );
-                        }
-                        _ => unreachable!(),
-                    }
-                    self.pc += 1;
-                }
-                Opcode::LessThan => {
-                    // execution
-                    let right_operand = self.operand_stack.pop();
-                    let left_operand = self.operand_stack.pop();
+                //     match operands_values {
+                //         (Value::I32(l), Value::I32(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value > r.value)), None);
+                //             if debug {
+                //                 println!("GREATER_THAN -> {:?}", l.value > r.value);
+                //             }
+                //         }
+                //         (Value::I64(l), Value::I64(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value > r.value)), None);
+                //             if debug {
+                //                 println!("GREATER_THAN -> {:?}", l.value > r.value);
+                //             }
+                //         }
+                //         (Value::U32(l), Value::U32(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value > r.value)), None);
+                //             if debug {
+                //                 println!("GREATER_THAN -> {:?}", l.value > r.value);
+                //             }
+                //         }
+                //         (Value::U64(l), Value::U64(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value > r.value)), None);
+                //             if debug {
+                //                 println!("GREATER_THAN -> {:?}", l.value > r.value);
+                //             }
+                //         }
+                //         (Value::F64(l), Value::F64(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value > r.value)), None);
+                //             if debug {
+                //                 println!("GREATER_THAN -> {:?}", l.value > r.value);
+                //             }
+                //         }
+                //         (Value::Nothing, Value::Nothing) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Nothing,
+                //                     right: DataType::Nothing,
+                //                     operator: ">".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Utf8(_), Value::Utf8(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Utf8,
+                //                     right: DataType::Utf8,
+                //                     operator: ">".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Bool(_), Value::Bool(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Bool,
+                //                     right: DataType::Bool,
+                //                     operator: ">".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         _ => unreachable!(),
+                //     }
+                //     self.pc += 1;
+                // }
+                // Opcode::LessThan => {
+                //     // execution
+                //     let right_operand = self.operand_stack.pop();
+                //     let left_operand = self.operand_stack.pop();
 
-                    if left_operand.is_none() || right_operand.is_none() {
-                        panic!("Operands stack underflow");
-                    };
+                //     if left_operand.is_none() || right_operand.is_none() {
+                //         panic!("Operands stack underflow");
+                //     };
 
-                    let operands = (left_operand.unwrap(), right_operand.unwrap());
-                    let operands_values = (&operands.0.value, &operands.1.value);
+                //     let operands = (left_operand.unwrap(), right_operand.unwrap());
+                //     let operands_values = (&operands.0.value, &operands.1.value);
 
-                    match operands_values {
-                        (Value::I32(l), Value::I32(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
-                            if debug {
-                                println!("LESS_THAN -> {:?}", l.value < r.value);
-                            }
-                        }
-                        (Value::I64(l), Value::I64(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
-                            if debug {
-                                println!("LESS_THAN -> {:?}", l.value < r.value);
-                            }
-                        }
-                        (Value::U32(l), Value::U32(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
-                            if debug {
-                                println!("LESS_THAN -> {:?}", l.value < r.value);
-                            }
-                        }
-                        (Value::U64(l), Value::U64(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
-                            if debug {
-                                println!("LESS_THAN -> {:?}", l.value < r.value);
-                            }
-                        }
-                        (Value::F64(l), Value::F64(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
-                            if debug {
-                                println!("LESS_THAN -> {:?}", l.value < r.value);
-                            }
-                        }
-                        (Value::Nothing, Value::Nothing) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Nothing,
-                                    right: DataType::Nothing,
-                                    operator: "<".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Utf8(_), Value::Utf8(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Utf8,
-                                    right: DataType::Utf8,
-                                    operator: "<".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Bool(_), Value::Bool(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Bool,
-                                    right: DataType::Bool,
-                                    operator: "<".to_string(),
-                                }),
-                            );
-                        }
-                        _ => unreachable!(),
-                    }
-                    self.pc += 1;
-                }
-                Opcode::Equals => {
-                    // execution
-                    let right_operand = self.operand_stack.pop();
-                    let left_operand = self.operand_stack.pop();
+                //     match operands_values {
+                //         (Value::I32(l), Value::I32(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
+                //             if debug {
+                //                 println!("LESS_THAN -> {:?}", l.value < r.value);
+                //             }
+                //         }
+                //         (Value::I64(l), Value::I64(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
+                //             if debug {
+                //                 println!("LESS_THAN -> {:?}", l.value < r.value);
+                //             }
+                //         }
+                //         (Value::U32(l), Value::U32(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
+                //             if debug {
+                //                 println!("LESS_THAN -> {:?}", l.value < r.value);
+                //             }
+                //         }
+                //         (Value::U64(l), Value::U64(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
+                //             if debug {
+                //                 println!("LESS_THAN -> {:?}", l.value < r.value);
+                //             }
+                //         }
+                //         (Value::F64(l), Value::F64(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value < r.value)), None);
+                //             if debug {
+                //                 println!("LESS_THAN -> {:?}", l.value < r.value);
+                //             }
+                //         }
+                //         (Value::Nothing, Value::Nothing) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Nothing,
+                //                     right: DataType::Nothing,
+                //                     operator: "<".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Utf8(_), Value::Utf8(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Utf8,
+                //                     right: DataType::Utf8,
+                //                     operator: "<".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Bool(_), Value::Bool(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Bool,
+                //                     right: DataType::Bool,
+                //                     operator: "<".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         _ => unreachable!(),
+                //     }
+                //     self.pc += 1;
+                // }
+                // Opcode::Equals => {
+                //     // execution
+                //     let right_operand = self.operand_stack.pop();
+                //     let left_operand = self.operand_stack.pop();
 
-                    if left_operand.is_none() || right_operand.is_none() {
-                        panic!("Operands stack underflow");
-                    };
+                //     if left_operand.is_none() || right_operand.is_none() {
+                //         panic!("Operands stack underflow");
+                //     };
 
-                    let operands = (left_operand.unwrap(), right_operand.unwrap());
-                    let operands_values = (&operands.0.value, &operands.1.value);
+                //     let operands = (left_operand.unwrap(), right_operand.unwrap());
+                //     let operands_values = (&operands.0.value, &operands.1.value);
 
-                    match operands_values {
-                        (Value::I32(l), Value::I32(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value == r.value)), None);
-                            if debug {
-                                println!("EQUALS -> {:?}", l.value == r.value);
-                            }
-                        }
-                        (Value::I64(l), Value::I64(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value == r.value)), None);
-                            if debug {
-                                println!("EQUALS -> {:?}", l.value == r.value);
-                            }
-                        }
-                        (Value::U32(l), Value::U32(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value == r.value)), None);
-                            if debug {
-                                println!("EQUALS -> {:?}", l.value == r.value);
-                            }
-                        }
-                        (Value::U64(l), Value::U64(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value == r.value)), None);
-                            if debug {
-                                println!("EQUALS -> {:?}", l.value == r.value);
-                            }
-                        }
-                        (Value::F64(l), Value::F64(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value == r.value)), None);
-                            if debug {
-                                println!("EQUALS -> {:?}", l.value == r.value);
-                            }
-                        }
-                        (Value::Nothing, Value::Nothing) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Nothing,
-                                    right: DataType::Nothing,
-                                    operator: "==".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Utf8(_), Value::Utf8(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Utf8,
-                                    right: DataType::Utf8,
-                                    operator: "==".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Bool(_), Value::Bool(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Bool,
-                                    right: DataType::Bool,
-                                    operator: "==".to_string(),
-                                }),
-                            );
-                        }
-                        _ => unreachable!(),
-                    }
-                    self.pc += 1;
-                }
-                Opcode::NotEquals => {
-                    // execution
-                    let right_operand = self.operand_stack.pop();
-                    let left_operand = self.operand_stack.pop();
+                //     match operands_values {
+                //         (Value::I32(l), Value::I32(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value == r.value)), None);
+                //             if debug {
+                //                 println!("EQUALS -> {:?}", l.value == r.value);
+                //             }
+                //         }
+                //         (Value::I64(l), Value::I64(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value == r.value)), None);
+                //             if debug {
+                //                 println!("EQUALS -> {:?}", l.value == r.value);
+                //             }
+                //         }
+                //         (Value::U32(l), Value::U32(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value == r.value)), None);
+                //             if debug {
+                //                 println!("EQUALS -> {:?}", l.value == r.value);
+                //             }
+                //         }
+                //         (Value::U64(l), Value::U64(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value == r.value)), None);
+                //             if debug {
+                //                 println!("EQUALS -> {:?}", l.value == r.value);
+                //             }
+                //         }
+                //         (Value::F64(l), Value::F64(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value == r.value)), None);
+                //             if debug {
+                //                 println!("EQUALS -> {:?}", l.value == r.value);
+                //             }
+                //         }
+                //         (Value::Nothing, Value::Nothing) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Nothing,
+                //                     right: DataType::Nothing,
+                //                     operator: "==".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Utf8(_), Value::Utf8(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Utf8,
+                //                     right: DataType::Utf8,
+                //                     operator: "==".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Bool(_), Value::Bool(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Bool,
+                //                     right: DataType::Bool,
+                //                     operator: "==".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         _ => unreachable!(),
+                //     }
+                //     self.pc += 1;
+                // }
+                // Opcode::NotEquals => {
+                //     // execution
+                //     let right_operand = self.operand_stack.pop();
+                //     let left_operand = self.operand_stack.pop();
 
-                    if left_operand.is_none() || right_operand.is_none() {
-                        panic!("Operands stack underflow");
-                    };
+                //     if left_operand.is_none() || right_operand.is_none() {
+                //         panic!("Operands stack underflow");
+                //     };
 
-                    let operands = (left_operand.unwrap(), right_operand.unwrap());
-                    let operands_values = (&operands.0.value, &operands.1.value);
+                //     let operands = (left_operand.unwrap(), right_operand.unwrap());
+                //     let operands_values = (&operands.0.value, &operands.1.value);
 
-                    match operands_values {
-                        (Value::I32(l), Value::I32(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value != r.value)), None);
-                            if debug {
-                                println!("NOT_EQUALS -> {:?}", l.value != r.value);
-                            }
-                        }
-                        (Value::I64(l), Value::I64(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value != r.value)), None);
-                            if debug {
-                                println!("NOT_EQUALS -> {:?}", l.value != r.value);
-                            }
-                        }
-                        (Value::U32(l), Value::U32(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value != r.value)), None);
-                            if debug {
-                                println!("NOT_EQUALS -> {:?}", l.value != r.value);
-                            }
-                        }
-                        (Value::U64(l), Value::U64(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value != r.value)), None);
-                            if debug {
-                                println!("NOT_EQUALS -> {:?}", l.value != r.value);
-                            }
-                        }
-                        (Value::F64(l), Value::F64(r)) => {
-                            self.push_to_stack(Value::Bool(Bool::new(l.value != r.value)), None);
-                            if debug {
-                                println!("NOT_EQUALS -> {:?}", l.value != r.value);
-                            }
-                        }
-                        (Value::Nothing, Value::Nothing) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Nothing,
-                                    right: DataType::Nothing,
-                                    operator: "!=".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Utf8(_), Value::Utf8(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Utf8,
-                                    right: DataType::Utf8,
-                                    operator: "!=".to_string(),
-                                }),
-                            );
-                        }
-                        (Value::Bool(_), Value::Bool(_)) => {
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
-                                    left: DataType::Bool,
-                                    right: DataType::Bool,
-                                    operator: "!=".to_string(),
-                                }),
-                            );
-                        }
-                        _ => unreachable!(),
-                    }
-                    self.pc += 1;
-                }
+                //     match operands_values {
+                //         (Value::I32(l), Value::I32(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value != r.value)), None);
+                //             if debug {
+                //                 println!("NOT_EQUALS -> {:?}", l.value != r.value);
+                //             }
+                //         }
+                //         (Value::I64(l), Value::I64(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value != r.value)), None);
+                //             if debug {
+                //                 println!("NOT_EQUALS -> {:?}", l.value != r.value);
+                //             }
+                //         }
+                //         (Value::U32(l), Value::U32(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value != r.value)), None);
+                //             if debug {
+                //                 println!("NOT_EQUALS -> {:?}", l.value != r.value);
+                //             }
+                //         }
+                //         (Value::U64(l), Value::U64(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value != r.value)), None);
+                //             if debug {
+                //                 println!("NOT_EQUALS -> {:?}", l.value != r.value);
+                //             }
+                //         }
+                //         (Value::F64(l), Value::F64(r)) => {
+                //             self.push_to_stack(Value::Bool(Bool::new(l.value != r.value)), None);
+                //             if debug {
+                //                 println!("NOT_EQUALS -> {:?}", l.value != r.value);
+                //             }
+                //         }
+                //         (Value::Nothing, Value::Nothing) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Nothing,
+                //                     right: DataType::Nothing,
+                //                     operator: "!=".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Utf8(_), Value::Utf8(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Utf8,
+                //                     right: DataType::Utf8,
+                //                     operator: "!=".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         (Value::Bool(_), Value::Bool(_)) => {
+                //             return VMExecutionResult::terminate_with_errors(
+                //                 VMErrorType::InvalidBinaryOperation(InvalidBinaryOperation {
+                //                     left: DataType::Bool,
+                //                     right: DataType::Bool,
+                //                     operator: "!=".to_string(),
+                //                 }),
+                //             );
+                //         }
+                //         _ => unreachable!(),
+                //     }
+                //     self.pc += 1;
+                // }
                 Opcode::StoreVar => {
                     // parsing
                     if self.pc + 1 >= self.bytecode.len() {
@@ -898,7 +846,7 @@ impl Vm {
                     // execution
                     let args = self.get_stack_values(&number_of_args);
 
-                    if let DataType::Utf8 = args[0].get_type() {
+                    if "UTF8".to_string() == args[0].get_type() {
                         if debug {
                             println!("CALL -> {}", args[0].to_string())
                         }
@@ -919,6 +867,104 @@ impl Vm {
         VMExecutionResult::terminate()
     }
 
+    fn run_binary_expression(
+        &mut self,
+        operator: &str,
+        operands: (StackValue, StackValue),
+    ) -> Option<VMErrorType> {
+        let left = operands.0;
+        let right = operands.1;
+
+        let value;
+        // cloned here, to be able to use later on
+        // different VMErrors
+        match (left.value, right.value.clone()) {
+            (Value::RawValue(l), Value::RawValue(r)) => match (l, r) {
+                (RawValue::I32(l), RawValue::I32(r)) => {
+                    value = match operator {
+                        "+" => RawValue::I32(I32::new(l.value + r.value)),
+                        // "-" => RawValue::I32(I32::new(l.value - r.value)),
+                        // "*" => RawValue::I32(I32::new(l.value * r.value)),
+                        // "/" => RawValue::I32(I32::new(l.value / r.value)),
+                        // ">" => RawValue::Bool(Bool::new(l.value > r.value)),
+                        // "<" => RawValue::Bool(Bool::new(l.value < r.value)),
+                        // "==" => RawValue::Bool(Bool::new(l.value == r.value)),
+                        // "!=" => RawValue::Bool(Bool::new(l.value != r.value)),
+                        _ => {
+                            panic!("operator not implemented")
+                        }
+                    };
+                }
+                (RawValue::I64(l), RawValue::I64(r)) => {
+                    value = match operator {
+                        "+" => RawValue::I64(I64::new(l.value + r.value)),
+                        _ => {
+                            panic!("operator not implemented")
+                        }
+                    };
+                }
+                (RawValue::U32(l), RawValue::U32(r)) => {
+                    value = match operator {
+                        "+" => RawValue::U32(U32::new(l.value + r.value)),
+                        _ => {
+                            panic!("operator not implemented")
+                        }
+                    };
+                }
+                (RawValue::U64(l), RawValue::U64(r)) => {
+                    value = match operator {
+                        "+" => RawValue::U64(U64::new(l.value + r.value)),
+                        _ => {
+                            panic!("operator not implemented")
+                        }
+                    };
+                }
+                (RawValue::F64(l), RawValue::F64(r)) => {
+                    value = match operator {
+                        "+" => RawValue::F64(F64::new(l.value + r.value)),
+                        _ => {
+                            panic!("operator not implemented")
+                        }
+                    };
+                }
+                (RawValue::Nothing, RawValue::Nothing) => {
+                    return Some(VMErrorType::InvalidBinaryOperation(
+                        InvalidBinaryOperation {
+                            left: DataType::Nothing,
+                            right: DataType::Nothing,
+                            operator: operator.to_string(),
+                        },
+                    ))
+                }
+                (RawValue::Utf8(_), RawValue::Utf8(_)) => {
+                    return Some(VMErrorType::InvalidBinaryOperation(
+                        InvalidBinaryOperation {
+                            left: DataType::Utf8,
+                            right: DataType::Utf8,
+                            operator: operator.to_string(),
+                        },
+                    ))
+                }
+                (RawValue::Bool(_), RawValue::Bool(_)) => {
+                    return Some(VMErrorType::InvalidBinaryOperation(
+                        InvalidBinaryOperation {
+                            left: DataType::Bool,
+                            right: DataType::Bool,
+                            operator: operator.to_string(),
+                        },
+                    ))
+                }
+                _ => return Some(VMErrorType::TypeCoercionError(right)),
+            },
+            (Value::HeapRef(l), Value::RawValue(r)) => panic!("error not implemented"),
+            (Value::RawValue(l), Value::HeapRef(r)) => panic!("error not implemented"),
+            (Value::HeapRef(l), Value::HeapRef(r)) => panic!("error not implemented"),
+        }
+
+        self.push_to_stack(Value::RawValue(value), None);
+        None
+    }
+
     fn get_value_length(&mut self) -> (DataType, Vec<u8>) {
         let data_type = DataType::to_opcode(self.bytecode[self.pc]);
         let value_length = match data_type {
@@ -937,7 +983,7 @@ impl Vm {
                 }
 
                 let (string_length, _) = bytes_to_data(&DataType::U32, &value);
-                if let Value::U32(val) = string_length {
+                if let RawValue::U32(val) = string_length {
                     val.value as usize
                 } else {
                     panic!("Unexpected value type for string length");

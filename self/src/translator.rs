@@ -7,7 +7,7 @@
 use crate::{
     instructions::Instruction,
     opcodes::{DataType, Opcode},
-    types::raw::{utf8::Utf8, Value},
+    types::{raw::RawValue, Value},
     utils::from_bytes::bytes_to_data,
 };
 
@@ -324,7 +324,7 @@ impl Translator {
                 }
 
                 let (string_length, _) = bytes_to_data(&DataType::U32, &value);
-                if let Value::U32(val) = string_length {
+                if let RawValue::U32(val) = string_length {
                     val.value as usize
                 } else {
                     panic!("Unexpected value type for string length");

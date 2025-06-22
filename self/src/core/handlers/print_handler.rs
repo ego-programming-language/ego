@@ -1,18 +1,22 @@
-use crate::types::raw::Value;
+use crate::types::{raw::RawValue, Value};
 
 pub fn print_handler(args: Vec<Value>, debug: bool, newline_end: bool) {
     for arg in args {
         if debug {
             match arg {
-                Value::I32(x) => println!("PRINTLN -> {}", x.value),
-                Value::I64(x) => println!("PRINTLN -> {}", x.value),
-                Value::U32(x) => println!("PRINTLN -> {}", x.value),
-                Value::U64(x) => println!("PRINTLN -> {}", x.value),
-                Value::F64(x) => println!("PRINTLN -> {}", x.value),
-                Value::Utf8(x) => println!("PRINTLN -> {}", x.value),
-                Value::Bool(x) => println!("PRINTLN -> {}", x.value),
-                Value::Nothing => println!("PRINTLN -> nothing"),
-                // Handle other types as necessary
+                Value::RawValue(x) => match x {
+                    RawValue::I32(x) => println!("PRINTLN -> {}", x.value),
+                    RawValue::I64(x) => println!("PRINTLN -> {}", x.value),
+                    RawValue::U32(x) => println!("PRINTLN -> {}", x.value),
+                    RawValue::U64(x) => println!("PRINTLN -> {}", x.value),
+                    RawValue::F64(x) => println!("PRINTLN -> {}", x.value),
+                    RawValue::Utf8(x) => println!("PRINTLN -> {}", x.value),
+                    RawValue::Bool(x) => println!("PRINTLN -> {}", x.value),
+                    RawValue::Nothing => println!("PRINTLN -> nothing"),
+                },
+                Value::HeapRef(x) => {
+                    println!("PRINTLN -> {}", x.get_address())
+                }
             }
         } else {
             let arg = arg.to_string();
