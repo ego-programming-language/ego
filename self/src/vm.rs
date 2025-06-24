@@ -198,21 +198,8 @@ impl Vm {
                     self.pc = target_pc as usize;
                 }
                 Opcode::Print => {
-                    // parsing
-                    // get u32 value. 4 bytes based on the type plus the current
-                    let value_length = 4;
-                    if self.pc + value_length >= self.bytecode.len() {
-                        panic!("Invalid print instruction at position {}", self.pc);
-                    }
-
-                    let value_bytes = &self.bytecode[self.pc + 1..self.pc + 5];
-                    let number_of_args = u32::from_le_bytes(
-                        value_bytes.try_into().expect("Provided value is incorrect"),
-                    );
-                    self.pc += 4;
-
-                    // execution
-                    let args = self.get_stack_values(&number_of_args);
+                    self.pc += 1; // consume print opcode
+                    let args = self.get_function_call_args();
                     let mut resolved_args = Vec::new();
                     for val in args {
                         match self.value_to_string(val) {
@@ -221,25 +208,10 @@ impl Vm {
                         }
                     }
                     print_handler(resolved_args, debug, false);
-
-                    self.pc += 1;
                 }
                 Opcode::Println => {
-                    // parsing
-                    // get u32 value. 4 bytes based on the type plus the current
-                    let value_length = 4;
-                    if self.pc + value_length >= self.bytecode.len() {
-                        panic!("Invalid print instruction at position {}", self.pc);
-                    }
-
-                    let value_bytes = &self.bytecode[self.pc + 1..self.pc + 5];
-                    let number_of_args = u32::from_le_bytes(
-                        value_bytes.try_into().expect("Provided value is incorrect"),
-                    );
-                    self.pc += 4;
-
-                    // execution
-                    let args = self.get_stack_values(&number_of_args);
+                    self.pc += 1; // consume print opcode
+                    let args = self.get_function_call_args();
                     let mut resolved_args = Vec::new();
                     for val in args {
                         match self.value_to_string(val) {
@@ -248,8 +220,6 @@ impl Vm {
                         }
                     }
                     print_handler(resolved_args, debug, true);
-
-                    self.pc += 1;
                 }
                 Opcode::Add => {
                     // execution
@@ -396,39 +366,19 @@ impl Vm {
                     self.pc += 1;
                 }
                 Opcode::Call => {
-                    // parsing
-                    // get u32 value. 4 bytes based on the type plus the current
-                    let value_length = 4;
-                    if self.pc + value_length >= self.bytecode.len() {
-                        panic!("Invalid print instruction at position {}", self.pc);
-                    }
-
-                    let value_bytes = &self.bytecode[self.pc + 1..self.pc + 5];
-                    let number_of_args = u32::from_le_bytes(
-                        value_bytes.try_into().expect("Provided value is incorrect"),
-                    );
-                    self.pc += 4;
-
-                    // execution
-                    let args = self.get_stack_values(&number_of_args);
-                    if "UTF8".to_string() == args[0].get_type() {
-                        if debug {
-                            println!("CALL -> {}", args[0].to_string())
+                    self.pc += 1; // consume call opcode
+                    let args = self.get_function_call_args();
+                    let mut resolved_args = Vec::new();
+                    for val in args {
+                        match self.value_to_string(val) {
+                            Ok(v) => resolved_args.push(v),
+                            Err(e) => return VMExecutionResult::terminate_with_errors(e),
                         }
-                        let mut resolved_args = Vec::new();
-                        for val in args {
-                            match self.value_to_string(val) {
-                                Ok(v) => resolved_args.push(v),
-                                Err(e) => return VMExecutionResult::terminate_with_errors(e),
-                            }
-                        }
-
-                        call_handler(&self.handlers, resolved_args)
-                    } else {
-                        panic!("Call first argument must be a string")
                     }
-
-                    self.pc += 1;
+                    if debug {
+                        println!("CALL -> {}", resolved_args[0].to_string())
+                    }
+                    call_handler(&self.handlers, resolved_args);
                 }
                 _ => {
                     println!("unhandled opcode");
@@ -717,6 +667,23 @@ impl Vm {
     fn read_offset(bytes: &[u8]) -> i32 {
         let arr: [u8; 4] = bytes.try_into().expect("slice with incorrect length");
         i32::from_le_bytes(arr)
+    }
+
+    fn get_function_call_args(&mut self) -> Vec<Value> {
+        // get u32 value. 4 bytes based on the type plus the current
+        let value_length = 3;
+        if self.pc + value_length >= self.bytecode.len() {
+            panic!("Invalid instruction at position {}", self.pc);
+        }
+
+        let value_bytes = &self.bytecode[self.pc..self.pc + 4];
+        let number_of_args =
+            u32::from_le_bytes(value_bytes.try_into().expect("Provided value is incorrect"));
+        self.pc += 4; // 4 => 3 + 1 extra to leave the pc in the next opcode
+
+        // execution
+        let args = self.get_stack_values(&number_of_args);
+        args
     }
 
     pub fn get_stack_values(&mut self, num_of_values: &u32) -> Vec<Value> {
