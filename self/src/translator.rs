@@ -324,7 +324,7 @@ impl Translator {
                 }
 
                 let (string_length, _) = bytes_to_data(&DataType::U32, &value);
-                if let RawValue::U32(val) = string_length {
+                if let Value::RawValue(RawValue::U32(val)) = string_length {
                     val.value as usize
                 } else {
                     panic!("Unexpected value type for string length");

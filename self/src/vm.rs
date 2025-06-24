@@ -1,5 +1,3 @@
-use toml::to_string;
-
 use crate::core::error::InvalidBinaryOperation;
 use crate::core::error::VMErrorType;
 use crate::core::execution::VMExecutionResult;
@@ -7,13 +5,13 @@ use crate::core::handlers::call_handler::call_handler;
 use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::core::handlers::print_handler::print_handler;
 use crate::heap::Heap;
+use crate::heap::HeapObject;
 use crate::opcodes::DataType;
 use crate::opcodes::Opcode;
 use crate::translator::Translator;
 use crate::types::raw::RawValue;
 use crate::types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8};
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
-use crate::utils::from_bytes::bytes_to_data;
 
 use super::symbol_table::*;
 use super::types::*;
@@ -74,8 +72,8 @@ impl Vm {
                     let (data_type, value_bytes) = self.get_value_length();
 
                     // execution
-                    let (value, printable_value) = bytes_to_data(&data_type, &value_bytes);
-                    self.push_to_stack(Value::RawValue(value), None);
+                    let (value, printable_value) = self.bytes_to_data(&data_type, &value_bytes);
+                    self.push_to_stack(value, None);
                     if debug {
                         println!("LOAD_CONST <- {:?}({printable_value})", data_type);
                     }
@@ -89,25 +87,72 @@ impl Vm {
                     }
 
                     self.pc += 1;
-                    let (data_type, value_bytes) = self.get_value_length();
+                    // identifier
+                    let (identifier_data_type, identifier_bytes) = self.get_value_length();
+                    if identifier_data_type != DataType::Utf8 {
+                        panic!("Identifier type should be a string encoded as utf8")
+                    }
+                    let identifier_name = String::from_utf8(identifier_bytes)
+                        .expect("Identifier bytes should be valid UTF-8");
 
-                    // execution
-                    let (identifier_name, printable_value) =
-                        bytes_to_data(&data_type, &value_bytes);
-
-                    if let RawValue::Utf8(i) = identifier_name {
-                        let identifier_value = self.symbol_table.get_value(&i.value);
-                        if let Some(v) = identifier_value {
-                            self.push_to_stack(v, Some(i.value));
-                            if debug {
-                                println!("LOAD_VAR <- {:?}({printable_value})", data_type);
-                            }
-                        } else {
-                            // should be handled with ego errors
-                            panic!("{printable_value} is not defined")
+                    let identifier_value = self.symbol_table.get_value(&identifier_name);
+                    if let Some(v) = identifier_value {
+                        self.push_to_stack(v, Some(identifier_name.clone()));
+                        if debug {
+                            println!("LOAD_VAR <- {identifier_name}");
                         }
                     } else {
-                        panic!("LOAD_VAR identifier should be a string")
+                        // should be handled with ego errors
+                        panic!("{identifier_name} is not defined")
+                    }
+
+                    self.pc += 1;
+                }
+                Opcode::StoreVar => {
+                    // parsing
+                    if self.pc + 1 >= self.bytecode.len() {
+                        panic!("Invalid STORE_VAR instruction at position {}.", self.pc);
+                    } else {
+                        self.pc += 1;
+                    }
+
+                    // 0x00 inmutable | 0x00 mutable
+                    let mutable = match self.bytecode[self.pc] {
+                        0x00 => false,
+                        0x01 => true,
+                        _ => {
+                            panic!("Invalid STORE_VAR instruction at position {}. Needed mutability property.", self.pc);
+                        }
+                    };
+                    self.pc += 1;
+
+                    // identifier
+                    let (identifier_data_type, identifier_bytes) = self.get_value_length();
+                    if identifier_data_type != DataType::Utf8 {
+                        panic!("Identifier type should be a string encoded as utf8")
+                    }
+                    let identifier_name = String::from_utf8(identifier_bytes)
+                        .expect("Identifier bytes should be valid UTF-8");
+
+                    // execution
+                    let stack_stored_value = self.operand_stack.pop();
+                    if let Some(v) = stack_stored_value {
+                        let datatype = v.value.get_type();
+                        let printable_value = v.value.to_string();
+                        self.symbol_table
+                            .add_key_value(identifier_name.clone(), v.value);
+                        if debug {
+                            println!(
+                                "STORE_VAR[{}] <- {:?}({}) as {}",
+                                if mutable { "MUT" } else { "INMUT" },
+                                datatype,
+                                printable_value,
+                                identifier_name,
+                            );
+                        }
+                    } else {
+                        // todo: use self-vm errors
+                        panic!("STACK UNDERFLOW")
                     }
 
                     self.pc += 1;
@@ -168,7 +213,14 @@ impl Vm {
 
                     // execution
                     let args = self.get_stack_values(&number_of_args);
-                    print_handler(args, debug, false);
+                    let mut resolved_args = Vec::new();
+                    for val in args {
+                        match self.value_to_string(val) {
+                            Ok(v) => resolved_args.push(v),
+                            Err(e) => return VMExecutionResult::terminate_with_errors(e),
+                        }
+                    }
+                    print_handler(resolved_args, debug, false);
 
                     self.pc += 1;
                 }
@@ -188,7 +240,14 @@ impl Vm {
 
                     // execution
                     let args = self.get_stack_values(&number_of_args);
-                    print_handler(args, debug, true);
+                    let mut resolved_args = Vec::new();
+                    for val in args {
+                        match self.value_to_string(val) {
+                            Ok(v) => resolved_args.push(v),
+                            Err(e) => return VMExecutionResult::terminate_with_errors(e),
+                        }
+                    }
+                    print_handler(resolved_args, debug, true);
 
                     self.pc += 1;
                 }
@@ -336,55 +395,6 @@ impl Vm {
 
                     self.pc += 1;
                 }
-                Opcode::StoreVar => {
-                    // parsing
-                    if self.pc + 1 >= self.bytecode.len() {
-                        panic!("Invalid STORE_VAR instruction at position {}.", self.pc);
-                    } else {
-                        self.pc += 1;
-                    }
-
-                    // 0x00 inmutable | 0x00 mutable
-                    let mutable = match self.bytecode[self.pc] {
-                        0x00 => false,
-                        0x01 => true,
-                        _ => {
-                            panic!("Invalid STORE_VAR instruction at position {}. Needed mutability property.", self.pc);
-                        }
-                    };
-                    self.pc += 1;
-
-                    // identifier
-                    let (identifier_data_type, identifier_bytes) = self.get_value_length();
-                    if identifier_data_type != DataType::Utf8 {
-                        panic!("Identifier type should be a string encoded as utf8")
-                    }
-                    let identifier_name = String::from_utf8(identifier_bytes)
-                        .expect("Identifier bytes should be valid UTF-8");
-
-                    // execution
-                    let stack_stored_value = self.operand_stack.pop();
-                    if let Some(v) = stack_stored_value {
-                        let datatype = v.value.get_type();
-                        let printable_value = v.value.to_string();
-                        self.symbol_table
-                            .add_key_value(identifier_name.clone(), v.value);
-                        if debug {
-                            println!(
-                                "STORE_VAR[{}] <- {:?}({}) as {}",
-                                if mutable { "MUT" } else { "INMUT" },
-                                datatype,
-                                printable_value,
-                                identifier_name,
-                            );
-                        }
-                    } else {
-                        // todo: use self-vm errors
-                        panic!("STACK UNDERFLOW")
-                    }
-
-                    self.pc += 1;
-                }
                 Opcode::Call => {
                     // parsing
                     // get u32 value. 4 bytes based on the type plus the current
@@ -401,12 +411,19 @@ impl Vm {
 
                     // execution
                     let args = self.get_stack_values(&number_of_args);
-
                     if "UTF8".to_string() == args[0].get_type() {
                         if debug {
                             println!("CALL -> {}", args[0].to_string())
                         }
-                        call_handler(&self.handlers, args)
+                        let mut resolved_args = Vec::new();
+                        for val in args {
+                            match self.value_to_string(val) {
+                                Ok(v) => resolved_args.push(v),
+                                Err(e) => return VMExecutionResult::terminate_with_errors(e),
+                            }
+                        }
+
+                        call_handler(&self.handlers, resolved_args)
                     } else {
                         panic!("Call first argument must be a string")
                     }
@@ -423,12 +440,6 @@ impl Vm {
         VMExecutionResult::terminate()
     }
 
-    // here we now make matching of RawValues and HeapRef's
-    // we need a function that given the Value it returns us the
-    // real or raw value.
-    //
-    // okay we can't do that since a heap ref can contain a function for example
-    // so what is the "raw type" of a function? I need to think more about this.
     fn run_binary_expression(
         &mut self,
         operator: &str,
@@ -580,8 +591,8 @@ impl Vm {
                     panic!("bad utf8 value length")
                 }
 
-                let (string_length, _) = bytes_to_data(&DataType::U32, &value);
-                if let RawValue::U32(val) = string_length {
+                let (string_length, _) = self.bytes_to_data(&DataType::U32, &value);
+                if let Value::RawValue(RawValue::U32(val)) = string_length {
                     val.value as usize
                 } else {
                     panic!("Unexpected value type for string length");
@@ -600,6 +611,107 @@ impl Vm {
         self.pc += value_length;
 
         (data_type, value_bytes)
+    }
+
+    pub fn bytes_to_data(&mut self, data_type: &DataType, value: &Vec<u8>) -> (Value, String) {
+        let printable_value;
+        let value = match data_type {
+            DataType::I32 => {
+                let value = i32::from_le_bytes(
+                    value
+                        .as_slice()
+                        .try_into()
+                        .expect("Provided value is incorrect"),
+                );
+                printable_value = value.to_string();
+                Value::RawValue(RawValue::I32(I32::new(value)))
+            }
+            DataType::I64 => {
+                let value = i64::from_le_bytes(
+                    value
+                        .as_slice()
+                        .try_into()
+                        .expect("Provided value is incorrect"),
+                );
+                printable_value = value.to_string();
+                Value::RawValue(RawValue::I64(I64::new(value)))
+            }
+            DataType::U32 => {
+                let value = u32::from_le_bytes(
+                    value
+                        .as_slice()
+                        .try_into()
+                        .expect("Provided value is incorrect"),
+                );
+                printable_value = value.to_string();
+                Value::RawValue(RawValue::U32(U32::new(value)))
+            }
+            DataType::U64 => {
+                let value = u64::from_le_bytes(
+                    value
+                        .as_slice()
+                        .try_into()
+                        .expect("Provided value is incorrect"),
+                );
+                printable_value = value.to_string();
+                Value::RawValue(RawValue::U64(U64::new(value)))
+            }
+            DataType::F64 => {
+                let value = f64::from_le_bytes(
+                    value
+                        .as_slice()
+                        .try_into()
+                        .expect("Provided value is incorrect"),
+                );
+                printable_value = value.to_string();
+                Value::RawValue(RawValue::F64(F64::new(value)))
+            }
+            DataType::Utf8 => {
+                let value =
+                    String::from_utf8(value.clone()).expect("Provided value is not valid UTF-8");
+                printable_value = value.to_string();
+
+                let value_ref = self.heap.allocate(HeapObject::String(value));
+                Value::HeapRef(value_ref)
+            }
+            DataType::Bool => {
+                if value.len() > 1 {
+                    panic!("Bad boolean value")
+                }
+
+                let value = if value[0] == 0x00 {
+                    printable_value = "false".to_string();
+                    false
+                } else {
+                    printable_value = "true".to_string();
+                    true
+                };
+                Value::RawValue(RawValue::Bool(Bool::new(value)))
+            }
+            DataType::Nothing => {
+                printable_value = "nothing".to_string();
+                Value::RawValue(RawValue::Nothing)
+            }
+            _ => {
+                panic!("Unsupported type to get data from")
+            }
+        };
+
+        (value, printable_value)
+    }
+
+    fn value_to_string(&mut self, value: Value) -> Result<String, VMErrorType> {
+        match value {
+            Value::RawValue(x) => Ok(x.to_string()),
+            Value::HeapRef(x) => match self.heap.get(x) {
+                Some(x) => Ok(x.to_string()),
+                None => {
+                    // identifier not defined
+                    //Err(VMErrorType::Iden)
+                    panic!("idenifier not defined")
+                }
+            },
+        }
     }
 
     fn read_offset(bytes: &[u8]) -> i32 {
