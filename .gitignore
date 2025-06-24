@@ -4,3 +4,4 @@ main.ego
 custom.toml
 *.txt
 wforeigns
+.env

@@ -155,6 +155,7 @@ impl Translator {
                 (Instruction::Call { number_of_args }, pc.abs_diff(t.pc))
             }
             Opcode::Unknown => (Instruction::Unknown, 1),
+            _ => (Instruction::Unknown, 1),
         }
     }
 

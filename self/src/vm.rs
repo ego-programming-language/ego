@@ -1,6 +1,7 @@
 use crate::core::error::InvalidBinaryOperation;
 use crate::core::error::VMErrorType;
 use crate::core::execution::VMExecutionResult;
+use crate::core::handlers::ai_handler::ai_handler;
 use crate::core::handlers::call_handler::call_handler;
 use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::core::handlers::print_handler::print_handler;
@@ -220,6 +221,18 @@ impl Vm {
                         }
                     }
                     print_handler(resolved_args, debug, true);
+                }
+                Opcode::Ai => {
+                    self.pc += 1; // consume print opcode
+                    let args = self.get_function_call_args();
+                    let mut resolved_args = Vec::new();
+                    for val in args {
+                        match self.value_to_string(val) {
+                            Ok(v) => resolved_args.push(v),
+                            Err(e) => return VMExecutionResult::terminate_with_errors(e),
+                        }
+                    }
+                    ai_handler(resolved_args, debug);
                 }
                 Opcode::Add => {
                     // execution

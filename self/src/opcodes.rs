@@ -12,21 +12,22 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     m.insert("zero".to_string(), 0x00);
     m.insert("load_const".to_string(), 0x01);
     m.insert("load_var".to_string(), 0x05);
-    m.insert("jump_if_false".to_string(), 0x11);
-    m.insert("jump".to_string(), 0x12);
+    m.insert("jump_if_false".to_string(), 0x0c);
+    m.insert("jump".to_string(), 0x0d);
     m.insert("add".to_string(), 0x03);
     m.insert("substract".to_string(), 0x08);
     m.insert("multiply".to_string(), 0x09);
-    m.insert("divide".to_string(), 0x10);
-    m.insert("greater_than".to_string(), 0x13);
-    m.insert("less_than".to_string(), 0x14);
-    m.insert("equals".to_string(), 0x15);
-    m.insert("not_equals".to_string(), 0x16);
+    m.insert("divide".to_string(), 0x0b);
+    m.insert("greater_than".to_string(), 0x0e);
+    m.insert("less_than".to_string(), 0x0f);
+    m.insert("equals".to_string(), 0x10);
+    m.insert("not_equals".to_string(), 0x11);
     m.insert("store_var".to_string(), 0x04);
 
     // builtin functions opcode - level: 0
     m.insert("print".to_string(), 0x02);
     m.insert("println".to_string(), 0x07);
+    m.insert("ai".to_string(), 0x0a);
     m.insert("call".to_string(), 0x06);
 
     // params - level 1
@@ -55,6 +56,7 @@ pub enum Opcode {
     Print,
     Println,
     Add,
+    Ai,
     Substract,
     Multiply,
     Divide,
@@ -72,21 +74,22 @@ impl Opcode {
         match opcode {
             0x00 => Opcode::Zero,
             0x01 => Opcode::LoadConst,
-            0x11 => Opcode::JumpIfFalse,
-            0x12 => Opcode::Jump,
             0x02 => Opcode::Print,
-            0x07 => Opcode::Println,
             0x03 => Opcode::Add,
+            0x04 => Opcode::StoreVar,
+            0x05 => Opcode::LoadVar,
+            0x06 => Opcode::Call,
+            0x07 => Opcode::Println,
             0x08 => Opcode::Substract,
             0x09 => Opcode::Multiply,
-            0x10 => Opcode::Divide,
-            0x13 => Opcode::GreaterThan,
-            0x14 => Opcode::LessThan,
-            0x15 => Opcode::Equals,
-            0x16 => Opcode::NotEquals,
-            0x04 => Opcode::StoreVar,
-            0x06 => Opcode::Call,
-            0x05 => Opcode::LoadVar,
+            0x0A => Opcode::Ai,
+            0x0B => Opcode::Divide,
+            0x0C => Opcode::JumpIfFalse,
+            0x0D => Opcode::Jump,
+            0x0E => Opcode::GreaterThan,
+            0x0F => Opcode::LessThan,
+            0x10 => Opcode::Equals,
+            0x11 => Opcode::NotEquals,
             _ => Opcode::Unknown,
         }
     }
