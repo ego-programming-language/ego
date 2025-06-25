@@ -6,6 +6,7 @@ PROVIDER OR ENABLE USER IMPLEMENTATION OF
 PROVIDER.
 */
 
+use regex::Regex;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
@@ -36,12 +37,36 @@ struct MessageContent {
     content: String,
 }
 
-pub fn ai_handler(args: Vec<String>, debug: bool) {
+fn ai_response_parser(response: &String) -> Option<(String, String)> {
+    let re = Regex::new(r"^(\w+):(.*)$").ok()?;
+    let caps = re.captures(response)?;
+
+    let value_type = &caps[1];
+    let raw_value = &caps[2];
+
+    let is_valid = match value_type {
+        "bool" => matches!(raw_value, "true" | "false"),
+        "string" => !raw_value.is_empty(),
+        "number" => raw_value.parse::<f64>().is_ok(),
+        "nothing" => raw_value.is_empty(),
+        _ => false,
+    };
+
+    if is_valid {
+        Some((value_type.to_string(), raw_value.to_string()))
+    } else {
+        None
+    }
+}
+
+pub fn ai_handler(args: Vec<String>, debug: bool) -> Option<(String, String)> {
     let request = args[0].clone();
     let context = args[1].clone();
     if debug {
         println!("AI <- {}({})", request, context);
     }
+    // we should try to avoid prompt injection
+    // maybe using multiple prompts?
     let prompt = format!(
     "Here is the English translation of your prompt:
 
@@ -81,11 +106,11 @@ Context variables may appear in the query enclosed in < >, and you must evaluate
 
 Rules:
 
+* Never use strings to represent boolean values. Use `bool:true` or `bool:false`.
 * If the conditional expression is not met, respond with `nothing`.
 * If there are no conditionals but you can infer the type and value, do so.
 * If you cannot determine a type with certainty, respond with `nothing`.
 * Never respond with any additional text. Only the final value.
-
 ---
 
 Start execution with the following input:
@@ -113,8 +138,8 @@ Start execution with the following input:
         .expect("AI: Failed to send request");
 
     if !res.status().is_success() {
-        println!("AI: (FAILED){}", res.status());
-        return;
+        println!("AI (FAILED) -> {}", res.status());
+        return None;
     }
 
     let response: ChatResponse = res.json().expect("AI: Failed to parse response");
@@ -122,5 +147,12 @@ Start execution with the following input:
 
     if debug {
         println!("AI -> {}", answer);
+    }
+
+    let parsed_answer = ai_response_parser(answer);
+    if let Some(v) = parsed_answer {
+        Some((v.0, v.1))
+    } else {
+        None
     }
 }
