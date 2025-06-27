@@ -42,7 +42,7 @@ impl Heap {
         HeapRef::new(address)
     }
 
-    pub fn get(&mut self, heap_ref: HeapRef) -> Option<&HeapObject> {
+    pub fn get(&self, heap_ref: HeapRef) -> Option<&HeapObject> {
         self.memory.get(&heap_ref.address)
     }
 

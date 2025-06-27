@@ -67,28 +67,21 @@ pub fn ai_handler(args: Vec<String>, debug: bool) -> Option<(String, String)> {
     }
     // we should try to avoid prompt injection
     // maybe using multiple prompts?
-    let prompt = format!(
-    "Here is the English translation of your prompt:
-
----
-
-#### INPUT 1
-
+    let prompt = format!("
 You are a machine embedded within another system. Your only function is to evaluate expressions and return a specific value. You must not reason out loud or provide explanations. Simply analyze the query and respond with a single value in the following format:
 
 <value_type:value>
+bool:true
+bool:false
+number:12.3
+string:my favorite cat
 
-
----
 
 Valid value types:
 
-* `bool`: for logical expressions (e.g. `true` or `false`)
-* `string`: for text values
+* `bool`: for logical expressions (e.g. true or false)
 * `number`: for numeric values
 * `nothing`: if you cannot determine a value type or if the expression produces no output
-
----
 
 Inputs:
 
@@ -106,7 +99,7 @@ Context variables may appear in the query enclosed in < >, and you must evaluate
 
 Rules:
 
-* Never use strings to represent boolean values. Use `bool:true` or `bool:false`.
+* For boolean or logical values use `bool:true` or `bool:false`.
 * If the conditional expression is not met, respond with `nothing`.
 * If there are no conditionals but you can infer the type and value, do so.
 * If you cannot determine a type with certainty, respond with `nothing`.

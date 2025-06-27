@@ -1,6 +1,6 @@
 /target
 .DS_Store
-main.ego
+*main.ego
 custom.toml
 *.txt
 wforeigns

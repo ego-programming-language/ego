@@ -7,6 +7,7 @@ use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::core::handlers::print_handler::print_handler;
 use crate::heap::Heap;
 use crate::heap::HeapObject;
+use crate::heap::HeapRef;
 use crate::opcodes::DataType;
 use crate::opcodes::Opcode;
 use crate::translator::Translator;
@@ -463,13 +464,13 @@ impl Vm {
         let left = operands.0;
         let right = operands.1;
 
-        let value;
+        let value: Value;
         // cloned here, to be able to use later on
         // different VMErrors
         match (left.value, right.value.clone()) {
-            (Value::RawValue(l), Value::RawValue(r)) => match (l, r) {
-                (RawValue::I32(l), RawValue::I32(r)) => {
-                    value = match operator {
+            (Value::RawValue(l), Value::RawValue(r)) => {
+                let result_value = match (l, r) {
+                    (RawValue::I32(l), RawValue::I32(r)) => match operator {
                         "+" => RawValue::I32(I32::new(l.value + r.value)),
                         "-" => RawValue::I32(I32::new(l.value - r.value)),
                         "*" => RawValue::I32(I32::new(l.value * r.value)),
@@ -481,10 +482,8 @@ impl Vm {
                         _ => {
                             panic!("operator not implemented")
                         }
-                    };
-                }
-                (RawValue::I64(l), RawValue::I64(r)) => {
-                    value = match operator {
+                    },
+                    (RawValue::I64(l), RawValue::I64(r)) => match operator {
                         "+" => RawValue::I64(I64::new(l.value + r.value)),
                         "-" => RawValue::I64(I64::new(l.value - r.value)),
                         "*" => RawValue::I64(I64::new(l.value * r.value)),
@@ -496,10 +495,8 @@ impl Vm {
                         _ => {
                             panic!("operator not implemented in i64")
                         }
-                    };
-                }
-                (RawValue::U32(l), RawValue::U32(r)) => {
-                    value = match operator {
+                    },
+                    (RawValue::U32(l), RawValue::U32(r)) => match operator {
                         "+" => RawValue::U32(U32::new(l.value + r.value)),
                         "-" => RawValue::U32(U32::new(l.value - r.value)),
                         "*" => RawValue::U32(U32::new(l.value * r.value)),
@@ -511,10 +508,8 @@ impl Vm {
                         _ => {
                             panic!("operator not implemented in u32")
                         }
-                    };
-                }
-                (RawValue::U64(l), RawValue::U64(r)) => {
-                    value = match operator {
+                    },
+                    (RawValue::U64(l), RawValue::U64(r)) => match operator {
                         "+" => RawValue::U64(U64::new(l.value + r.value)),
                         "-" => RawValue::U64(U64::new(l.value - r.value)),
                         "*" => RawValue::U64(U64::new(l.value * r.value)),
@@ -526,10 +521,8 @@ impl Vm {
                         _ => {
                             panic!("operator not implemented in u64")
                         }
-                    };
-                }
-                (RawValue::F64(l), RawValue::F64(r)) => {
-                    value = match operator {
+                    },
+                    (RawValue::F64(l), RawValue::F64(r)) => match operator {
                         "+" => RawValue::F64(F64::new(l.value + r.value)),
                         "-" => RawValue::F64(F64::new(l.value - r.value)),
                         "*" => RawValue::F64(F64::new(l.value * r.value)),
@@ -541,52 +534,86 @@ impl Vm {
                         _ => {
                             panic!("operator not implemented in f64")
                         }
-                    };
-                }
-                (RawValue::Nothing, RawValue::Nothing) => {
-                    return Some(VMErrorType::InvalidBinaryOperation(
-                        InvalidBinaryOperation {
-                            left: DataType::Nothing,
-                            right: DataType::Nothing,
-                            operator: operator.to_string(),
-                        },
-                    ))
-                }
-                (RawValue::Utf8(_), RawValue::Utf8(_)) => {
-                    return Some(VMErrorType::InvalidBinaryOperation(
-                        InvalidBinaryOperation {
-                            left: DataType::Utf8,
-                            right: DataType::Utf8,
-                            operator: operator.to_string(),
-                        },
-                    ))
-                }
-                (RawValue::Bool(_), RawValue::Bool(_)) => {
-                    return Some(VMErrorType::InvalidBinaryOperation(
-                        InvalidBinaryOperation {
-                            left: DataType::Bool,
-                            right: DataType::Bool,
-                            operator: operator.to_string(),
-                        },
-                    ))
-                }
-                _ => return Some(VMErrorType::TypeCoercionError(right)),
-            },
+                    },
+                    (RawValue::Nothing, RawValue::Nothing) => {
+                        return Some(VMErrorType::InvalidBinaryOperation(
+                            InvalidBinaryOperation {
+                                left: DataType::Nothing,
+                                right: DataType::Nothing,
+                                operator: operator.to_string(),
+                            },
+                        ))
+                    }
+                    (RawValue::Utf8(_), RawValue::Utf8(_)) => {
+                        return Some(VMErrorType::InvalidBinaryOperation(
+                            InvalidBinaryOperation {
+                                left: DataType::Utf8,
+                                right: DataType::Utf8,
+                                operator: operator.to_string(),
+                            },
+                        ))
+                    }
+                    (RawValue::Bool(_), RawValue::Bool(_)) => {
+                        return Some(VMErrorType::InvalidBinaryOperation(
+                            InvalidBinaryOperation {
+                                left: DataType::Bool,
+                                right: DataType::Bool,
+                                operator: operator.to_string(),
+                            },
+                        ))
+                    }
+                    _ => return Some(VMErrorType::TypeCoercionError(right)),
+                };
+
+                value = Value::RawValue(result_value);
+            }
             (Value::HeapRef(l), Value::HeapRef(r)) => {
                 // here implement binary operations between different
                 // types once the HeapRef is resolved to the actual value
-                panic!("binary operation between heapRef value not implemented")
+                let l_heap_object = self.resolve_heap_ref(l);
+                let r_heap_object = self.resolve_heap_ref(r);
+
+                let result_value = match (l_heap_object, r_heap_object) {
+                    (HeapObject::String(left_string), HeapObject::String(right_string)) => {
+                        match operator {
+                            "+" => {
+                                let result_string = format!("{left_string}{right_string}");
+                                self.heap.allocate(HeapObject::String(result_string))
+                            }
+                            _ => {
+                                return Some(VMErrorType::InvalidBinaryOperation(
+                                    InvalidBinaryOperation {
+                                        left: DataType::Utf8,
+                                        right: DataType::Utf8,
+                                        operator: operator.to_string(),
+                                    },
+                                ))
+                            }
+                        }
+                    } // when more heap type exists implement here a
+                      // invalid binary operation error throw _ => {}
+                };
+
+                value = Value::HeapRef(result_value);
             }
-            (Value::HeapRef(l), Value::RawValue(r)) => {
+            (Value::HeapRef(_), Value::RawValue(_)) => {
                 return Some(VMErrorType::TypeCoercionError(right))
             }
-            (Value::RawValue(l), Value::HeapRef(r)) => {
+            (Value::RawValue(_), Value::HeapRef(_)) => {
                 return Some(VMErrorType::TypeCoercionError(right))
             }
         }
 
-        self.push_to_stack(Value::RawValue(value), None);
+        self.push_to_stack(value, None);
         None
+    }
+
+    fn resolve_heap_ref(&self, address: HeapRef) -> &HeapObject {
+        if let Some(addr) = self.heap.get(address) {
+            return addr;
+        } else {
+            panic!("ref is not defined in the heap")
+        }
     }
 
     fn get_value_length(&mut self) -> (DataType, Vec<u8>) {
