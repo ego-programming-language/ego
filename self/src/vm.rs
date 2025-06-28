@@ -15,22 +15,16 @@ use crate::types::raw::RawValue;
 use crate::types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8};
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
 
-use super::symbol_table::*;
+use super::stack::*;
 use super::types::*;
 
 pub struct Vm {
-    operand_stack: Vec<StackValue>,
-    symbol_table: SymbolTable,
+    operand_stack: Vec<OperandsStackValue>,
+    call_stack: CallStack,
     heap: Heap,
     bytecode: Vec<u8>,
     pc: usize,
     handlers: ForeignHandlers,
-}
-
-#[derive(Debug, Clone)]
-pub struct StackValue {
-    pub value: Value,
-    pub origin: Option<String>,
 }
 
 impl Vm {
@@ -48,7 +42,7 @@ impl Vm {
 
         Vm {
             operand_stack: vec![],
-            symbol_table: SymbolTable::new(),
+            call_stack: CallStack::new(),
             heap: Heap::new(),
             bytecode,
             pc: 0,
@@ -97,7 +91,7 @@ impl Vm {
                     let identifier_name = String::from_utf8(identifier_bytes)
                         .expect("Identifier bytes should be valid UTF-8");
 
-                    let identifier_value = self.symbol_table.get_value(&identifier_name);
+                    let identifier_value = self.call_stack.resolve(&identifier_name);
                     if let Some(v) = identifier_value {
                         self.push_to_stack(v, Some(identifier_name.clone()));
                         if debug {
@@ -141,8 +135,8 @@ impl Vm {
                     if let Some(v) = stack_stored_value {
                         let datatype = v.value.get_type();
                         let printable_value = v.value.to_string();
-                        self.symbol_table
-                            .add_key_value(identifier_name.clone(), v.value);
+                        self.call_stack
+                            .put_to_frame(identifier_name.clone(), v.value);
                         if debug {
                             println!(
                                 "STORE_VAR[{}] <- {:?}({}) as {}",
@@ -459,7 +453,7 @@ impl Vm {
     fn run_binary_expression(
         &mut self,
         operator: &str,
-        operands: (StackValue, StackValue),
+        operands: (OperandsStackValue, OperandsStackValue),
     ) -> Option<VMErrorType> {
         let left = operands.0;
         let right = operands.1;
@@ -793,7 +787,8 @@ impl Vm {
     }
 
     pub fn push_to_stack(&mut self, value: Value, origin: Option<String>) {
-        self.operand_stack.push(StackValue { value, origin });
+        self.operand_stack
+            .push(OperandsStackValue { value, origin });
     }
 
     pub fn debug_bytecode(&mut self) {

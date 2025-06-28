@@ -1,9 +1,9 @@
-use crate::{opcodes::DataType, vm::StackValue};
+use crate::{opcodes::DataType, stack::OperandsStackValue};
 
 pub enum VMErrorType {
-    TypeCoercionError(StackValue), // maybe here we should have a more generic value, we'll see with time
+    TypeCoercionError(OperandsStackValue), // maybe here we should have a more generic value, we'll see with time
     InvalidBinaryOperation(InvalidBinaryOperation),
-    DivisionByZero(StackValue),
+    DivisionByZero(OperandsStackValue),
 }
 
 pub struct VMError {
