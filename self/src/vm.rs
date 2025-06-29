@@ -11,6 +11,7 @@ use crate::heap::HeapRef;
 use crate::opcodes::DataType;
 use crate::opcodes::Opcode;
 use crate::translator::Translator;
+use crate::types::object::func::Function;
 use crate::types::raw::RawValue;
 use crate::types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8};
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
@@ -216,6 +217,52 @@ impl Vm {
                         }
                     }
                     print_handler(resolved_args, debug, true);
+                }
+                Opcode::FuncDec => {
+                    // skip FuncDec opcode
+                    if self.pc + 1 >= self.bytecode.len() {
+                        panic!(
+                            "Invalid FUNCTION_DECLARATION instruction at position {}.",
+                            self.pc
+                        );
+                    } else {
+                        self.pc += 1;
+                    }
+
+                    // identifier
+                    let (identifier_data_type, identifier_bytes) = self.get_value_length();
+                    if identifier_data_type != DataType::Utf8 {
+                        panic!("Identifier type should be a string encoded as utf8")
+                    }
+                    let identifier_name = String::from_utf8(identifier_bytes)
+                        .expect("Identifier bytes should be valid UTF-8");
+
+                    // handle body
+                    // function body length
+                    if self.pc + 4 >= self.bytecode.len() {
+                        panic!("Invalid FUNC_DEC instruction at position {}", self.pc);
+                    }
+
+                    let value_bytes = &self.bytecode[self.pc + 1..self.pc + 5];
+                    let body_length = u32::from_le_bytes(
+                        value_bytes.try_into().expect("Provided value is incorrect"),
+                    ) as usize;
+                    self.pc += 4;
+                    self.pc += 1; // to get next opcode
+
+                    let body_boytecode = self.bytecode[self.pc..self.pc + body_length].to_vec();
+                    self.pc += body_length;
+
+                    // allocate function on the heap
+                    let func_obj = HeapObject::Function(Function::new(
+                        identifier_name.clone(),
+                        body_boytecode,
+                    ));
+                    let func_ref = self.heap.allocate(func_obj);
+
+                    // make accesible on the current context
+                    self.call_stack
+                        .put_to_frame(identifier_name, Value::HeapRef(func_ref));
                 }
                 // PROBABLY BEHIND THE SCENE TO AVOID RUNTIME ERRORS
                 // WE SHOULD WRAP AI OPCODE WITHIN A BOOLEAN CAST OPCODE
@@ -585,7 +632,18 @@ impl Vm {
                             }
                         }
                     } // when more heap type exists implement here a
-                      // invalid binary operation error throw _ => {}
+                    _ => {
+                        return Some(VMErrorType::InvalidBinaryOperation(
+                            // we should (probably) implement a system to refer to functions
+                            // data type either creating a new type RuntimeType or extending
+                            // DataType
+                            InvalidBinaryOperation {
+                                left: DataType::Unknown,
+                                right: DataType::Unknown,
+                                operator: operator.to_string(),
+                            },
+                        ));
+                    }
                 };
 
                 value = Value::HeapRef(result_value);

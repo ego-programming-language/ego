@@ -25,6 +25,9 @@ pub enum Instruction {
     LessThan,
     Equals,
     NotEquals,
+    FuncDec {
+        identifier: String,
+    },
     Print {
         number_of_args: u32,
     },
@@ -60,6 +63,7 @@ impl Instruction {
             Instruction::LessThan => "LessThan".to_string(),
             Instruction::Equals => "Equals".to_string(),
             Instruction::NotEquals => "NotEquals".to_string(),
+            Instruction::FuncDec { identifier } => "FuncDec".to_string(),
             Instruction::Print { number_of_args } => "Print".to_string(),
             Instruction::Println { number_of_args } => "Println".to_string(),
             Instruction::Call { number_of_args } => "Call".to_string(),

@@ -2,6 +2,7 @@ use crate::types::Value;
 use std::collections::HashMap;
 
 // CALL STACK
+#[derive(Debug)]
 pub struct CallStack {
     stack: Vec<StackFrame>,
 }
@@ -29,6 +30,7 @@ impl CallStack {
     }
 }
 
+#[derive(Debug)]
 pub struct StackFrame {
     return_pc: usize,
     symbols: HashMap<String, Value>,

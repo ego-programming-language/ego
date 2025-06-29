@@ -8,6 +8,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     // bytecode interpretation. Opcode can be repeated
     // if they are on different levels.
 
+    // last used opcode: 0x12
     // instructions opcodes - level: 0
     m.insert("zero".to_string(), 0x00);
     m.insert("load_const".to_string(), 0x01);
@@ -23,6 +24,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     m.insert("equals".to_string(), 0x10);
     m.insert("not_equals".to_string(), 0x11);
     m.insert("store_var".to_string(), 0x04);
+    m.insert("function_declaration".to_string(), 0x12);
 
     // builtin functions opcode - level: 0
     m.insert("print".to_string(), 0x02);
@@ -66,6 +68,7 @@ pub enum Opcode {
     NotEquals,
     StoreVar,
     Call,
+    FuncDec,
     Unknown,
 }
 
@@ -90,6 +93,7 @@ impl Opcode {
             0x0F => Opcode::LessThan,
             0x10 => Opcode::Equals,
             0x11 => Opcode::NotEquals,
+            0x12 => Opcode::FuncDec,
             _ => Opcode::Unknown,
         }
     }

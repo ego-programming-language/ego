@@ -10,6 +10,7 @@ use self_vm::utils::{
 use crate::ast::{
     assignament_statement::{AssignamentNode, VarType},
     block::Block,
+    function_declaration::FunctionDeclaration,
     group::Group,
     if_statement::IfStatement,
     module::ModuleAst,
@@ -34,24 +35,29 @@ impl Compiler {
     pub fn gen_bytecode(&mut self) -> Vec<u8> {
         let mut counter = 0;
         while counter < self.ast.children.len() {
-            let node_bytecode = match &self.ast.children[counter] {
-                AstNodeType::AssignamentStatement(node) => {
-                    Compiler::compile_assignament_statement(node)
-                }
-                AstNodeType::IfStatement(node) => Compiler::compile_if_statement(node),
-                AstNodeType::Expression(node) => Compiler::compile_expression(node),
-                AstNodeType::WhileStatement(node) => Compiler::compile_while_statement(node),
-                _ => {
-                    // panic!("unhandled node type")
-                    // here we should, in the near future throw an error
-                    vec![]
-                }
-            };
+            let node_bytecode = Compiler::gen_node_bytecode(&self.ast.children[counter]);
             self.bytecode.extend_from_slice(&node_bytecode);
             counter += 1;
         }
 
         self.bytecode.clone()
+    }
+
+    fn gen_node_bytecode(node: &AstNodeType) -> Vec<u8> {
+        match node {
+            AstNodeType::AssignamentStatement(node) => {
+                Compiler::compile_assignament_statement(node)
+            }
+            AstNodeType::FunctionDeclaration(node) => Compiler::compile_function_declaration(node),
+            AstNodeType::IfStatement(node) => Compiler::compile_if_statement(node),
+            AstNodeType::Expression(node) => Compiler::compile_expression(node),
+            AstNodeType::WhileStatement(node) => Compiler::compile_while_statement(node),
+            _ => {
+                // panic!("unhandled node type")
+                // here we should, in the near future throw an error
+                vec![]
+            }
+        }
     }
 
     fn compile_assignament_statement(node: &AssignamentNode) -> Vec<u8> {
@@ -73,6 +79,33 @@ impl Compiler {
             .extend_from_slice(&Compiler::compile_raw_string(node.identifier.name.clone()));
 
         operation_bytecode
+    }
+
+    fn compile_function_declaration(node: &FunctionDeclaration) -> Vec<u8> {
+        let mut bytecode = vec![];
+
+        // op
+        bytecode.push(get_bytecode("function_declaration".to_string()));
+
+        // load function name
+        bytecode.extend_from_slice(&Compiler::compile_raw_string(node.identifier.name.clone()));
+
+        // load function args num/type/...
+        // load body of the function
+        let body_bytecode = Compiler::compile_block(&node.body);
+        let body_bytecode_length = if body_bytecode.len() > i32::MAX as usize {
+            panic!(
+                "{} function declaration body is bigger than the limits",
+                node.identifier.name
+            );
+        } else {
+            body_bytecode.len() as i32
+        };
+
+        bytecode.extend_from_slice(&Compiler::compile_offset(body_bytecode_length));
+        bytecode.extend_from_slice(&body_bytecode);
+
+        bytecode
     }
 
     fn compile_if_statement(node: &IfStatement) -> Vec<u8> {
@@ -249,17 +282,7 @@ impl Compiler {
     fn compile_block(node: &Block) -> Vec<u8> {
         let mut bytecode = vec![];
         for node in &node.children {
-            let node_bytecode = match node {
-                AstNodeType::AssignamentStatement(node) => {
-                    Compiler::compile_assignament_statement(node)
-                }
-                AstNodeType::IfStatement(node) => Compiler::compile_if_statement(node),
-                AstNodeType::Expression(node) => Compiler::compile_expression(node),
-                _ => {
-                    panic!("unhandled node type");
-                }
-            };
-
+            let node_bytecode = Compiler::gen_node_bytecode(node);
             bytecode.extend_from_slice(&node_bytecode);
         }
 

@@ -106,6 +106,36 @@ impl Translator {
             Opcode::LessThan => (Instruction::LessThan, 0),
             Opcode::Equals => (Instruction::Equals, 0),
             Opcode::NotEquals => (Instruction::NotEquals, 0),
+            Opcode::FuncDec => {
+                // identifier
+                if t.pc + 1 >= t.bytecode.len() {
+                    panic!("Invalid FUNC_DEC instruction at position {}", t.pc);
+                }
+
+                t.pc += 1;
+                let (_, value_bytes) = t.get_value_length(); // t's pc gets modified by get_value_length
+                let identifier_name =
+                    String::from_utf8(value_bytes).expect("Identifier bytes should be valid UTF-8");
+
+                // function body length
+                if t.pc + 4 >= t.bytecode.len() {
+                    panic!("Invalid FUNC_DEC instruction at position {}", t.pc);
+                }
+                t.pc += 4;
+
+                let value_bytes = &t.bytecode[t.pc + 1..t.pc + 5];
+                let body_length = u32::from_le_bytes(
+                    value_bytes.try_into().expect("Provided value is incorrect"),
+                );
+                t.pc += 4 + body_length as usize;
+
+                (
+                    Instruction::FuncDec {
+                        identifier: identifier_name,
+                    },
+                    pc.abs_diff(t.pc),
+                )
+            }
             Opcode::StoreVar => {
                 if t.pc + 1 >= t.bytecode.len() {
                     panic!("Invalid STORE_VAR instruction at position {}.", t.pc);
@@ -173,6 +203,7 @@ impl Translator {
             Instruction::Print { number_of_args } => number_of_args.to_string(),
             Instruction::Println { number_of_args } => number_of_args.to_string(),
             Instruction::Call { number_of_args } => number_of_args.to_string(),
+            Instruction::FuncDec { identifier } => identifier.to_string(),
             _ => "".to_string(),
         }
     }
