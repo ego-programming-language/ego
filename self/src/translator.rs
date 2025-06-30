@@ -170,7 +170,7 @@ impl Translator {
                     pc.abs_diff(t.pc),
                 )
             }
-            Opcode::Call => {
+            Opcode::FFI_Call => {
                 // get u32 value. 4 bytes based on the type plus the current
                 let value_length = 4;
                 if t.pc + value_length >= t.bytecode.len() {
@@ -182,7 +182,7 @@ impl Translator {
                     value_bytes.try_into().expect("Provided value is incorrect"),
                 );
                 t.pc += 4;
-                (Instruction::Call { number_of_args }, pc.abs_diff(t.pc))
+                (Instruction::FFI_Call { number_of_args }, pc.abs_diff(t.pc))
             }
             Opcode::Unknown => (Instruction::Unknown, 1),
             _ => (Instruction::Unknown, 1),
@@ -202,7 +202,7 @@ impl Translator {
             } => identifier.to_string(),
             Instruction::Print { number_of_args } => number_of_args.to_string(),
             Instruction::Println { number_of_args } => number_of_args.to_string(),
-            Instruction::Call { number_of_args } => number_of_args.to_string(),
+            Instruction::FFI_Call { number_of_args } => number_of_args.to_string(),
             Instruction::FuncDec { identifier } => identifier.to_string(),
             _ => "".to_string(),
         }

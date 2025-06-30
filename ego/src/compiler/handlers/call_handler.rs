@@ -21,7 +21,7 @@ pub fn call_as_bytecode(node: &CallExpression) -> Vec<u8> {
     }
 
     // call instruction bytecode
-    let call_bytecode = get_bytecode(node.identifier.name.to_string());
+    let call_bytecode = get_bytecode("ffi_call".to_string());
     bytecode.push(call_bytecode);
 
     // number of args bytecode

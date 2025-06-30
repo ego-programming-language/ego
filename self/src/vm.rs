@@ -472,7 +472,7 @@ impl Vm {
 
                     self.pc += 1;
                 }
-                Opcode::Call => {
+                Opcode::FFI_Call => {
                     self.pc += 1; // consume call opcode
                     let args = self.get_function_call_args();
                     let mut resolved_args = Vec::new();
