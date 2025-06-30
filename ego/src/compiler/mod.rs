@@ -164,8 +164,8 @@ impl Compiler {
                 let call_expression_bytecode = match v.identifier.name.as_str() {
                     "print" => handlers::print_as_bytecode(v),
                     "println" => handlers::print_as_bytecode(v), // both print types can be handled by the same function
-                    "ai" => handlers::function_call_as_bytecode(v),
                     "call" => handlers::call_as_bytecode(v),
+                    "ai" => handlers::function_call_as_bytecode(v),
                     _ => {
                         // todo: handle custom defined callable members
                         vec![]

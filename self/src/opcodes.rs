@@ -29,7 +29,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     // builtin functions opcode - level: 0
     m.insert("print".to_string(), 0x02);
     m.insert("println".to_string(), 0x07);
-    m.insert("ai".to_string(), 0x0a);
+    m.insert("call".to_string(), 0x0a);
     m.insert("ffi_call".to_string(), 0x06);
 
     // params - level 1
@@ -53,13 +53,13 @@ pub enum Opcode {
     Zero,
     LoadConst,
     LoadVar,
+    Call,
     FFI_Call,
     JumpIfFalse,
     Jump,
     Print,
     Println,
     Add,
-    Ai,
     Substract,
     Multiply,
     Divide,
@@ -85,7 +85,7 @@ impl Opcode {
             0x07 => Opcode::Println,
             0x08 => Opcode::Substract,
             0x09 => Opcode::Multiply,
-            0x0A => Opcode::Ai,
+            0x0A => Opcode::Call,
             0x0B => Opcode::Divide,
             0x0C => Opcode::JumpIfFalse,
             0x0D => Opcode::Jump,

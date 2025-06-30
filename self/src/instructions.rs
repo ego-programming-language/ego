@@ -37,6 +37,7 @@ pub enum Instruction {
     FFI_Call {
         number_of_args: u32,
     },
+    Call,
     Unknown,
 }
 
@@ -66,7 +67,8 @@ impl Instruction {
             Instruction::FuncDec { identifier } => "FuncDec".to_string(),
             Instruction::Print { number_of_args } => "Print".to_string(),
             Instruction::Println { number_of_args } => "Println".to_string(),
-            Instruction::FFI_Call { number_of_args } => "Call".to_string(),
+            Instruction::Call => "Call".to_string(),
+            Instruction::FFI_Call { number_of_args } => "FFI_Call".to_string(),
             Instruction::Unknown => "Unknown".to_string(),
         }
     }

@@ -266,7 +266,7 @@ impl Vm {
                 }
                 // PROBABLY BEHIND THE SCENE TO AVOID RUNTIME ERRORS
                 // WE SHOULD WRAP AI OPCODE WITHIN A BOOLEAN CAST OPCODE
-                Opcode::Ai => {
+                Opcode::Call => {
                     self.pc += 1; // consume print opcode
                     let args = self.get_function_call_args();
                     let mut resolved_args = Vec::new();
@@ -276,56 +276,72 @@ impl Vm {
                             Err(e) => return VMExecutionResult::terminate_with_errors(e),
                         }
                     }
-                    let value = ai_handler(resolved_args, debug);
-                    if let Some(v) = value {
-                        let answer_type = v.0;
-                        let value = v.1;
 
-                        // here the <value>'s should be well
-                        // formatted since we verify their format
-                        // on the ai_handler
-                        match answer_type.as_str() {
-                            "bool" => {
-                                let bool_value: bool = value.parse().unwrap();
-                                self.push_to_stack(
-                                    Value::RawValue(RawValue::Bool(Bool::new(bool_value))),
-                                    Some("AI_INFERRED".to_string()),
-                                );
-                            }
-                            "string" => {
-                                // heap allocated
-                                let heap_ref = self.heap.allocate(HeapObject::String(value));
-                                self.push_to_stack(
-                                    Value::HeapRef(heap_ref),
-                                    Some("AI_INFERRED".to_string()),
-                                );
-                            }
-                            "number" => {
-                                // number inferred
-                                let num_value: f64 = value.parse().unwrap();
-                                self.push_to_stack(
-                                    Value::RawValue(RawValue::F64(F64::new(num_value))),
-                                    Some("AI_INFERRED".to_string()),
-                                );
-                            }
-                            "nothing" => {
+                    // get caller identifier
+                    let (identifier_data_type, identifier_bytes) = self.get_value_length();
+                    if identifier_data_type != DataType::Utf8 {
+                        panic!("Identifier type should be a string encoded as utf8")
+                    }
+                    let identifier_name = String::from_utf8(identifier_bytes)
+                        .expect("Identifier bytes should be valid UTF-8");
+
+                    self.pc += 1; // go to next opcode
+                    match identifier_name.as_str() {
+                        "ai" => {
+                            let value = ai_handler(resolved_args, debug);
+                            if let Some(v) = value {
+                                let answer_type = v.0;
+                                let value = v.1;
+
+                                // here the <value>'s should be well
+                                // formatted since we verify their format
+                                // on the ai_handler
+                                match answer_type.as_str() {
+                                    "bool" => {
+                                        let bool_value: bool = value.parse().unwrap();
+                                        self.push_to_stack(
+                                            Value::RawValue(RawValue::Bool(Bool::new(bool_value))),
+                                            Some("AI_INFERRED".to_string()),
+                                        );
+                                    }
+                                    "string" => {
+                                        // heap allocated
+                                        let heap_ref =
+                                            self.heap.allocate(HeapObject::String(value));
+                                        self.push_to_stack(
+                                            Value::HeapRef(heap_ref),
+                                            Some("AI_INFERRED".to_string()),
+                                        );
+                                    }
+                                    "number" => {
+                                        // number inferred
+                                        let num_value: f64 = value.parse().unwrap();
+                                        self.push_to_stack(
+                                            Value::RawValue(RawValue::F64(F64::new(num_value))),
+                                            Some("AI_INFERRED".to_string()),
+                                        );
+                                    }
+                                    "nothing" => {
+                                        self.push_to_stack(
+                                            Value::RawValue(RawValue::Nothing),
+                                            Some("AI_INFERRED".to_string()),
+                                        );
+                                    }
+                                    _ => {
+                                        self.push_to_stack(
+                                            Value::RawValue(RawValue::Nothing),
+                                            Some("AI_INFERRED".to_string()),
+                                        );
+                                    }
+                                };
+                            } else {
                                 self.push_to_stack(
                                     Value::RawValue(RawValue::Nothing),
                                     Some("AI_INFERRED".to_string()),
                                 );
                             }
-                            _ => {
-                                self.push_to_stack(
-                                    Value::RawValue(RawValue::Nothing),
-                                    Some("AI_INFERRED".to_string()),
-                                );
-                            }
-                        };
-                    } else {
-                        self.push_to_stack(
-                            Value::RawValue(RawValue::Nothing),
-                            Some("AI_INFERRED".to_string()),
-                        );
+                        }
+                        _ => {}
                     }
                 }
                 Opcode::Add => {

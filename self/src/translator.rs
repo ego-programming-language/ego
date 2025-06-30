@@ -170,6 +170,25 @@ impl Translator {
                     pc.abs_diff(t.pc),
                 )
             }
+            Opcode::Call => {
+                // get u32 value. 4 bytes based on the type plus the current
+                let value_length = 4;
+                if t.pc + value_length >= t.bytecode.len() {
+                    panic!("Invalid print instruction at position {}", t.pc);
+                }
+
+                let value_bytes = &t.bytecode[t.pc + 1..t.pc + 5];
+                let number_of_args = u32::from_le_bytes(
+                    value_bytes.try_into().expect("Provided value is incorrect"),
+                );
+                t.pc += 4;
+
+                // identifier
+                t.pc += 1;
+                let (data_type, value_bytes) = t.get_value_length();
+
+                (Instruction::Call, pc.abs_diff(t.pc))
+            }
             Opcode::FFI_Call => {
                 // get u32 value. 4 bytes based on the type plus the current
                 let value_length = 4;

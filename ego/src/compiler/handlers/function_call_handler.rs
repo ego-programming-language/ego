@@ -18,13 +18,17 @@ pub fn function_call_as_bytecode(node: &CallExpression) -> Vec<u8> {
     bytecode.extend_from_slice(&args);
 
     // print instruction bytecode
-    let identifier_bytecode = get_bytecode(node.identifier.name.to_string());
+    let identifier_bytecode = get_bytecode("call".to_string());
     bytecode.push(identifier_bytecode);
 
     // number of args bytecode
     let num_of_args = args_len as u32;
     let num_of_args = bytes_from_32(Number::U32(num_of_args));
     bytecode.extend_from_slice(&num_of_args);
+
+    // identifier
+    let identifier_bytecode = Compiler::compile_raw_string(node.identifier.name.clone());
+    bytecode.extend_from_slice(&identifier_bytecode);
 
     bytecode
 }
