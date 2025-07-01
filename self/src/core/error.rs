@@ -5,6 +5,7 @@ pub enum VMErrorType {
     InvalidBinaryOperation(InvalidBinaryOperation),
     DivisionByZero(OperandsStackValue),
     UndeclaredIdentifierError(String),
+    NotCallableError(String),
 }
 
 pub struct VMError {
@@ -48,6 +49,7 @@ pub fn throw(error_type: VMErrorType) -> VMError {
         VMErrorType::UndeclaredIdentifierError(v) => {
             ("Undeclared identifier".to_string(), format!("{}", v))
         }
+        VMErrorType::NotCallableError(v) => ("Not callable member".to_string(), format!("{}", v)),
     };
 
     VMError {

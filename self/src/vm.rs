@@ -345,6 +345,23 @@ impl Vm {
                         _ => {
                             // get the identifier from the heap
                             if let Some(value) = self.call_stack.resolve(&identifier_name) {
+                                match value {
+                                    Value::HeapRef(v) => {
+                                        let heap_object = self.resolve_heap_ref(v);
+                                        if let HeapObject::Function(func) = heap_object {
+                                            println!("func: {:#?}", func);
+                                        } else {
+                                            return VMExecutionResult::terminate_with_errors(
+                                                VMErrorType::NotCallableError(identifier_name),
+                                            );
+                                        }
+                                    }
+                                    Value::RawValue(_) => {
+                                        return VMExecutionResult::terminate_with_errors(
+                                            VMErrorType::NotCallableError(identifier_name),
+                                        );
+                                    }
+                                }
                             } else {
                                 return VMExecutionResult::terminate_with_errors(
                                     VMErrorType::UndeclaredIdentifierError(identifier_name),

@@ -1,7 +1,7 @@
 #[derive(Debug)]
 pub struct Function {
-    identifier: String,
-    bytecode: Vec<u8>,
+    pub identifier: String,
+    pub bytecode: Vec<u8>,
 }
 
 impl Function {
