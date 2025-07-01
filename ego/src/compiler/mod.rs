@@ -166,10 +166,7 @@ impl Compiler {
                     "println" => handlers::print_as_bytecode(v), // both print types can be handled by the same function
                     "call" => handlers::call_as_bytecode(v),
                     "ai" => handlers::function_call_as_bytecode(v),
-                    _ => {
-                        // todo: handle custom defined callable members
-                        vec![]
-                    }
+                    _ => handlers::function_call_as_bytecode(v),
                 };
 
                 call_expression_bytecode

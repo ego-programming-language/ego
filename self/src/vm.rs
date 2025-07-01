@@ -264,8 +264,6 @@ impl Vm {
                     self.call_stack
                         .put_to_frame(identifier_name, Value::HeapRef(func_ref));
                 }
-                // PROBABLY BEHIND THE SCENE TO AVOID RUNTIME ERRORS
-                // WE SHOULD WRAP AI OPCODE WITHIN A BOOLEAN CAST OPCODE
                 Opcode::Call => {
                     self.pc += 1; // consume print opcode
                     let args = self.get_function_call_args();
@@ -287,6 +285,8 @@ impl Vm {
 
                     self.pc += 1; // go to next opcode
                     match identifier_name.as_str() {
+                        // PROBABLY BEHIND THE SCENE TO AVOID RUNTIME ERRORS
+                        // WE SHOULD WRAP AI OPCODE WITHIN A BOOLEAN CAST OPCODE
                         "ai" => {
                             let value = ai_handler(resolved_args, debug);
                             if let Some(v) = value {
@@ -341,7 +341,15 @@ impl Vm {
                                 );
                             }
                         }
-                        _ => {}
+                        _ => {
+                            // get the identifier from the heap
+                            if let Some(value) = self.call_stack.resolve(&identifier_name) {
+                            } else {
+                                return VMExecutionResult::terminate_with_errors(
+                                    VMErrorType::UndeclaredIdentifierError(identifier_name),
+                                );
+                            }
+                        }
                     }
                 }
                 Opcode::Add => {

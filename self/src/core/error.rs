@@ -4,6 +4,7 @@ pub enum VMErrorType {
     TypeCoercionError(OperandsStackValue), // maybe here we should have a more generic value, we'll see with time
     InvalidBinaryOperation(InvalidBinaryOperation),
     DivisionByZero(OperandsStackValue),
+    UndeclaredIdentifierError(String),
 }
 
 pub struct VMError {
@@ -43,6 +44,9 @@ pub fn throw(error_type: VMErrorType) -> VMError {
                 "Invalid division".to_string(),
                 format!("Cannot devide {source} by 0",),
             )
+        }
+        VMErrorType::UndeclaredIdentifierError(v) => {
+            ("Undeclared identifier".to_string(), format!("{}", v))
         }
     };
 
