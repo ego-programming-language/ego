@@ -99,8 +99,9 @@ impl Vm {
                             println!("LOAD_VAR <- {identifier_name}");
                         }
                     } else {
-                        // should be handled with ego errors
-                        panic!("{identifier_name} is not defined")
+                        return VMExecutionResult::terminate_with_errors(
+                            VMErrorType::UndeclaredIdentifierError(identifier_name),
+                        );
                     }
 
                     self.pc += 1;
