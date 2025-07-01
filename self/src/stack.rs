@@ -13,8 +13,13 @@ impl CallStack {
             stack: vec![StackFrame::new(0)],
         }
     }
-    pub fn push() {}
-    pub fn pop() {}
+    pub fn push(&mut self) {
+        // we (maybe) should save here the return pc
+        self.stack.push(StackFrame::new(0));
+    }
+    pub fn pop(&mut self) {
+        self.stack.pop();
+    }
     pub fn put_to_frame(&mut self, key: String, value: Value) {
         let last = self.stack.len() - 1;
         self.stack[last].put(key, value);

@@ -57,6 +57,11 @@ impl Vm {
             println!("last PC value: {}", self.bytecode.len());
             println!("-");
         }
+
+        self.run_bytecode(debug)
+    }
+
+    fn run_bytecode(&mut self, debug: bool) -> VMExecutionResult {
         while self.pc < self.bytecode.len() {
             match Opcode::to_opcode(self.bytecode[self.pc]) {
                 Opcode::LoadConst => {
@@ -347,9 +352,27 @@ impl Vm {
                             if let Some(value) = self.call_stack.resolve(&identifier_name) {
                                 match value {
                                     Value::HeapRef(v) => {
-                                        let heap_object = self.resolve_heap_ref(v);
+                                        // clone heap_object to be able to mutate the
+                                        // vm state
+                                        let heap_object = self.resolve_heap_ref(v).clone();
                                         if let HeapObject::Function(func) = heap_object {
-                                            println!("func: {:#?}", func);
+                                            // save and set state
+                                            let return_pc = self.pc;
+                                            let main_bytecode = std::mem::take(&mut self.bytecode);
+
+                                            self.call_stack.push();
+                                            self.bytecode = func.bytecode.clone();
+                                            self.pc = 0;
+
+                                            let function_exec_result = self.run_bytecode(debug);
+                                            if function_exec_result.error.is_some() {
+                                                return function_exec_result;
+                                            }
+
+                                            // recover state after execution
+                                            self.call_stack.pop();
+                                            self.pc = return_pc;
+                                            self.bytecode = main_bytecode;
                                         } else {
                                             return VMExecutionResult::terminate_with_errors(
                                                 VMErrorType::NotCallableError(identifier_name),

@@ -8,7 +8,7 @@ pub struct Heap {
     next_address: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum HeapObject {
     String(String),
     Function(Function),

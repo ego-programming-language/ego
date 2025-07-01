@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Function {
     pub identifier: String,
     pub bytecode: Vec<u8>,
