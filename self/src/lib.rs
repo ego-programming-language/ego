@@ -3,6 +3,7 @@ mod heap;
 mod instructions;
 mod opcodes;
 mod stack;
+mod std;
 mod translator;
 mod types;
 

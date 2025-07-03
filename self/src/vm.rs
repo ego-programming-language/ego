@@ -10,6 +10,7 @@ use crate::heap::HeapObject;
 use crate::heap::HeapRef;
 use crate::opcodes::DataType;
 use crate::opcodes::Opcode;
+use crate::std::fs;
 use crate::translator::Translator;
 use crate::types::object::func::Function;
 use crate::types::raw::RawValue;
@@ -345,6 +346,20 @@ impl Vm {
                                     Value::RawValue(RawValue::Nothing),
                                     Some("AI_INFERRED".to_string()),
                                 );
+                            }
+                        }
+                        "read_file" => {
+                            let value = fs::read_file(&resolved_args[0]);
+                            if let Ok(content) = value {
+                                let heap_ref = self.heap.allocate(HeapObject::String(content));
+                                self.push_to_stack(
+                                    Value::HeapRef(heap_ref),
+                                    Some("read_file".to_string()),
+                                );
+                            } else {
+                                return VMExecutionResult::terminate_with_errors(VMErrorType::Fs(
+                                    value.unwrap_err(),
+                                ));
                             }
                         }
                         _ => {

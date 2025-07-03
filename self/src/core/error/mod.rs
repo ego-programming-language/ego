@@ -55,6 +55,7 @@ pub fn throw(error_type: VMErrorType) -> VMError {
         VMErrorType::Fs(fs) => match fs {
             FsError::FileNotFound(s) => ("File not found".to_string(), format!("{}", s)),
             FsError::NotAFile(s) => ("Not a file".to_string(), format!("{}", s)),
+            FsError::ReadError(s) => ("Read error".to_string(), format!("{}", s)),
         },
     };
 
