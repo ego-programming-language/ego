@@ -113,7 +113,7 @@ context: {{ 'arg': {context} }}
 
     let client = Client::new();
     let request_body = ChatRequest {
-        model: "gpt-4".to_string(),
+        model: "gpt-4o".to_string(),
         messages: vec![Message {
             role: "system".to_string(),
             content: prompt,
