@@ -67,50 +67,45 @@ pub fn ai_handler(args: Vec<String>, debug: bool) -> Option<(String, String)> {
     }
     // we should try to avoid prompt injection
     // maybe using multiple prompts?
-    let prompt = format!("
-You are a machine embedded within another system. Your only function is to evaluate expressions and return a specific value. You must not reason out loud or provide explanations. Simply analyze the query and respond with a single value in the following format:
+    let prompt = format!(
+        "
+Analyze the query and respond with a single value in the following format:
 
 <value_type:value>
-bool:true
-bool:false
-number:12.3
-string:my favorite cat
-
 
 Valid value types:
 
-* `bool`: for logical expressions (e.g. true or false)
-* `number`: for numeric values
-* `nothing`: if you cannot determine a value type or if the expression produces no output
+* bool: for logical expressions (e.g. true or false)
+* number: for numeric values
+* nothing: if you cannot determine a value type or if the expression produces no output
+* string: for string values that are non other possible values
 
 Inputs:
 
 You are provided with two elements:
 
-1. **query**: a string that describes the operation to perform, for example:
-   \"print hello if <arg> is greater than 10\"
+query: a string that describes a condition for example:
+   '<arg> is greater than 10'
 
-2. **context**: a dictionary of variables and their current values, for example:
-   {{ \"arg\": 11 }}
+context: a dictionary of variables and their current values, for example:
+   {{ 'arg': 11 }}
 
-Context variables may appear in the query enclosed in < >, and you must evaluate them correctly.
+Context variables appears in the query enclosed in < >, and you must evaluate them correctly.
 
----
+Response rules: 
 
-Rules:
-
-* For boolean or logical values use `bool:true` or `bool:false`.
-* If the conditional expression is not met, respond with `nothing`.
+* For boolean or logical values use bool:true or bool:false.
+* If the conditional expression is not met, respond with nothing.
 * If there are no conditionals but you can infer the type and value, do so.
-* If you cannot determine a type with certainty, respond with `nothing`.
+* If you cannot determine a type with certainty, respond with nothing.
 * Never respond with any additional text. Only the final value.
----
 
-Start execution with the following input:
+Infer the following input: 
 
-**query**: {}
-**context**: {{ \"arg\": {} }}
-", request, context);
+query: {request} 
+context: {{ 'arg': {context} }}
+"
+    );
 
     let api_key = "unset-key"; //env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
 
