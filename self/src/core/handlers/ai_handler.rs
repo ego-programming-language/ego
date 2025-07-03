@@ -6,6 +6,8 @@ PROVIDER OR ENABLE USER IMPLEMENTATION OF
 PROVIDER.
 */
 
+use std::env;
+
 use regex::Regex;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
@@ -107,7 +109,7 @@ context: {{ 'arg': {context} }}
 "
     );
 
-    let api_key = "unset-key"; //env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
+    let api_key = env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
 
     let client = Client::new();
     let request_body = ChatRequest {
