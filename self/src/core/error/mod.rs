@@ -54,6 +54,7 @@ pub fn throw(error_type: VMErrorType) -> VMError {
         VMErrorType::NotCallableError(v) => ("Not callable member".to_string(), format!("{}", v)),
         VMErrorType::Fs(fs) => match fs {
             FsError::FileNotFound(s) => ("File not found".to_string(), format!("{}", s)),
+            FsError::NotAFile(s) => ("Not a file".to_string(), format!("{}", s)),
         },
     };
 
