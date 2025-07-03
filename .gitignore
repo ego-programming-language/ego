@@ -5,3 +5,4 @@ custom.toml
 *.txt
 wforeigns
 .env
+!LICENSE.txt

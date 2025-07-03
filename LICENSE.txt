@@ -1,0 +1,13 @@
+Custom License — Collaborative Use by Explicit Authorization Only
+
+Copyright (c) 2025 ego
+
+All rights reserved.
+
+This software is proprietary and confidential. No part of this software may be used, copied, modified, distributed, sublicensed, or incorporated into any other product, software, or project without prior written consent from the ego organization.
+
+Collaboration and contributions are strictly limited to individuals who have been explicitly authorized by the ego organization. Any unauthorized access, reproduction, use, or disclosure is strictly prohibited and may result in legal action.
+
+To request permission to access or contribute to this software, please contact the ego organization directly.
+
+Contact: contact.cristiansanchez@gmail.com
