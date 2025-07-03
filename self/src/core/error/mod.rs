@@ -1,5 +1,5 @@
-mod fs_errors;
-use crate::{core::error::fs_errors::Fs, opcodes::DataType, stack::OperandsStackValue};
+pub mod fs_errors;
+use crate::{core::error::fs_errors::FsError, opcodes::DataType, stack::OperandsStackValue};
 
 pub enum VMErrorType {
     TypeCoercionError(OperandsStackValue), // maybe here we should have a more generic value, we'll see with time
@@ -7,7 +7,7 @@ pub enum VMErrorType {
     DivisionByZero(OperandsStackValue),
     UndeclaredIdentifierError(String),
     NotCallableError(String),
-    Fs(Fs),
+    Fs(FsError),
 }
 
 pub struct VMError {
@@ -53,7 +53,7 @@ pub fn throw(error_type: VMErrorType) -> VMError {
         }
         VMErrorType::NotCallableError(v) => ("Not callable member".to_string(), format!("{}", v)),
         VMErrorType::Fs(fs) => match fs {
-            Fs::FileNotFound(s) => ("File not found".to_string(), format!("{}", s)),
+            FsError::FileNotFound(s) => ("File not found".to_string(), format!("{}", s)),
         },
     };
 

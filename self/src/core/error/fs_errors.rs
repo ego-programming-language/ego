@@ -1,3 +1,3 @@
-pub enum Fs {
+pub enum FsError {
     FileNotFound(String),
 }
