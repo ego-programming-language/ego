@@ -11,6 +11,7 @@ use std::env;
 use regex::Regex;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Serialize)]
 struct Message {
@@ -40,24 +41,28 @@ struct MessageContent {
 }
 
 fn ai_response_parser(response: &String) -> Option<(String, String)> {
-    let re = Regex::new(r"^(\w+):(.*)$").ok()?;
-    let caps = re.captures(response)?;
+    let cleaned = response
+        .trim()
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+    let json: Value = serde_json::from_str(cleaned).ok()?;
+    let raw_value = json.get("value")?;
 
-    let value_type = &caps[1];
-    let raw_value = &caps[2];
-
-    let is_valid = match value_type {
-        "bool" => matches!(raw_value, "true" | "false"),
-        "string" => !raw_value.is_empty(),
-        "number" => raw_value.parse::<f64>().is_ok(),
-        "nothing" => raw_value.is_empty(),
-        _ => false,
-    };
-
-    if is_valid {
-        Some((value_type.to_string(), raw_value.to_string()))
+    if raw_value.is_boolean() {
+        Some(("bool".to_string(), raw_value.to_string()))
+    } else if raw_value.is_number() {
+        Some(("number".to_string(), raw_value.to_string()))
+    } else if raw_value.is_string() {
+        let s = raw_value.as_str()?;
+        if s.trim().is_empty() || s.trim() == "nothing" {
+            Some(("nothing".to_string(), "nothing".to_string()))
+        } else {
+            Some(("string".to_string(), s.to_string()))
+        }
     } else {
-        None
+        Some(("nothing".to_string(), "nothing".to_string()))
     }
 }
 
@@ -71,20 +76,13 @@ pub fn ai_handler(args: Vec<String>, debug: bool) -> Option<(String, String)> {
     // maybe using multiple prompts?
     let prompt = format!(
         "
-Analyze the query and respond with a single value in the following format:
+Analyze the query and respond with a single value in the following json format:
 
-<value_type:value>
+{{
+  \"value\": response-value
+}}
 
-Valid value types:
-
-* bool: for logical expressions (e.g. true or false)
-* number: for numeric values
-* nothing: if you cannot determine a value type or if the expression produces no output
-* string: for string values that are non other possible values
-
-Inputs:
-
-You are provided with two elements:
+You are provided two elements:
 
 query: a string that describes a condition for example:
    '<arg> is greater than 10'
@@ -96,7 +94,7 @@ Context variables appears in the query enclosed in < >, and you must evaluate th
 
 Response rules: 
 
-* For boolean or logical values use bool:true or bool:false.
+* For boolean or logical values use true or false.
 * If the conditional expression is not met, respond with nothing.
 * If there are no conditionals but you can infer the type and value, do so.
 * If you cannot determine a type with certainty, respond with nothing.
