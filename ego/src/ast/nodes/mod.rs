@@ -13,11 +13,15 @@ pub mod import_statement;
 pub mod module;
 pub mod nothing;
 pub mod number;
+pub mod object_type;
 pub mod return_statement;
 pub mod string_literal;
+pub mod struct_declaration;
 pub mod vector;
 pub mod while_statement;
 use std::fmt;
+
+use crate::ast::{object_type::ObjectType, struct_declaration::Struct};
 
 use self::{
     assignament_statement::AssignamentNode, binary_expression::BinaryExpression, block::Block,
@@ -36,6 +40,8 @@ pub enum AstNodeType {
     ReturnStatement(ReturnStatement),
     BreakStatement(BreakStatement),
     ElseStatement(ElseStatement),
+    Struct(Struct),
+    ObjectType(ObjectType),
     Group(Group),
     Vector(Vector),
     Block(Block),
@@ -59,6 +65,8 @@ impl AstNodeType {
             AstNodeType::Expression(_v) => 0,
             AstNodeType::AssignamentStatement(v) => v.at,
             AstNodeType::FunctionDeclaration(v) => v.at,
+            AstNodeType::Struct(v) => v.at,
+            AstNodeType::ObjectType(v) => v.at,
         }
     }
 
@@ -76,6 +84,8 @@ impl AstNodeType {
             AstNodeType::Expression(_v) => 0,
             AstNodeType::AssignamentStatement(v) => v.line,
             AstNodeType::FunctionDeclaration(v) => v.line,
+            AstNodeType::Struct(v) => v.line,
+            AstNodeType::ObjectType(v) => v.line,
         }
     }
 }
@@ -93,6 +103,8 @@ impl fmt::Display for AstNodeType {
             AstNodeType::Group(_) => write!(f, "Group"),
             AstNodeType::Vector(_) => write!(f, "Vector"),
             AstNodeType::FunctionDeclaration(_) => write!(f, "FunctionDeclaration"),
+            AstNodeType::Struct(_) => write!(f, "Struct"),
+            AstNodeType::ObjectType(_) => write!(f, "ObjectType"),
             AstNodeType::AssignamentStatement(_) => write!(f, "AssignamentStatement"),
             AstNodeType::Expression(Expression::StringLiteral(_)) => write!(f, "StringLiteral"),
             AstNodeType::Expression(Expression::Number(_)) => write!(f, "Number"),

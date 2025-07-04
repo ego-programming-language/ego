@@ -11,7 +11,9 @@ use crate::{
         identifier::Identifier,
         module::ModuleAst,
         number::Number,
+        object_type::ObjectType,
         string_literal::StringLiteral,
+        struct_declaration::Struct,
         AstNodeType, Expression, LexerToken, LexerTokenType,
     },
     core::error::{self, ErrorType},
@@ -55,6 +57,10 @@ impl Module {
                 }
                 LexerTokenType::FnKeyword => {
                     let function_node = self.function_declaration();
+                    module_ast.add_child(function_node);
+                }
+                LexerTokenType::StructKeyword => {
+                    let function_node = self.struct_declaration();
                     module_ast.add_child(function_node);
                 }
                 LexerTokenType::Identifier => {
@@ -621,6 +627,140 @@ impl Module {
         ))
     }
 
+    // struct Person {
+    //   name: string,
+    //   surname: string,
+    //   phone_number: number
+    // }
+    fn struct_declaration(&self) -> AstNodeType {
+        // consume 'struct' keyword
+        self.next();
+
+        // consume struct identifier
+        let token = self.peek("<Identifier>");
+        if token.token_type != LexerTokenType::Identifier {
+            error::throw(
+                ErrorType::SyntaxError,
+                format!("Expected '<identifier>' but got '{}'", token.value).as_str(),
+                Some(token.line),
+            )
+        }
+        let identifier_node = Identifier::new(token.value.clone(), token.at, token.line);
+        self.next();
+
+        // check for block
+        let token = self.peek("{");
+        let node = self.object_type();
+        let object_type_node = match node {
+            AstNodeType::ObjectType(b) => b,
+            _ => {
+                error::throw(
+                    ErrorType::ParsingError,
+                    "Expected object type for struct declaration",
+                    Some(token.line),
+                );
+                std::process::exit(1);
+            }
+        };
+
+        AstNodeType::Struct(Struct::new(
+            identifier_node,
+            object_type_node,
+            token.at,
+            token.line,
+        ))
+    }
+
+    // {
+    //   key: string,
+    //   ...: string,
+    //   ...: number
+    // }
+    fn object_type(&self) -> AstNodeType {
+        // check '{'
+        let token = self.unsafe_peek();
+        if token.token_type == LexerTokenType::OpenCurlyBrace {
+            self.next();
+        } else {
+            error::throw(
+                ErrorType::SyntaxError,
+                format!(
+                    "Unexpected token '{}' in block opening for struct declaration",
+                    token.value
+                )
+                .as_str(),
+                Some(token.line),
+            )
+        };
+
+        let mut object_type_node = ObjectType::new(token.at, token.line);
+
+        // here go, field by field
+        // get inside block ast nodes & check '}'
+        let mut closed = false;
+
+        while self.is_peekable() {
+            // consume identifier
+            let token = self.peek("<Identifier>");
+            if token.token_type != LexerTokenType::Identifier {
+                error::throw(
+                    ErrorType::SyntaxError,
+                    format!("Expected '<identifier>' but got '{}'", token.value).as_str(),
+                    Some(token.line),
+                )
+            }
+            let mut identifier_node = Identifier::new(token.value.clone(), token.at, token.line);
+
+            // check if is 'field_name:'
+            self.next();
+            if self.is_peekable() {
+                let token = self.unsafe_peek();
+
+                if token.token_type != LexerTokenType::Colon {
+                    error::throw(
+                        ErrorType::SyntaxError,
+                        format!("Expected ':' but got '{}'", token.value).as_str(),
+                        Some(token.line),
+                    )
+                };
+            }
+
+            // get type anotation or none
+            let type_annotation = self.type_annotation();
+            identifier_node.set_annotation(type_annotation);
+
+            // add field to the object_type_node
+            object_type_node.add_field(identifier_node);
+
+            // check for closing '}' or the ',' after field
+            let end_of_field = self.peek("<,>");
+            if LexerTokenType::Comma == end_of_field.token_type {
+                self.next();
+            } else if LexerTokenType::CloseCurlyBrace == end_of_field.token_type {
+                closed = true;
+                self.next();
+                break;
+            } else {
+                error::throw(
+                    ErrorType::SyntaxError,
+                    format!("Expected '}}' but got '{}'", end_of_field.value).as_str(),
+                    Some(token.line),
+                )
+            };
+        }
+
+        // non closed Block
+        if !closed {
+            error::throw(
+                ErrorType::SyntaxError,
+                "Expected '}' for block close",
+                Some(token.line),
+            );
+        };
+
+        AstNodeType::ObjectType(object_type_node)
+    }
+
     // if (true) {...}
     fn if_statement(&self) -> AstNodeType {
         // consume 'if' keyword
@@ -1155,7 +1295,7 @@ impl Module {
 
     // : bool | : string | : number | : nothing
     fn type_annotation(&self) -> Option<Type> {
-        if self.peek("=").token_type == LexerTokenType::Colon {
+        if self.peek(":").token_type == LexerTokenType::Colon {
             // consume ':'
             self.next();
             if self.is_peekable() {
