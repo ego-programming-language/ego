@@ -998,7 +998,7 @@ impl Vm {
                 // print instruction
                 let (instruction, offset) = Translator::get_instruction(pc, &self.bytecode);
                 let raw_instruction = format!("{}|    {:#?}", printable_index, self.bytecode[pc]);
-                println!("{}-----{}", raw_instruction, instruction.get_type());
+                println!("{} <---- {}", raw_instruction, instruction.get_type());
 
                 let instruction_info = Translator::get_instruction_info(&instruction);
                 if instruction_info.len() > 0 {
