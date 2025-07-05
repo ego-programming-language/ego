@@ -28,6 +28,10 @@ pub enum Instruction {
     FuncDec {
         identifier: String,
     },
+    StructDec {
+        identifier: String,
+        fields: Vec<String>,
+    },
     Print {
         number_of_args: u32,
     },
@@ -65,6 +69,7 @@ impl Instruction {
             Instruction::Equals => "Equals".to_string(),
             Instruction::NotEquals => "NotEquals".to_string(),
             Instruction::FuncDec { identifier } => "FuncDec".to_string(),
+            Instruction::StructDec { identifier, fields } => "StructDec".to_string(),
             Instruction::Print { number_of_args } => "Print".to_string(),
             Instruction::Println { number_of_args } => "Println".to_string(),
             Instruction::Call => "Call".to_string(),

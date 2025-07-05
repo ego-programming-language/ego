@@ -271,6 +271,47 @@ impl Vm {
                     self.call_stack
                         .put_to_frame(identifier_name, Value::HeapRef(func_ref));
                 }
+                Opcode::StructDec => {
+                    // skip StructDec opcode
+                    self.pc += 1;
+
+                    // identifier
+                    let (identifier_data_type, identifier_bytes) = self.get_value_length();
+                    if identifier_data_type != DataType::Utf8 {
+                        // TODO: use self-vm errors
+                        panic!("Identifier type should be a string encoded as utf8")
+                    }
+
+                    // TODO: use self-vm errors
+                    let identifier_name = String::from_utf8(identifier_bytes)
+                        .expect("Identifier bytes should be valid UTF-8");
+
+                    // read fields number
+                    self.pc += 1;
+                    let fields_num = Vm::read_offset(&self.bytecode[self.pc..self.pc + 4]);
+                    self.pc += 4;
+
+                    // struct fields [raw_string][type][raw_string][type]
+                    //               (x)B        1B    (x)B        1B
+                    let mut counter = 0;
+                    while counter < fields_num {
+                        // field
+                        let (field_data_type, field_bytes) = self.get_value_length();
+                        if field_data_type != DataType::Utf8 {
+                            // TODO: use self-vm errors
+                            panic!("Identifier type should be a string encoded as utf8")
+                        }
+                        let field_name = String::from_utf8(field_bytes)
+                            .expect("Field bytes should be valid UTF-8"); // TODO: use self-vm errors
+                        self.pc += 1;
+
+                        // annotation
+                        let annotation = DataType::to_opcode(self.bytecode[self.pc]);
+                        self.pc += 1;
+
+                        counter += 1;
+                    }
+                }
                 Opcode::Call => {
                     self.pc += 1; // consume print opcode
                     let args = self.get_function_call_args();
@@ -888,7 +929,8 @@ impl Vm {
         }
     }
 
-    fn read_offset(bytes: &[u8]) -> i32 {
+    pub fn read_offset(bytes: &[u8]) -> i32 {
+        // TODO: use self-vm errors
         let arr: [u8; 4] = bytes.try_into().expect("slice with incorrect length");
         i32::from_le_bytes(arr)
     }
@@ -957,14 +999,11 @@ impl Vm {
                 let (instruction, offset) = Translator::get_instruction(pc, &self.bytecode);
                 let raw_instruction = format!("{}|    {:#?}", printable_index, self.bytecode[pc]);
                 println!("{}-----{}", raw_instruction, instruction.get_type());
-                println!(
-                    "{}     {}",
-                    raw_instruction
-                        .chars()
-                        .map(|_| " ".to_string())
-                        .collect::<String>(),
-                    Translator::get_instruction_info(&instruction)
-                );
+
+                let instruction_info = Translator::get_instruction_info(&instruction);
+                if instruction_info.len() > 0 {
+                    println!("------------ \n{}\n------------", instruction_info);
+                }
                 // + 1  the normal iteration increment over the bytecode
                 target_pc = pc + offset + 1;
             } else {

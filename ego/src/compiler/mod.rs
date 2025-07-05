@@ -1,9 +1,10 @@
 mod bytecode;
 mod handlers;
 
+use crate::core::error::{self, ErrorType};
 use bytecode::get_bytecode;
 use self_vm::utils::{
-    to_bytes::{bytes_from_32, bytes_from_64, bytes_from_float, bytes_from_utf8},
+    to_bytes::{bytes_from_32, bytes_from_64, bytes_from_float},
     Number,
 };
 
@@ -14,9 +15,10 @@ use crate::ast::{
     group::Group,
     if_statement::IfStatement,
     module::ModuleAst,
-    number::Number as ASTNumber,
+    objects::ObjectType,
+    structs::Struct,
     while_statement::WhileStatement,
-    AstNodeType, Expression,
+    AstNodeType, Expression, Type,
 };
 
 pub struct Compiler {
@@ -52,6 +54,7 @@ impl Compiler {
             AstNodeType::IfStatement(node) => Compiler::compile_if_statement(node),
             AstNodeType::Expression(node) => Compiler::compile_expression(node),
             AstNodeType::WhileStatement(node) => Compiler::compile_while_statement(node),
+            AstNodeType::Struct(node) => Compiler::compile_struct_declaration(node),
             _ => {
                 // panic!("unhandled node type")
                 // here we should, in the near future throw an error
@@ -104,6 +107,23 @@ impl Compiler {
 
         bytecode.extend_from_slice(&Compiler::compile_offset(body_bytecode_length));
         bytecode.extend_from_slice(&body_bytecode);
+
+        bytecode
+    }
+
+    fn compile_struct_declaration(node: &Struct) -> Vec<u8> {
+        let mut bytecode = vec![];
+        // op
+        bytecode.push(get_bytecode("struct_declaration".to_string()));
+
+        // identifier raw string
+        bytecode.extend_from_slice(&Compiler::compile_raw_string(node.identifier.name.clone()));
+
+        // compile object fields number
+        bytecode.extend_from_slice(&Compiler::compile_offset(node.fields.fields.len() as i32));
+
+        // object type
+        bytecode.extend_from_slice(&Compiler::compile_object_type(&node.fields));
 
         bytecode
     }
@@ -297,6 +317,33 @@ impl Compiler {
         }
 
         (node.children.len(), bytecode)
+    }
+
+    fn compile_object_type(node: &ObjectType) -> Vec<u8> {
+        let mut bytecode = vec![];
+
+        for field in &node.fields {
+            bytecode.extend_from_slice(&Compiler::compile_raw_string(field.name.to_string()));
+            if let Some(annotation) = field.annotation {
+                // tyte it's a funny name for type_byte
+                let tyte = match annotation {
+                    Type::Bool => get_bytecode("bool".to_string()),
+                    Type::String => get_bytecode("utf8".to_string()),
+                    Type::Number => get_bytecode("f64".to_string()),
+                    Type::Nothing => get_bytecode("nothing".to_string()),
+                };
+                bytecode.push(tyte);
+            } else {
+                // this code should be unreachable
+                error::throw(
+                    ErrorType::CompilationError,
+                    "object type's identifier must be annotated",
+                    Some(node.line),
+                );
+            }
+        }
+
+        bytecode
     }
 
     fn compile_raw_string(v: String) -> Vec<u8> {
