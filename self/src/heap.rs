@@ -1,6 +1,6 @@
 use std::{clone, collections::HashMap};
 
-use crate::types::object::func::Function;
+use crate::types::object::{func::Function, structs::StructDeclaration};
 
 #[derive(Debug)]
 pub struct Heap {
@@ -12,6 +12,7 @@ pub struct Heap {
 pub enum HeapObject {
     String(String),
     Function(Function),
+    StructDeclaration(StructDeclaration),
     // functions
     // lists
     // ...
@@ -21,7 +22,8 @@ impl HeapObject {
     pub fn to_string(&self) -> String {
         match self {
             HeapObject::String(x) => x.to_string(),
-            HeapObject::Function(x) => x.to_string().clone(),
+            HeapObject::Function(x) => x.to_string(),
+            HeapObject::StructDeclaration(x) => x.to_string(),
         }
     }
 }

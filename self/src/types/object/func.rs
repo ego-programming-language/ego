@@ -11,7 +11,7 @@ impl Function {
             bytecode,
         }
     }
-    pub fn to_string(&self) -> &String {
-        &self.identifier
+    pub fn to_string(&self) -> String {
+        self.identifier.clone()
     }
 }

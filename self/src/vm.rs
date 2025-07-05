@@ -13,6 +13,7 @@ use crate::opcodes::Opcode;
 use crate::std::fs;
 use crate::translator::Translator;
 use crate::types::object::func::Function;
+use crate::types::object::structs::StructDeclaration;
 use crate::types::raw::RawValue;
 use crate::types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8};
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
@@ -294,6 +295,7 @@ impl Vm {
                     // struct fields [raw_string][type][raw_string][type]
                     //               (x)B        1B    (x)B        1B
                     let mut counter = 0;
+                    let mut fields = vec![];
                     while counter < fields_num {
                         // field
                         let (field_data_type, field_bytes) = self.get_value_length();
@@ -309,8 +311,19 @@ impl Vm {
                         let annotation = DataType::to_opcode(self.bytecode[self.pc]);
                         self.pc += 1;
 
+                        fields.push((field_name, annotation));
                         counter += 1;
                     }
+
+                    // struct declaration
+                    let struct_declaration =
+                        StructDeclaration::new(identifier_name.clone(), fields);
+                    // push to declaration heap
+                    let heap_ref = self
+                        .heap
+                        .allocate(HeapObject::StructDeclaration(struct_declaration));
+                    self.call_stack
+                        .put_to_frame(identifier_name, Value::HeapRef(heap_ref));
                 }
                 Opcode::Call => {
                     self.pc += 1; // consume print opcode
