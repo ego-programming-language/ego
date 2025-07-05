@@ -13,15 +13,18 @@ pub mod import_statement;
 pub mod module;
 pub mod nothing;
 pub mod number;
-pub mod object_type;
+pub mod objects;
 pub mod return_statement;
 pub mod string_literal;
-pub mod struct_declaration;
+pub mod structs;
 pub mod vector;
 pub mod while_statement;
 use std::fmt;
 
-use crate::ast::{object_type::ObjectType, struct_declaration::Struct};
+use crate::ast::{
+    objects::{ObjectLiteral, ObjectType},
+    structs::{Struct, StructLiteral},
+};
 
 use self::{
     assignament_statement::AssignamentNode, binary_expression::BinaryExpression, block::Block,
@@ -103,8 +106,6 @@ impl fmt::Display for AstNodeType {
             AstNodeType::Group(_) => write!(f, "Group"),
             AstNodeType::Vector(_) => write!(f, "Vector"),
             AstNodeType::FunctionDeclaration(_) => write!(f, "FunctionDeclaration"),
-            AstNodeType::Struct(_) => write!(f, "Struct"),
-            AstNodeType::ObjectType(_) => write!(f, "ObjectType"),
             AstNodeType::AssignamentStatement(_) => write!(f, "AssignamentStatement"),
             AstNodeType::Expression(Expression::StringLiteral(_)) => write!(f, "StringLiteral"),
             AstNodeType::Expression(Expression::Number(_)) => write!(f, "Number"),
@@ -114,6 +115,10 @@ impl fmt::Display for AstNodeType {
             AstNodeType::Expression(Expression::CallExpression(node)) => {
                 write!(f, "CallExpression: {:#?}", node)
             }
+            AstNodeType::Struct(_) => write!(f, "Struct"),
+            AstNodeType::ObjectType(_) => write!(f, "ObjectType"),
+            AstNodeType::Expression(Expression::StructLiteral(_)) => write!(f, "StructLiteral"),
+            AstNodeType::Expression(Expression::ObjectLiteral(_)) => write!(f, "ObjectLiteral"),
             AstNodeType::Expression(Expression::BinaryExpression(_)) => {
                 write!(f, "BinaryExpression")
             }
@@ -136,6 +141,8 @@ pub enum Expression {
     Identifier(Identifier),
     BinaryExpression(BinaryExpression),
     CallExpression(CallExpression),
+    StructLiteral(StructLiteral),
+    ObjectLiteral(ObjectLiteral),
     Nothing(Nothing),
 }
 

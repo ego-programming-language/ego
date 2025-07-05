@@ -177,6 +177,14 @@ fn exec_block(
                             )),
                             scopes,
                         ),
+                        _ => {
+                            error::throw(
+                                ErrorType::InterpretingError,
+                                format!("Expression type not implemented").as_str(), 
+                                None
+                            );
+                            std::process::exit(1);
+                        },
                     };
                     break;
                 } else {
@@ -407,6 +415,14 @@ fn calc_expression(node: &Expression, scopes: &mut ScopesStack) -> Option<Runtim
             };
             scopes.pop();
             call_expression_return
+        }
+        _ => {
+            error::throw(
+                ErrorType::InterpretingError,
+                format!("Expression type not implemented").as_str(), 
+                None
+            );
+            std::process::exit(1);
         }
     }
 }

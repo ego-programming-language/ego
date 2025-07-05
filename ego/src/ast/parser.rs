@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::{cell::Cell, os::unix::process};
 
 use crate::{
     ast::{
@@ -11,9 +11,9 @@ use crate::{
         identifier::Identifier,
         module::ModuleAst,
         number::Number,
-        object_type::ObjectType,
+        objects::{ObjectLiteral, ObjectType},
         string_literal::StringLiteral,
-        struct_declaration::Struct,
+        structs::{Struct, StructLiteral},
         AstNodeType, Expression, LexerToken, LexerTokenType,
     },
     core::error::{self, ErrorType},
@@ -153,7 +153,7 @@ impl Module {
         } else {
             error::throw(
                 ErrorType::SyntaxError,
-                format!("Unexpected token '{}' in block opening", token.value).as_str(),
+                format!("Unexpected token '{}' in block openning", token.value).as_str(),
                 Some(token.line),
             )
         }
@@ -300,6 +300,13 @@ impl Module {
                         Expression::BinaryExpression(_) => {
                             last_token = Some(LexerTokenType::Number)
                         }
+                        Expression::StructLiteral(_) => {
+                            last_token = Some(LexerTokenType::Identifier)
+                        }
+                        Expression::ObjectLiteral(_) => {
+                            // use identifier as a fallback
+                            last_token = Some(LexerTokenType::Identifier)
+                        }
                     }
                     group_node.add_child(Some(node));
                 }
@@ -381,6 +388,13 @@ impl Module {
                         }
                         Expression::BinaryExpression(_) => {
                             last_token = Some(LexerTokenType::Number)
+                        }
+                        Expression::StructLiteral(_) => {
+                            last_token = Some(LexerTokenType::Identifier)
+                        }
+                        Expression::ObjectLiteral(_) => {
+                            // use identifier as a fallback
+                            last_token = Some(LexerTokenType::Identifier)
                         }
                     }
                     vector_node.add_child(Some(node));
@@ -685,7 +699,7 @@ impl Module {
             error::throw(
                 ErrorType::SyntaxError,
                 format!(
-                    "Unexpected token '{}' in block opening for struct declaration",
+                    "Unexpected token '{}' in block openning for object type declaration",
                     token.value
                 )
                 .as_str(),
@@ -1219,10 +1233,15 @@ impl Module {
                 ))
             }
             LexerTokenType::Identifier => {
-                // check if is identifier or identifier call expression
+                // check the identifier context:
+                //   - variable identifier: x
+                //   - identifier call: x()
+                //   - struct declaration: X {...}
                 if let Some(next) = self.peek_next() {
                     if next.token_type == LexerTokenType::OpenParenthesis {
                         self.call_expression()
+                    } else if next.token_type == LexerTokenType::OpenCurlyBrace {
+                        self.struct_literal()
                     } else {
                         self.next();
                         Expression::Identifier(Identifier::new(
@@ -1291,6 +1310,136 @@ impl Module {
             at,
             line,
         ))
+    }
+
+    // Person {
+    //   name: string,
+    //   surname: string,
+    //   phone_number: number
+    // }
+    fn struct_literal(&self) -> Expression {
+        // consume struct identifier
+        let token = self.peek("<Identifier>");
+        if token.token_type != LexerTokenType::Identifier {
+            error::throw(
+                ErrorType::SyntaxError,
+                format!("Expected '<identifier>' but got '{}'", token.value).as_str(),
+                Some(token.line),
+            )
+        }
+        let identifier_node = Identifier::new(token.value.clone(), token.at, token.line);
+
+        // check for block
+        self.next();
+        let node = self.object_literal();
+        let object_literal_node = match node {
+            Expression::ObjectLiteral(b) => b,
+            _ => {
+                error::throw(
+                    ErrorType::ParsingError,
+                    "Expected 'object literal' for struct initialization",
+                    Some(token.line),
+                );
+                std::process::exit(1);
+            }
+        };
+
+        Expression::StructLiteral(StructLiteral::new(
+            identifier_node,
+            object_literal_node,
+            token.at,
+            token.line,
+        ))
+    }
+
+    // {
+    //   key: value,
+    //   ...: value,
+    //   ...: value
+    // }
+    fn object_literal(&self) -> Expression {
+        // check '{'
+        let token = self.unsafe_peek();
+        if token.token_type == LexerTokenType::OpenCurlyBrace {
+            self.next();
+        } else {
+            error::throw(
+                ErrorType::SyntaxError,
+                format!(
+                    "Unexpected token '{}' in block openning for object literal declaration",
+                    token.value
+                )
+                .as_str(),
+                Some(token.line),
+            )
+        };
+
+        let mut object_literal_node = ObjectLiteral::new(token.at, token.line);
+
+        // here go, field by field
+        // get inside block ast nodes & check '}'
+        let mut closed = false;
+
+        while self.is_peekable() {
+            // consume identifier
+            let token = self.peek("<Identifier>");
+            if token.token_type != LexerTokenType::Identifier {
+                error::throw(
+                    ErrorType::SyntaxError,
+                    format!("Expected '<identifier>' but got '{}'", token.value).as_str(),
+                    Some(token.line),
+                )
+            }
+            let identifier_node = Identifier::new(token.value.clone(), token.at, token.line);
+
+            // check if is 'field_name:'
+            self.next();
+            if self.is_peekable() {
+                let token = self.unsafe_peek();
+
+                if token.token_type != LexerTokenType::Colon {
+                    error::throw(
+                        ErrorType::SyntaxError,
+                        format!("Expected ':' but got '{}'", token.value).as_str(),
+                        Some(token.line),
+                    )
+                };
+            }
+
+            // get field expression
+            self.next();
+            let expression_node = self.parse_comparison();
+
+            // add field to the object_type_node
+            object_literal_node.add_field(identifier_node, expression_node);
+
+            // check for closing '}' or the ',' after field
+            let end_of_field = self.peek("<,>");
+            if LexerTokenType::Comma == end_of_field.token_type {
+                self.next();
+            } else if LexerTokenType::CloseCurlyBrace == end_of_field.token_type {
+                closed = true;
+                self.next();
+                break;
+            } else {
+                error::throw(
+                    ErrorType::SyntaxError,
+                    format!("Expected '}}' but got '{}'", end_of_field.value).as_str(),
+                    Some(token.line),
+                )
+            };
+        }
+
+        // non closed Block
+        if !closed {
+            error::throw(
+                ErrorType::SyntaxError,
+                "Expected '}' for block close",
+                Some(token.line),
+            );
+        };
+
+        Expression::ObjectLiteral(object_literal_node)
     }
 
     // : bool | : string | : number | : nothing
