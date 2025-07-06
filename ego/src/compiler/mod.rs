@@ -1,7 +1,10 @@
 mod bytecode;
 mod handlers;
 
-use crate::core::error::{self, ErrorType};
+use crate::{
+    ast::{objects::ObjectLiteral, string_literal::StringLiteral},
+    core::error::{self, ErrorType},
+};
 use bytecode::get_bytecode;
 use self_vm::utils::{
     to_bytes::{bytes_from_32, bytes_from_64, bytes_from_float},
@@ -191,6 +194,33 @@ impl Compiler {
 
                 call_expression_bytecode
             }
+            Expression::StructLiteral(v) => {
+                let mut bytecode = vec![];
+
+                // first, load field values onto the stack
+                let (fields_num, object_literal_bytecode) =
+                    &Compiler::compile_object_literal(&v.fields);
+                bytecode.extend_from_slice(&object_literal_bytecode);
+
+                // compile struct
+                bytecode.push(get_bytecode("load_const".to_string()));
+                bytecode.push(get_bytecode("struct_literal".to_string()));
+
+                // identifier raw string
+                bytecode.extend_from_slice(&Compiler::compile_expression(
+                    &Expression::StringLiteral(StringLiteral::new(
+                        v.identifier.name.clone(),
+                        v.identifier.name.clone(),
+                        v.at,
+                        v.line,
+                    )),
+                ));
+
+                // compile object fields number
+                bytecode.extend_from_slice(&Compiler::compile_offset(*fields_num as i32));
+
+                bytecode
+            }
             Expression::Number(v) => {
                 let mut bytecode = vec![];
                 bytecode.push(get_bytecode("load_const".to_string()));
@@ -344,6 +374,20 @@ impl Compiler {
         }
 
         bytecode
+    }
+
+    fn compile_object_literal(node: &ObjectLiteral) -> (usize, Vec<u8>) {
+        let mut bytecode = vec![];
+
+        for field in &node.fields {
+            // load field_namde
+            bytecode.push(get_bytecode("load_const".to_string()));
+            bytecode.extend_from_slice(&Compiler::compile_raw_string(field.0.name.clone()));
+            // load expression
+            bytecode.extend_from_slice(&Compiler::compile_expression(&field.1));
+        }
+
+        (node.fields.len(), bytecode)
     }
 
     fn compile_raw_string(v: String) -> Vec<u8> {

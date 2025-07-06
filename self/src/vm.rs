@@ -14,9 +14,11 @@ use crate::std::fs;
 use crate::translator::Translator;
 use crate::types::object::func::Function;
 use crate::types::object::structs::StructDeclaration;
+use crate::types::object::structs::StructLiteral;
 use crate::types::raw::RawValue;
 use crate::types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8};
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
+use std::collections::HashMap;
 
 use super::stack::*;
 use super::types::*;
@@ -77,6 +79,7 @@ impl Vm {
 
                     // execution
                     let (value, printable_value) = self.bytes_to_data(&data_type, &value_bytes);
+
                     self.push_to_stack(value, None);
                     if debug {
                         println!("LOAD_CONST <- {:?}({printable_value})", data_type);
@@ -802,6 +805,14 @@ impl Vm {
         }
     }
 
+    fn free_heap_ref(&mut self, address: HeapRef) -> HeapObject {
+        if let Some(obj) = self.heap.free(address) {
+            return obj;
+        } else {
+            panic!("cannot free heap ref. ref is not defined in the heap")
+        }
+    }
+
     fn get_value_length(&mut self) -> (DataType, Vec<u8>) {
         let data_type = DataType::to_opcode(self.bytecode[self.pc]);
         let value_length = match data_type {
@@ -825,8 +836,23 @@ impl Vm {
                 } else {
                     panic!("Unexpected value type for string length");
                 }
-            } // hardcoded for the moment
+            }
+            DataType::StructLiteral => {
+                self.pc += 3; // skip struct opcode and utf8 opcode
+                let (data_type, value) = self.get_value_length();
+                if data_type != DataType::U32 {
+                    panic!("bad utf8 value length")
+                }
+
+                let (string_length, _) = self.bytes_to_data(&DataType::U32, &value);
+                if let Value::RawValue(RawValue::U32(val)) = string_length {
+                    val.value as usize + 4 // '+ 4' to include the fields count encoded in 4 bytes
+                } else {
+                    panic!("Unexpected value type for string length");
+                }
+            }
             _ => {
+                println!("data_type: {:#?}", data_type);
                 panic!("Unsupported datatype")
             }
         };
@@ -900,6 +926,59 @@ impl Vm {
                 printable_value = value.to_string();
 
                 let value_ref = self.heap.allocate(HeapObject::String(value));
+                Value::HeapRef(value_ref)
+            }
+            DataType::StructLiteral => {
+                let fields_count_bytes = if value.len() >= 4 {
+                    &value[value.len() - 4..]
+                } else {
+                    panic!("Struct literal must contain more than 4 bytes");
+                };
+
+                let fields_count = u32::from_le_bytes(
+                    fields_count_bytes
+                        .try_into()
+                        .expect("Provided value is incorrect"),
+                );
+
+                // we made *2 because, we're storing the field_value and the field_name
+                let mut fields: HashMap<String, Value> = HashMap::new();
+                let flat_fields = self.get_stack_values(&(fields_count * 2));
+                for i in (0..fields_count * 2).step_by(2) {
+                    let field_name_ref = flat_fields[i as usize].clone();
+                    let field_value = flat_fields[(i + 1) as usize].clone();
+
+                    // this is because we're using the existent infra for utf8 values
+                    // and they are a heap allocated value, but there is also infra to
+                    // storing strings in the stack and not in the heap
+                    if let Value::HeapRef(field_ref) = field_name_ref {
+                        let field_name = self.free_heap_ref(field_ref);
+                        if let HeapObject::String(field_name) = field_name {
+                            // add field with it's value to StructLiteral fields
+                            fields.insert(field_name, field_value);
+                        } else {
+                            // TODO: handle with self-vm errors system
+                            panic!("struct field_name must be a HeapObject of type string");
+                        }
+                    } else {
+                        // TODO: handle with self-vm errors system
+                        panic!("struct field_name must be a HeapRef of a string");
+                    };
+                }
+
+                let struct_identifier =
+                    // TODO: handle with self-vm errors system
+                    std::str::from_utf8(&value[..value.len() - 4])
+                        .expect("invalid UTF-8")
+                        .to_string();
+                printable_value = struct_identifier.to_string();
+
+                // here we should check if the struct exists and the each field
+                // before allocating it in the heap
+                let struct_literal = StructLiteral::new(struct_identifier, fields);
+                let value_ref = self
+                    .heap
+                    .allocate(HeapObject::StructLiteral(struct_literal));
                 Value::HeapRef(value_ref)
             }
             DataType::Bool => {

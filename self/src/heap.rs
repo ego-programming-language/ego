@@ -1,6 +1,9 @@
 use std::{clone, collections::HashMap};
 
-use crate::types::object::{func::Function, structs::StructDeclaration};
+use crate::types::object::{
+    func::Function,
+    structs::{StructDeclaration, StructLiteral},
+};
 
 #[derive(Debug)]
 pub struct Heap {
@@ -13,19 +16,10 @@ pub enum HeapObject {
     String(String),
     Function(Function),
     StructDeclaration(StructDeclaration),
+    StructLiteral(StructLiteral),
     // functions
     // lists
     // ...
-}
-
-impl HeapObject {
-    pub fn to_string(&self) -> String {
-        match self {
-            HeapObject::String(x) => x.to_string(),
-            HeapObject::Function(x) => x.to_string(),
-            HeapObject::StructDeclaration(x) => x.to_string(),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +46,10 @@ impl Heap {
         self.memory.get(&heap_ref.address)
     }
 
+    pub fn free(&mut self, heap_ref: HeapRef) -> Option<HeapObject> {
+        self.memory.remove(&heap_ref.address)
+    }
+
     // we do not free memory for the moment xD
 }
 
@@ -62,5 +60,16 @@ impl HeapRef {
 
     pub fn get_address(&self) -> usize {
         self.address
+    }
+}
+
+impl HeapObject {
+    pub fn to_string(&self) -> String {
+        match self {
+            HeapObject::String(x) => x.to_string(),
+            HeapObject::Function(x) => x.to_string(),
+            HeapObject::StructDeclaration(x) => x.to_string(),
+            HeapObject::StructLiteral(x) => x.to_string(),
+        }
     }
 }
