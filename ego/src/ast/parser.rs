@@ -1,4 +1,4 @@
-use std::{cell::Cell, os::unix::process};
+use std::cell::Cell;
 
 use crate::{
     ast::{
@@ -9,6 +9,7 @@ use crate::{
         function_declaration::FunctionDeclaration,
         group::Group,
         identifier::Identifier,
+        member_expression::MemberExpression,
         module::ModuleAst,
         number::Number,
         objects::{ObjectLiteral, ObjectType},
@@ -307,6 +308,10 @@ impl Module {
                             // use identifier as a fallback
                             last_token = Some(LexerTokenType::Identifier)
                         }
+                        Expression::MemberExpression(_) => {
+                            // use identifier as a fallback
+                            last_token = Some(LexerTokenType::Identifier)
+                        }
                     }
                     group_node.add_child(Some(node));
                 }
@@ -394,6 +399,9 @@ impl Module {
                         }
                         Expression::ObjectLiteral(_) => {
                             // use identifier as a fallback
+                            last_token = Some(LexerTokenType::Identifier)
+                        }
+                        Expression::MemberExpression(_) => {
                             last_token = Some(LexerTokenType::Identifier)
                         }
                     }
@@ -1053,7 +1061,7 @@ impl Module {
                     self.assignment_statement()
                 }
                 // [Property acess] should handle <a.value> here
-                //LexerTokenType::Dot => {}
+                LexerTokenType::Dot => AstNodeType::Expression(self.member_expression()),
                 _ => {
                     error::throw(
                         ErrorType::SyntaxError,
@@ -1240,6 +1248,8 @@ impl Module {
                 if let Some(next) = self.peek_next() {
                     if next.token_type == LexerTokenType::OpenParenthesis {
                         self.call_expression()
+                    } else if next.token_type == LexerTokenType::Dot {
+                        self.member_expression()
                     } else if next.token_type == LexerTokenType::OpenCurlyBrace {
                         self.struct_literal()
                     } else {
@@ -1310,6 +1320,48 @@ impl Module {
             at,
             line,
         ))
+    }
+
+    // person.name.to_string
+    fn member_expression(&self) -> Expression {
+        // get the identifier
+        let identifier_token = self.unsafe_peek();
+        let mut node = Expression::Identifier(Identifier::new(
+            identifier_token.value.clone(),
+            identifier_token.at,
+            identifier_token.line,
+        ));
+        self.next();
+
+        while self.is_peekable() {
+            println!("unsafe: {:#?}", self.unsafe_peek());
+            if let LexerTokenType::Dot = self.unsafe_peek().token_type {
+                // consume dot
+                self.next();
+
+                // get the identifier
+                let identifier_token = self.unsafe_peek();
+                let identifier_node = Identifier::new(
+                    identifier_token.value.clone(),
+                    identifier_token.at,
+                    identifier_token.line,
+                );
+
+                node = Expression::MemberExpression(MemberExpression::new(
+                    Box::new(node.clone()),
+                    identifier_node,
+                    identifier_token.at,
+                    identifier_token.line,
+                ));
+                // consume identifier
+                self.next();
+            } else {
+                // end of member expression
+                break;
+            }
+        }
+
+        node
     }
 
     // Person {

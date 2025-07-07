@@ -10,6 +10,7 @@ pub mod group;
 pub mod identifier;
 pub mod if_statement;
 pub mod import_statement;
+pub mod member_expression;
 pub mod module;
 pub mod nothing;
 pub mod number;
@@ -22,6 +23,7 @@ pub mod while_statement;
 use std::fmt;
 
 use crate::ast::{
+    member_expression::MemberExpression,
     objects::{ObjectLiteral, ObjectType},
     structs::{Struct, StructLiteral},
 };
@@ -119,6 +121,9 @@ impl fmt::Display for AstNodeType {
             AstNodeType::ObjectType(_) => write!(f, "ObjectType"),
             AstNodeType::Expression(Expression::StructLiteral(_)) => write!(f, "StructLiteral"),
             AstNodeType::Expression(Expression::ObjectLiteral(_)) => write!(f, "ObjectLiteral"),
+            AstNodeType::Expression(Expression::MemberExpression(_)) => {
+                write!(f, "MemberExpression")
+            }
             AstNodeType::Expression(Expression::BinaryExpression(_)) => {
                 write!(f, "BinaryExpression")
             }
@@ -143,6 +148,7 @@ pub enum Expression {
     CallExpression(CallExpression),
     StructLiteral(StructLiteral),
     ObjectLiteral(ObjectLiteral),
+    MemberExpression(MemberExpression),
     Nothing(Nothing),
 }
 
