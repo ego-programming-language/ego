@@ -257,6 +257,7 @@ impl Translator {
                 t.pc += 4;
                 (Instruction::FFI_Call { number_of_args }, pc.abs_diff(t.pc))
             }
+            Opcode::GetProperty => (Instruction::GetProperty, 1),
             Opcode::Unknown => (Instruction::Unknown, 1),
             _ => (Instruction::Unknown, 1),
         }

@@ -313,6 +313,29 @@ impl Compiler {
 
                 bytecode
             }
+            Expression::MemberExpression(v) => {
+                let mut bytecode = vec![];
+                let property = v.property.clone();
+                let object = v.object.clone();
+
+                // compile de property
+                let string_literal = StringLiteral::new(
+                    property.name.clone(),
+                    property.name,
+                    property.at,
+                    property.line,
+                );
+                let property_bytecode =
+                    Compiler::compile_expression(&Expression::StringLiteral(string_literal));
+
+                // compile object (a potential nested object_expression)
+                let object_bytecode = Compiler::compile_expression(&object);
+
+                bytecode.extend_from_slice(&object_bytecode);
+                bytecode.extend_from_slice(&property_bytecode);
+                bytecode.push(get_bytecode("get_property".to_string()));
+                bytecode
+            }
             Expression::Nothing(_) => {
                 let mut bytecode = vec![];
                 bytecode.push(get_bytecode("load_const".to_string()));

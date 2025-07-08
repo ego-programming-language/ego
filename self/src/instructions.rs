@@ -32,6 +32,7 @@ pub enum Instruction {
         identifier: String,
         fields: Vec<String>,
     },
+    GetProperty,
     Print {
         number_of_args: u32,
     },
@@ -70,6 +71,7 @@ impl Instruction {
             Instruction::NotEquals => "NotEquals".to_string(),
             Instruction::FuncDec { identifier } => "FuncDec".to_string(),
             Instruction::StructDec { identifier, fields } => "StructDec".to_string(),
+            Instruction::GetProperty => "GetProperty".to_string(),
             Instruction::Print { number_of_args } => "Print".to_string(),
             Instruction::Println { number_of_args } => "Println".to_string(),
             Instruction::Call => "Call".to_string(),
