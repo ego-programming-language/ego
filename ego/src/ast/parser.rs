@@ -1334,7 +1334,6 @@ impl Module {
         self.next();
 
         while self.is_peekable() {
-            println!("unsafe: {:#?}", self.unsafe_peek());
             if let LexerTokenType::Dot = self.unsafe_peek().token_type {
                 // consume dot
                 self.next();
