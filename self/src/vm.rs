@@ -328,6 +328,54 @@ impl Vm {
                     self.call_stack
                         .put_to_frame(identifier_name, Value::HeapRef(heap_ref));
                 }
+                Opcode::GetProperty => {
+                    let values = self.get_stack_values(&2);
+                    let (object, property) = match (&values[0], &values[1]) {
+                        (Value::HeapRef(obj_ref), Value::HeapRef(prop_ref)) => {
+                            (obj_ref.clone(), prop_ref.clone())
+                        }
+                        // TODO: use self-vm errors
+                        _ => panic!("Expected two HeapRef values for <get_property> opcode"),
+                    };
+
+                    let object_val = self.resolve_heap_ref(object);
+                    let property_val = self.resolve_heap_ref(property);
+
+                    if debug {
+                        println!(
+                            "GET_PROPERTY <- {}({:?})",
+                            object_val.to_string(),
+                            property_val.to_string()
+                        );
+                    }
+
+                    if let HeapObject::String(property) = property_val {
+                        if let HeapObject::StructLiteral(s) = object_val {
+                            let value = s.property_access(&property);
+                            if let Some(prop) = value {
+                                // this clone is important, we're clonning
+                                // or the ref to the value or the value itself
+                                // if it is a RawValue
+                                self.push_to_stack(prop.clone(), Some(object_val.to_string()));
+                            } else {
+                                // TODO: use self-vm errors
+                                panic!(
+                                    "field {} does not exist on StructLiteral of type {}",
+                                    s.to_string(),
+                                    object_val.to_string()
+                                );
+                            }
+                        } else {
+                            // TODO: use self-vm errors
+                            panic!("<get_property> opcode must be used on a StructLiteral type")
+                        }
+                    } else {
+                        // TODO: use self-vm errors
+                        panic!("Struct literal field must be indexed by string")
+                    }
+
+                    self.pc += 1;
+                }
                 Opcode::Call => {
                     self.pc += 1; // consume print opcode
                     let args = self.get_function_call_args();
@@ -1065,46 +1113,55 @@ impl Vm {
 
     pub fn debug_bytecode(&mut self) {
         println!("\n--- BYTECODE ----------\n");
-        let mut pc = 0;
-        let mut target_pc = 0;
+        println!("{:#?}", self.bytecode)
+        // -------
+        // THIS CODE IS COMMENTED FOR THE REASON THAT
+        // I DON'T KNOW HOW TO HANDLE THE BYTECODE
+        // TRANSLATION WITHOUT AFFECTING THE CREATIVE
+        // FL0W. SO FOR THE MOMENT WE'RE AVOIDING THE
+        // PROBLEM BY COMMENTING IT.
+        // ✱
+        // -------
+        // let mut pc = 0;
+        // let mut target_pc = 0;
 
-        let string_offset = self.bytecode.len().to_string();
-        while pc < self.bytecode.len() {
-            let index = (pc + 1).to_string();
-            let mut counter = 0;
-            let printable_index = string_offset
-                .chars()
-                .map(|_| {
-                    let mut result = "".to_string();
-                    if let Some(char) = index.chars().nth(counter) {
-                        result = char.to_string();
-                    } else {
-                        result = " ".to_string();
-                    }
-                    counter += 1;
-                    return result;
-                })
-                .collect::<String>();
+        // let string_offset = self.bytecode.len().to_string();
+        // while pc < self.bytecode.len() {
+        //     let index = (pc + 1).to_string();
+        //     let mut counter = 0;
+        //     let printable_index = string_offset
+        //         .chars()
+        //         .map(|_| {
+        //             let mut result = "".to_string();
+        //             if let Some(char) = index.chars().nth(counter) {
+        //                 result = char.to_string();
+        //             } else {
+        //                 result = " ".to_string();
+        //             }
+        //             counter += 1;
+        //             return result;
+        //         })
+        //         .collect::<String>();
 
-            if pc >= target_pc {
-                // print instruction
-                let (instruction, offset) = Translator::get_instruction(pc, &self.bytecode);
-                let raw_instruction = format!("{}|    {:#?}", printable_index, self.bytecode[pc]);
-                println!("{} <---- {}", raw_instruction, instruction.get_type());
+        //     if pc >= target_pc {
+        //         // print instruction
+        //         let (instruction, offset) = Translator::get_instruction(pc, &self.bytecode);
+        //         let raw_instruction = format!("{}|    {:#?}", printable_index, self.bytecode[pc]);
+        //         println!("{} <---- {}", raw_instruction, instruction.get_type());
 
-                let instruction_info = Translator::get_instruction_info(&instruction);
-                if instruction_info.len() > 0 {
-                    println!("------------ \n{}\n------------", instruction_info);
-                }
-                // + 1  the normal iteration increment over the bytecode
-                target_pc = pc + offset + 1;
-            } else {
-                // print bytecode index
-                println!("{}|    {:#?}", printable_index, self.bytecode[pc]);
-            }
+        //         let instruction_info = Translator::get_instruction_info(&instruction);
+        //         if instruction_info.len() > 0 {
+        //             println!("------------ \n{}\n------------", instruction_info);
+        //         }
+        //         // + 1  the normal iteration increment over the bytecode
+        //         target_pc = pc + offset + 1;
+        //     } else {
+        //         // print bytecode index
+        //         println!("{}|    {:#?}", printable_index, self.bytecode[pc]);
+        //     }
 
-            pc += 1;
-        }
+        //     pc += 1;
+        // }
         //println!("\n--- BYTECODE INSTRUCTIONS ----------\n");
         //println!("{:#?}", Translator::new(self.bytecode.clone()).translate());
     }

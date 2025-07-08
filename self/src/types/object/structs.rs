@@ -29,6 +29,11 @@ impl StructLiteral {
         // prototype fields
         StructLiteral { identifier, fields }
     }
+
+    pub fn property_access(&self, property: &str) -> Option<&Value> {
+        self.fields.get(property)
+    }
+
     pub fn to_string(&self) -> String {
         format!("[instance] {}", self.identifier)
     }

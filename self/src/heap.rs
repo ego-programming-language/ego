@@ -69,7 +69,7 @@ impl HeapObject {
             HeapObject::String(x) => x.to_string(),
             HeapObject::Function(x) => x.to_string(),
             HeapObject::StructDeclaration(x) => x.to_string(),
-            HeapObject::StructLiteral(x) => x.to_string(),
+            HeapObject::StructLiteral(x) => x.identifier.to_string(),
         }
     }
 }
