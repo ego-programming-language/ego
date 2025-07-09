@@ -3,7 +3,6 @@ use crate::{
     compiler::Compiler,
     core::logs::get_log_history,
     log,
-    runtime::Interpreter,
 };
 
 pub fn run_ego(code: String, vm: bool) -> Vec<String> {
@@ -22,15 +21,15 @@ pub fn run_ego(code: String, vm: bool) -> Vec<String> {
     );
     log!("-------------------");
 
-    if vm {
-        let mut compiler = Compiler::new(ast);
-        let bytecode = compiler.gen_bytecode();
-        let mut vm = self_vm::vm::Vm::new(bytecode);
-        vm.run(&vec![]);
-        vec!["Logs with executions are not implemented yet".to_string()]
-    } else {
-        let mut interpreter = Interpreter::new(ast.clone());
-        interpreter.exec(false);
-        get_log_history()
-    }
+    // if vm {
+    let mut compiler = Compiler::new(ast);
+    let bytecode = compiler.gen_bytecode();
+    let mut vm = self_vm::vm::Vm::new(bytecode);
+    vm.run(&vec![]);
+    vec!["Logs with executions are not implemented yet".to_string()]
+    // } else {
+    //     let mut interpreter = Interpreter::new(ast.clone());
+    //     interpreter.exec(false);
+    //     get_log_history()
+    // }
 }

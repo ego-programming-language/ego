@@ -1,3 +1,10 @@
+// THIS MODULE BELONGS TO THE EARLY DAYS OF EGO.
+// BACK THEN, EGO WAS A TREE-WALKING LANGUAGE,
+// AND THIS FILE REPRESENTED ITS RUNTIME.
+// NOWADAYS, EGO COMPILATION TARGETS THE SELF-VM,
+// SO THIS MODULE IS DEPRECATED AND MAY NO LONGER
+// FUNCTION AS EXPECTED.
+
 use crate::{
     ast::{
         assignament_statement::{AssignamentNode, VarType}, binary_expression::BinaryExpression, block::Block, call_expression::CallExpression, if_statement::IfStatement, module::ModuleAst, while_statement::WhileStatement, AstNodeType, Expression

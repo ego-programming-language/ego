@@ -2,7 +2,6 @@ mod ast;
 mod commands;
 mod compiler;
 mod core;
-mod runtime;
 mod wasm;
 
 use ast::{lex, Module};

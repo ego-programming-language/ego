@@ -7,7 +7,6 @@ use crate::ast::Module;
 use crate::compiler::Compiler;
 use crate::core::error;
 use crate::core::error::ErrorType;
-use crate::runtime::Interpreter;
 
 pub struct Run {
     args: Vec<String>,
@@ -73,14 +72,11 @@ impl Run {
                     unreachable!()
                 }
             };
-        } else if self.args.contains(&"-vm".to_string()) {
+        } else {
             let mut compiler = Compiler::new(ast);
             let bytecode = compiler.gen_bytecode();
             let mut vm = self_vm::new(bytecode);
             vm.run(&self.args);
-        } else {
-            let mut interpreter = Interpreter::new(ast.clone());
-            interpreter.exec(self.debug());
         }
     }
 }
