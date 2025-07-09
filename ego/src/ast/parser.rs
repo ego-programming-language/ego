@@ -1033,54 +1033,7 @@ impl Module {
 
     // a | a() | a.value | a = 20 + a
     fn identifier(&self) -> AstNodeType {
-        let token = self.unsafe_peek();
-        // get the identifier
-        let identifier_node = Identifier::new(token.value.clone(), token.at, token.line);
-        // check next token of the identifier without consuming
-        let token = self.peek_next();
-
-        let node = match token {
-            Some(next) => match next.token_type {
-                // [identifier calling]
-                LexerTokenType::OpenParenthesis => {
-                    // a();
-                    let call_expresssion_node = self.call_expression();
-                    // check for final semicolon
-                    if self.is_peekable() {
-                        if self.peek(";").token_type == LexerTokenType::EndOfStatement {
-                            // consume ';'
-                            self.next();
-                        }
-                    }
-
-                    AstNodeType::Expression(call_expresssion_node)
-                }
-                // [identifier value mutation]
-                LexerTokenType::AssignmentOperator => {
-                    // a = ...;
-                    self.assignment_statement()
-                }
-                // [Property acess] should handle <a.value> here
-                LexerTokenType::Dot => AstNodeType::Expression(self.member_expression()),
-                _ => {
-                    error::throw(
-                        ErrorType::SyntaxError,
-                        format!(
-                            "Unexpected token '{}' after '{}' identifier",
-                            next.value, identifier_node.name
-                        )
-                        .as_str(),
-                        Some(next.line),
-                    );
-                    std::process::exit(1);
-                }
-            },
-            None => {
-                self.next();
-                return AstNodeType::Expression(Expression::Identifier(identifier_node));
-            }
-        };
-
+        let node = self.expression();
         node
     }
 
