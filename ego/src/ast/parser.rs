@@ -1075,7 +1075,10 @@ impl Module {
                     std::process::exit(1);
                 }
             },
-            None => AstNodeType::Expression(Expression::Identifier(identifier_node)),
+            None => {
+                self.next();
+                return AstNodeType::Expression(Expression::Identifier(identifier_node));
+            }
         };
 
         node
