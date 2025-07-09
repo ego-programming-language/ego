@@ -1342,7 +1342,7 @@ impl Module {
                 self.next();
 
                 // get the identifier
-                let identifier_token = self.unsafe_peek();
+                let identifier_token = self.peek("<identifier>");
                 let identifier_node = Identifier::new(
                     identifier_token.value.clone(),
                     identifier_token.at,
