@@ -18,8 +18,8 @@ pub fn function_call_as_bytecode(node: &CallExpression) -> Vec<u8> {
     bytecode.extend_from_slice(&args);
 
     // print instruction bytecode
-    let identifier_bytecode = get_bytecode("call".to_string());
-    bytecode.push(identifier_bytecode);
+    let opcode_bytecode = get_bytecode("call".to_string());
+    bytecode.push(opcode_bytecode);
 
     // number of args bytecode
     let num_of_args = args_len as u32;
