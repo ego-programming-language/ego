@@ -360,8 +360,8 @@ impl Vm {
                             } else {
                                 // TODO: use self-vm errors
                                 panic!(
-                                    "field {} does not exist on StructLiteral of type {}",
-                                    s.to_string(),
+                                    "field '{}' does not exist on StructLiteral of type {}",
+                                    property,
                                     object_val.to_string()
                                 );
                             }
