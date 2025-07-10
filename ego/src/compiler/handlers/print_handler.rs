@@ -18,7 +18,7 @@ pub fn print_as_bytecode(node: &CallExpression) -> Vec<u8> {
     bytecode.extend_from_slice(&args);
 
     // print instruction bytecode
-    let print_bytecode = get_bytecode(node.identifier.name.to_string());
+    let print_bytecode = get_bytecode(node.get_callee());
     bytecode.push(print_bytecode);
 
     // number of args bytecode

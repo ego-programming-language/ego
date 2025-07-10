@@ -1246,16 +1246,12 @@ impl Module {
     fn call_expression(&self) -> Expression {
         // get the identifier
         let identifier_token = self.unsafe_peek();
-        let identifier_node = Identifier::new(
-            identifier_token.value.clone(),
-            identifier_token.at,
-            identifier_token.line,
-        );
+        let identifier_expr = self.parse_callee();
 
         // consume identifier
         self.next();
 
-        let arguments_node = self.group(Some(format!("{}()", identifier_node.name).as_str()));
+        let arguments_node = self.group(Some(format!("{}()", identifier_token.value).as_str()));
 
         let arguments_node = if let AstNodeType::Group(arguments_node) = arguments_node {
             arguments_node
@@ -1268,14 +1264,47 @@ impl Module {
             std::process::exit(1);
         };
 
-        let at = identifier_node.at;
-        let line = identifier_node.line;
         Expression::CallExpression(CallExpression::new(
-            identifier_node,
+            Box::new(identifier_expr),
             arguments_node,
-            at,
-            line,
+            identifier_token.at,
+            identifier_token.line,
         ))
+    }
+
+    fn parse_callee(&self) -> Expression {
+        let token = self.peek("<CallExpressionCallee>");
+
+        match token.token_type {
+            LexerTokenType::Identifier => {
+                // if next token is a dot, parse a MemberExpression
+                if self
+                    .peek_next()
+                    .map(|t| t.token_type == LexerTokenType::Dot)
+                    .unwrap_or(false)
+                {
+                    self.member_expression()
+                } else {
+                    Expression::Identifier(Identifier::new(
+                        token.value.clone(),
+                        token.at,
+                        token.line,
+                    ))
+                }
+            }
+            _ => {
+                error::throw(
+                    ErrorType::SyntaxError,
+                    format!(
+                        "Invalid token '{}' as callee of a call expression",
+                        token.value
+                    )
+                    .as_str(),
+                    Some(token.line),
+                );
+                std::process::exit(1);
+            }
+        }
     }
 
     // person.name.to_string

@@ -27,7 +27,7 @@ pub fn function_call_as_bytecode(node: &CallExpression) -> Vec<u8> {
     bytecode.extend_from_slice(&num_of_args);
 
     // identifier
-    let identifier_bytecode = Compiler::compile_raw_string(node.identifier.name.clone());
+    let identifier_bytecode = Compiler::compile_raw_string(node.get_callee());
     bytecode.extend_from_slice(&identifier_bytecode);
 
     bytecode
