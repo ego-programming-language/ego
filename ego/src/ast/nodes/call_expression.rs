@@ -29,6 +29,7 @@ impl CallExpression {
     pub fn get_callee(&self) -> String {
         match self.callee.as_ref() {
             Expression::Identifier(i) => i.name.clone(),
+            Expression::MemberExpression(x) => x.property.name.clone(),
             _ => {
                 panic!("Unhandled callee for CallExpression")
             }

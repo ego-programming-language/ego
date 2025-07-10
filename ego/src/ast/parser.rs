@@ -1202,10 +1202,10 @@ impl Module {
                 //   - identifier call: x()
                 //   - struct declaration: X {...}
                 if let Some(next) = self.peek_next() {
-                    if next.token_type == LexerTokenType::OpenParenthesis {
-                        self.call_expression()
-                    } else if next.token_type == LexerTokenType::Dot {
-                        self.member_expression()
+                    if next.token_type == LexerTokenType::OpenParenthesis
+                        || next.token_type == LexerTokenType::Dot
+                    {
+                        self.parse_postfix_expression()
                     } else if next.token_type == LexerTokenType::OpenCurlyBrace {
                         self.struct_literal()
                     } else {
@@ -1242,69 +1242,34 @@ impl Module {
         expr
     }
 
-    // print(a, b, c)
-    fn call_expression(&self) -> Expression {
-        // get the identifier
-        let identifier_token = self.unsafe_peek();
-        let identifier_expr = self.parse_callee();
+    // a.b()
+    fn parse_postfix_expression(&self) -> Expression {
+        let mut expr = self.member_expression();
+        while self.is_peekable() && self.unsafe_peek().token_type == LexerTokenType::OpenParenthesis
+        {
+            let token = self.unsafe_peek(); // peek '('
 
-        // consume identifier
-        self.next();
-
-        let arguments_node = self.group(Some(format!("{}()", identifier_token.value).as_str()));
-
-        let arguments_node = if let AstNodeType::Group(arguments_node) = arguments_node {
-            arguments_node
-        } else {
-            error::throw(
-                ErrorType::ParsingError,
-                "Unexpected node type in CallExpression, expected Group type node",
-                Some(identifier_token.line),
-            );
-            std::process::exit(1);
-        };
-
-        Expression::CallExpression(CallExpression::new(
-            Box::new(identifier_expr),
-            arguments_node,
-            identifier_token.at,
-            identifier_token.line,
-        ))
-    }
-
-    fn parse_callee(&self) -> Expression {
-        let token = self.peek("<CallExpressionCallee>");
-
-        match token.token_type {
-            LexerTokenType::Identifier => {
-                // if next token is a dot, parse a MemberExpression
-                if self
-                    .peek_next()
-                    .map(|t| t.token_type == LexerTokenType::Dot)
-                    .unwrap_or(false)
-                {
-                    self.member_expression()
-                } else {
-                    Expression::Identifier(Identifier::new(
-                        token.value.clone(),
-                        token.at,
-                        token.line,
-                    ))
-                }
-            }
-            _ => {
+            let group = self.group(Some("call expression"));
+            let group_node = if let AstNodeType::Group(g) = group {
+                g
+            } else {
                 error::throw(
-                    ErrorType::SyntaxError,
-                    format!(
-                        "Invalid token '{}' as callee of a call expression",
-                        token.value
-                    )
-                    .as_str(),
+                    ErrorType::ParsingError,
+                    "Expected argument group in call expression",
                     Some(token.line),
                 );
                 std::process::exit(1);
-            }
+            };
+
+            expr = Expression::CallExpression(CallExpression::new(
+                Box::new(expr),
+                group_node,
+                token.at,
+                token.line,
+            ));
         }
+
+        expr
     }
 
     // person.name.to_string
