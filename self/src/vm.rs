@@ -377,7 +377,7 @@ impl Vm {
                     self.pc += 1;
                 }
                 Opcode::Call => {
-                    self.pc += 1; // consume print opcode
+                    self.pc += 1;
                     let args = self.get_function_call_args();
                     let mut resolved_args = Vec::new();
                     for val in args {
@@ -388,12 +388,24 @@ impl Vm {
                     }
 
                     // get caller identifier
-                    let (identifier_data_type, identifier_bytes) = self.get_value_length();
-                    if identifier_data_type != DataType::Utf8 {
-                        panic!("Identifier type should be a string encoded as utf8")
+                    let identifier_name_ref = self.get_stack_values(&1);
+                    let identifier_name =
+                        if let Value::HeapRef(_ref) = identifier_name_ref[0].clone() {
+                            let resolved_heap_ref = self.resolve_heap_ref(_ref);
+                            if let HeapObject::String(s) = resolved_heap_ref {
+                                s.clone()
+                            } else {
+                                // TODO: use self-vm error system
+                                panic!("Invalid type for callee string")
+                            }
+                        } else {
+                            // TODO: use self-vm error system
+                            panic!("Invalid type for callee string")
+                        };
+
+                    if debug {
+                        println!("CALL -> {}", identifier_name.to_string())
                     }
-                    let identifier_name = String::from_utf8(identifier_bytes)
-                        .expect("Identifier bytes should be valid UTF-8");
 
                     self.pc += 1; // go to next opcode
                     match identifier_name.as_str() {
