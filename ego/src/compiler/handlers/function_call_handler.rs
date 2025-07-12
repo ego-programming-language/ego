@@ -19,8 +19,7 @@ pub fn function_call_as_bytecode(node: &CallExpression) -> Vec<u8> {
     // callee
     let identifier_bytecode = match node.callee.as_ref() {
         Expression::MemberExpression(x) => {
-            // incognita
-            Compiler::compile_raw_string(node.get_callee())
+            Compiler::compile_expression(&Expression::MemberExpression(x.clone()))
         }
         Expression::Identifier(x) => Compiler::compile_expression(&Expression::StringLiteral(
             StringLiteral::new(node.get_callee(), node.get_callee(), 0, 0),

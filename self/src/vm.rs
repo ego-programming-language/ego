@@ -1,3 +1,5 @@
+use serde::de;
+
 use crate::core::error::InvalidBinaryOperation;
 use crate::core::error::VMErrorType;
 use crate::core::execution::VMExecutionResult;
@@ -389,141 +391,138 @@ impl Vm {
 
                     // get caller identifier
                     let identifier_name_ref = self.get_stack_values(&1);
-                    let identifier_name =
-                        if let Value::HeapRef(_ref) = identifier_name_ref[0].clone() {
-                            let resolved_heap_ref = self.resolve_heap_ref(_ref);
-                            if let HeapObject::String(s) = resolved_heap_ref {
-                                s.clone()
-                            } else {
-                                // TODO: use self-vm error system
-                                panic!("Invalid type for callee string")
-                            }
-                        } else {
-                            // TODO: use self-vm error system
-                            panic!("Invalid type for callee string")
-                        };
-
-                    if debug {
-                        println!("CALL -> {}", identifier_name.to_string())
-                    }
-
-                    self.pc += 1; // go to next opcode
-                    match identifier_name.as_str() {
-                        // PROBABLY BEHIND THE SCENE TO AVOID RUNTIME ERRORS
-                        // WE SHOULD WRAP AI OPCODE WITHIN A BOOLEAN CAST OPCODE
-                        "ai" => {
-                            let value = ai_handler(resolved_args, debug);
-                            if let Some(v) = value {
-                                let answer_type = v.0;
-                                let value = v.1;
-
-                                // here the <value>'s should be well
-                                // formatted since we verify their format
-                                // on the ai_handler
-                                match answer_type.as_str() {
-                                    "bool" => {
-                                        let bool_value: bool = value.parse().unwrap();
-                                        self.push_to_stack(
-                                            Value::RawValue(RawValue::Bool(Bool::new(bool_value))),
-                                            Some("AI_INFERRED".to_string()),
-                                        );
-                                    }
-                                    "string" => {
-                                        // heap allocated
-                                        let heap_ref =
-                                            self.heap.allocate(HeapObject::String(value));
-                                        self.push_to_stack(
-                                            Value::HeapRef(heap_ref),
-                                            Some("AI_INFERRED".to_string()),
-                                        );
-                                    }
-                                    "number" => {
-                                        // number inferred
-                                        let num_value: f64 = value.parse().unwrap();
-                                        self.push_to_stack(
-                                            Value::RawValue(RawValue::F64(F64::new(num_value))),
-                                            Some("AI_INFERRED".to_string()),
-                                        );
-                                    }
-                                    "nothing" => {
-                                        self.push_to_stack(
-                                            Value::RawValue(RawValue::Nothing),
-                                            Some("AI_INFERRED".to_string()),
-                                        );
-                                    }
-                                    _ => {
-                                        self.push_to_stack(
-                                            Value::RawValue(RawValue::Nothing),
-                                            Some("AI_INFERRED".to_string()),
-                                        );
-                                    }
+                    if let Value::HeapRef(_ref) = identifier_name_ref[0].clone() {
+                        self.pc += 1; // go to next opcode
+                        let resolved_heap_ref = self.resolve_heap_ref(_ref);
+                        match resolved_heap_ref {
+                            HeapObject::String(identifier_name) => {
+                                if debug {
+                                    println!("CALL -> {}", identifier_name.to_string())
                                 };
-                            } else {
-                                self.push_to_stack(
-                                    Value::RawValue(RawValue::Nothing),
-                                    Some("AI_INFERRED".to_string()),
-                                );
-                            }
-                        }
-                        "read_file" => {
-                            let value = fs::read_file(&resolved_args[0]);
-                            if let Ok(content) = value {
-                                let heap_ref = self.heap.allocate(HeapObject::String(content));
-                                self.push_to_stack(
-                                    Value::HeapRef(heap_ref),
-                                    Some("read_file".to_string()),
-                                );
-                            } else {
-                                return VMExecutionResult::terminate_with_errors(VMErrorType::Fs(
-                                    value.unwrap_err(),
-                                ));
-                            }
-                        }
-                        _ => {
-                            // get the identifier from the heap
-                            if let Some(value) = self.call_stack.resolve(&identifier_name) {
-                                match value {
-                                    Value::HeapRef(v) => {
-                                        // clone heap_object to be able to mutate the
-                                        // vm state
-                                        let heap_object = self.resolve_heap_ref(v).clone();
-                                        if let HeapObject::Function(func) = heap_object {
-                                            // save and set state
-                                            let return_pc = self.pc;
-                                            let main_bytecode = std::mem::take(&mut self.bytecode);
+                                match identifier_name.as_str() {
+                                    // PROBABLY BEHIND THE SCENE TO AVOID RUNTIME ERRORS
+                                    // WE SHOULD WRAP AI OPCODE WITHIN A BOOLEAN CAST OPCODE
+                                    "ai" => {
+                                        let value = ai_handler(resolved_args, debug);
+                                        if let Some(v) = value {
+                                            let answer_type = v.0;
+                                            let value = v.1;
 
-                                            self.call_stack.push();
-                                            self.bytecode = func.bytecode.clone();
-                                            self.pc = 0;
-
-                                            let function_exec_result = self.run_bytecode(debug);
-                                            if function_exec_result.error.is_some() {
-                                                return function_exec_result;
-                                            }
-
-                                            // recover state after execution
-                                            self.call_stack.pop();
-                                            self.pc = return_pc;
-                                            self.bytecode = main_bytecode;
+                                            // here the <value>'s should be well
+                                            // formatted since we verify their format
+                                            // on the ai_handler
+                                            match answer_type.as_str() {
+                                                "bool" => {
+                                                    let bool_value: bool = value.parse().unwrap();
+                                                    self.push_to_stack(
+                                                        Value::RawValue(RawValue::Bool(Bool::new(
+                                                            bool_value,
+                                                        ))),
+                                                        Some("AI_INFERRED".to_string()),
+                                                    );
+                                                }
+                                                "string" => {
+                                                    // heap allocated
+                                                    let heap_ref = self
+                                                        .heap
+                                                        .allocate(HeapObject::String(value));
+                                                    self.push_to_stack(
+                                                        Value::HeapRef(heap_ref),
+                                                        Some("AI_INFERRED".to_string()),
+                                                    );
+                                                }
+                                                "number" => {
+                                                    // number inferred
+                                                    let num_value: f64 = value.parse().unwrap();
+                                                    self.push_to_stack(
+                                                        Value::RawValue(RawValue::F64(F64::new(
+                                                            num_value,
+                                                        ))),
+                                                        Some("AI_INFERRED".to_string()),
+                                                    );
+                                                }
+                                                "nothing" => {
+                                                    self.push_to_stack(
+                                                        Value::RawValue(RawValue::Nothing),
+                                                        Some("AI_INFERRED".to_string()),
+                                                    );
+                                                }
+                                                _ => {
+                                                    self.push_to_stack(
+                                                        Value::RawValue(RawValue::Nothing),
+                                                        Some("AI_INFERRED".to_string()),
+                                                    );
+                                                }
+                                            };
                                         } else {
-                                            return VMExecutionResult::terminate_with_errors(
-                                                VMErrorType::NotCallableError(identifier_name),
+                                            self.push_to_stack(
+                                                Value::RawValue(RawValue::Nothing),
+                                                Some("AI_INFERRED".to_string()),
                                             );
                                         }
                                     }
-                                    Value::RawValue(_) => {
-                                        return VMExecutionResult::terminate_with_errors(
-                                            VMErrorType::NotCallableError(identifier_name),
-                                        );
+                                    "read_file" => {
+                                        let value = fs::read_file(&resolved_args[0]);
+                                        if let Ok(content) = value {
+                                            let heap_ref =
+                                                self.heap.allocate(HeapObject::String(content));
+                                            self.push_to_stack(
+                                                Value::HeapRef(heap_ref),
+                                                Some("read_file".to_string()),
+                                            );
+                                        } else {
+                                            return VMExecutionResult::terminate_with_errors(
+                                                VMErrorType::Fs(value.unwrap_err()),
+                                            );
+                                        }
+                                    }
+                                    _ => {
+                                        // get the identifier from the heap
+                                        if let Some(value) =
+                                            self.call_stack.resolve(&identifier_name)
+                                        {
+                                            match value {
+                                                Value::HeapRef(v) => {
+                                                    // clone heap_object to be able to mutate the
+                                                    // vm state
+                                                    let heap_object =
+                                                        self.resolve_heap_ref(v).clone();
+                                                    if let HeapObject::Function(func) = heap_object
+                                                    {
+                                                        self.run_function(func, debug);
+                                                    } else {
+                                                        return VMExecutionResult::terminate_with_errors(
+                                                            VMErrorType::NotCallableError(identifier_name.clone()),
+                                                        );
+                                                    }
+                                                }
+                                                Value::RawValue(_) => {
+                                                    return VMExecutionResult::terminate_with_errors(
+                                                    VMErrorType::NotCallableError(identifier_name.clone()),
+                                                );
+                                                }
+                                            }
+                                        } else {
+                                            return VMExecutionResult::terminate_with_errors(
+                                                VMErrorType::UndeclaredIdentifierError(
+                                                    identifier_name.clone(),
+                                                ),
+                                            );
+                                        }
                                     }
                                 }
-                            } else {
-                                return VMExecutionResult::terminate_with_errors(
-                                    VMErrorType::UndeclaredIdentifierError(identifier_name),
-                                );
+                            }
+                            HeapObject::Function(f) => {
+                                self.run_function(f.clone(), debug);
+                            }
+                            _ => {
+                                panic!("Invalid type for callee string")
                             }
                         }
-                    }
+                    } else {
+                        // TODO: use self-vm error system
+                        panic!("Invalid type for callee string")
+                    };
                 }
                 Opcode::Add => {
                     // execution
@@ -855,6 +854,27 @@ impl Vm {
 
         self.push_to_stack(value, None);
         None
+    }
+
+    fn run_function(&mut self, func: Function, debug: bool) -> VMExecutionResult {
+        // save and set state
+        // here we increment by 4 to skip the 4 bytes used
+        // to determine the number of args that the function
+        // uses
+        let return_pc = self.pc + 4;
+        let main_bytecode = std::mem::take(&mut self.bytecode);
+
+        self.call_stack.push();
+        self.bytecode = func.bytecode.clone();
+        self.pc = 0;
+
+        let function_exec_result = self.run_bytecode(debug);
+        // recover state after execution
+        self.call_stack.pop();
+        self.pc = return_pc;
+        self.bytecode = main_bytecode;
+
+        return function_exec_result;
     }
 
     fn resolve_heap_ref(&self, address: HeapRef) -> &HeapObject {
