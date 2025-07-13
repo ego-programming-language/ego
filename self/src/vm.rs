@@ -14,6 +14,7 @@ use crate::opcodes::DataType;
 use crate::opcodes::Opcode;
 use crate::std::fs;
 use crate::translator::Translator;
+use crate::types::object::func::Engine;
 use crate::types::object::func::Function;
 use crate::types::object::structs::StructDeclaration;
 use crate::types::object::structs::StructLiteral;
@@ -295,14 +296,14 @@ impl Vm {
                     self.pc += 4;
                     self.pc += 1; // to get next opcode
 
-                    let body_boytecode = self.bytecode[self.pc..self.pc + body_length].to_vec();
+                    let body_bytecode = self.bytecode[self.pc..self.pc + body_length].to_vec();
                     self.pc += body_length;
 
                     // allocate function on the heap
                     let func_obj = HeapObject::Function(Function::new(
                         identifier_name.clone(),
                         params_names,
-                        body_boytecode,
+                        Engine::Bytecode(body_bytecode),
                     ));
                     let func_ref = self.heap.allocate(func_obj);
 
@@ -909,33 +910,37 @@ impl Vm {
     }
 
     fn run_function(&mut self, func: Function, args: Vec<Value>, debug: bool) -> VMExecutionResult {
-        // save and set state
-        // here we increment by 4 to skip the 4 bytes used
-        // to determine the number of args that the function
-        // uses
-        let return_pc = self.pc + 4;
-        let main_bytecode = std::mem::take(&mut self.bytecode);
+        match func.engine {
+            Engine::Bytecode(bytecode) => {
+                // save and set state
+                // here we increment by 4 to skip the 4 bytes used
+                // to determine the number of args that the function
+                // uses
+                let return_pc = self.pc + 4;
+                let main_bytecode = std::mem::take(&mut self.bytecode);
 
-        self.call_stack.push();
-        for (index, param) in func.parameters.iter().enumerate() {
-            if index < args.len() {
-                self.call_stack
-                    .put_to_frame(param.clone(), args[index].clone());
-            } else {
-                self.call_stack
-                    .put_to_frame(param.clone(), Value::RawValue(RawValue::Nothing));
+                self.call_stack.push();
+                for (index, param) in func.parameters.iter().enumerate() {
+                    if index < args.len() {
+                        self.call_stack
+                            .put_to_frame(param.clone(), args[index].clone());
+                    } else {
+                        self.call_stack
+                            .put_to_frame(param.clone(), Value::RawValue(RawValue::Nothing));
+                    }
+                }
+                self.bytecode = bytecode;
+                self.pc = 0;
+
+                let function_exec_result = self.run_bytecode(debug);
+                // recover state after execution
+                self.call_stack.pop();
+                self.pc = return_pc;
+                self.bytecode = main_bytecode;
+
+                return function_exec_result;
             }
         }
-        self.bytecode = func.bytecode.clone();
-        self.pc = 0;
-
-        let function_exec_result = self.run_bytecode(debug);
-        // recover state after execution
-        self.call_stack.pop();
-        self.pc = return_pc;
-        self.bytecode = main_bytecode;
-
-        return function_exec_result;
     }
 
     fn resolve_heap_ref(&self, address: HeapRef) -> &HeapObject {
