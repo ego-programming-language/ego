@@ -976,8 +976,15 @@ impl Module {
 
     // a | a() | a.value | a = 20 + a
     fn identifier(&self) -> AstNodeType {
-        let node = self.expression();
-        node
+        if let Some(next) = self.peek_next() {
+            if LexerTokenType::AssignmentOperator == next.token_type {
+                let node = self.assignment_statement();
+                return node;
+            }
+        }
+
+        let node = self.parse_postfix_expression();
+        AstNodeType::Expression(node)
     }
 
     // (2 * 2) + 3
