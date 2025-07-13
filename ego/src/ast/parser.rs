@@ -851,7 +851,7 @@ impl Module {
         AstNodeType::WhileStatement(WhileStatement::new(expr_node, block_node, at, line))
     }
 
-    // import std/io.[read_input, read_file]
+    // import fs
     fn import_statement(&self) -> AstNodeType {
         // consume 'import' keyword
         let token = self.unsafe_peek();
@@ -868,88 +868,10 @@ impl Module {
                 Some(token.line),
             )
         }
-        let mut module = vec![token.value.clone()];
-
-        // consume ";" | "/"
+        let module = vec![token.value.clone()];
         self.next();
-        let token = self.peek(";"); // with ; will be a valid statement
 
-        if token.token_type == LexerTokenType::EndOfStatement {
-            return AstNodeType::ImportStatement(ImportStatement::new(module, vec![], at, line));
-        }
-
-        // module/module/module
-        if token.token_type == LexerTokenType::DivideOperator {
-            let mut last_token = LexerTokenType::Identifier;
-
-            while self.is_peekable() {
-                let token = self.unsafe_peek();
-
-                match token.token_type {
-                    LexerTokenType::Identifier => {
-                        if last_token == LexerTokenType::DivideOperator {
-                            last_token = LexerTokenType::Identifier;
-                            module.push(token.value.clone());
-                            self.next();
-                        } else {
-                            error::throw(
-                                ErrorType::ParsingError,
-                                format!("Unexpected token '{}' after an identifier", token.value)
-                                    .as_str(),
-                                Some(token.line),
-                            );
-                            std::process::exit(1);
-                        }
-                    }
-                    LexerTokenType::DivideOperator => {
-                        if last_token == LexerTokenType::Identifier {
-                            last_token = LexerTokenType::DivideOperator;
-                            self.next();
-                        } else {
-                            error::throw(
-                                ErrorType::ParsingError,
-                                format!("Unexpected token '{}' after '/'", token.value).as_str(),
-                                Some(token.line),
-                            );
-                            std::process::exit(1);
-                        }
-                    }
-                    _ => break,
-                }
-            }
-        }
-
-        // consume ";" | "."
-        let token = self.peek(";");
-        match token.token_type {
-            // ;
-            LexerTokenType::EndOfStatement => {
-                return AstNodeType::ImportStatement(ImportStatement::new(
-                    module,
-                    vec![],
-                    at,
-                    line,
-                ));
-            }
-            // .[member, member];
-            LexerTokenType::Dot => {
-                // consume '.'
-                self.next();
-                self.vector(Some("import statement"))
-            }
-            _ => {
-                error::throw(
-                    ErrorType::SyntaxError,
-                    format!(
-                        "Expected ';' but got '{}' as end of import statement",
-                        token.value
-                    )
-                    .as_str(),
-                    Some(token.line),
-                );
-                std::process::exit(1);
-            }
-        }
+        return AstNodeType::ImportStatement(ImportStatement::new(module, vec![], at, line));
     }
 
     // return "hello";
