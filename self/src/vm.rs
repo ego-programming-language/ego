@@ -250,6 +250,38 @@ impl Vm {
                     let identifier_name = String::from_utf8(identifier_bytes)
                         .expect("Identifier bytes should be valid UTF-8");
 
+                    // parameters
+                    if self.pc + 4 >= self.bytecode.len() {
+                        panic!("Invalid FUNC_DEC instruction at position {}", self.pc);
+                    }
+
+                    let value_bytes = &self.bytecode[self.pc + 1..self.pc + 5];
+                    let parameters_length = u32::from_le_bytes(
+                        value_bytes.try_into().expect("Provided value is incorrect"),
+                    ) as usize;
+                    // get params names from the stack
+                    let params_values = self.get_stack_values(&(parameters_length as u32));
+                    let params_names: Vec<String> = params_values
+                        .iter()
+                        .map(|val| {
+                            match val {
+                                Value::HeapRef(r) => match self.resolve_heap_ref(r.clone()) {
+                                    HeapObject::String(s) => s.clone(),
+                                    _ => {
+                                        // TODO: use self-vm errors sytem
+                                        panic!("Invalid param type for a function declaration")
+                                    }
+                                },
+                                _ => {
+                                    // TODO: use self-vm errors sytem
+                                    panic!("Invalid param type for a function declaration")
+                                }
+                            }
+                        })
+                        .collect();
+
+                    self.pc += 4;
+
                     // handle body
                     // function body length
                     if self.pc + 4 >= self.bytecode.len() {
@@ -269,6 +301,7 @@ impl Vm {
                     // allocate function on the heap
                     let func_obj = HeapObject::Function(Function::new(
                         identifier_name.clone(),
+                        params_names,
                         body_boytecode,
                     ));
                     let func_ref = self.heap.allocate(func_obj);

@@ -90,13 +90,44 @@ impl Compiler {
     fn compile_function_declaration(node: &FunctionDeclaration) -> Vec<u8> {
         let mut bytecode = vec![];
 
+        // load function args num/type/...
+        let parameters: Vec<String> = node
+            .parameters
+            .children
+            .iter()
+            .map(|c| match c {
+                Some(Expression::Identifier(x)) => x.name.clone(),
+                Some(_) => panic!(
+                    "bad param type on '{}' function declaration",
+                    node.identifier.name
+                ),
+                None => panic!(
+                    "empty parameter in '{}' function declaration",
+                    node.identifier.name
+                ),
+            })
+            .collect();
+        let params_length = parameters.len();
+        for param in parameters {
+            let param_bytecode =
+                Compiler::compile_expression(&Expression::StringLiteral(StringLiteral {
+                    value: param.to_string(),
+                    raw_value: param,
+                    at: node.parameters.at,
+                    line: node.parameters.line,
+                }));
+            bytecode.extend_from_slice(&param_bytecode);
+        }
+
         // op
         bytecode.push(get_bytecode("function_declaration".to_string()));
 
         // load function name
         bytecode.extend_from_slice(&Compiler::compile_raw_string(node.identifier.name.clone()));
 
-        // load function args num/type/...
+        // // load function parameters_num
+        bytecode.extend_from_slice(&Compiler::compile_offset(params_length as i32));
+
         // load body of the function
         let body_bytecode = Compiler::compile_block(&node.body);
         let body_bytecode_length = if body_bytecode.len() > i32::MAX as usize {

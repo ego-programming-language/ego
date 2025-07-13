@@ -1,10 +1,12 @@
+use crate::ast::group::Group;
+
 use super::{block::Block, identifier::Identifier};
 
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
     //pub type: String,
     pub identifier: Identifier,
-    pub parameters: Vec<Identifier>,
+    pub parameters: Group,
     pub body: Block,
     pub at: usize,
     pub line: usize,
@@ -13,7 +15,7 @@ pub struct FunctionDeclaration {
 impl FunctionDeclaration {
     pub fn new(
         identifier: Identifier,
-        parameters: Vec<Identifier>,
+        parameters: Group,
         body: Block,
         at: usize,
         line: usize,

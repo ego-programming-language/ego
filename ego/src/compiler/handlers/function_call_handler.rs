@@ -35,7 +35,7 @@ pub fn function_call_as_bytecode(node: &CallExpression) -> Vec<u8> {
     let (args_len, args) = compiler::Compiler::compile_group(&node.arguments);
     bytecode.extend_from_slice(&args);
 
-    // print instruction bytecode
+    // instruction bytecode
     let opcode_bytecode = get_bytecode("call".to_string());
     bytecode.push(opcode_bytecode);
 

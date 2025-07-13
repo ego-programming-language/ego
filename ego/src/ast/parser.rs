@@ -7,7 +7,7 @@ use crate::{
         bool::Bool,
         call_expression::CallExpression,
         function_declaration::FunctionDeclaration,
-        group::Group,
+        group::{self, Group},
         identifier::Identifier,
         member_expression::MemberExpression,
         module::ModuleAst,
@@ -237,7 +237,7 @@ impl Module {
     }
 
     // (a, b, c)
-    fn group(&self, context: Option<&str>) -> AstNodeType {
+    fn group(&self, context: Option<&str>) -> Group {
         // where am i
         let context_msg = match context {
             Some(str) => format!(" in {}", str),
@@ -329,7 +329,7 @@ impl Module {
 
         // consume ')'
         self.next();
-        AstNodeType::Group(group_node)
+        group_node
     }
 
     // [a, b, x]
@@ -566,64 +566,7 @@ impl Module {
         self.next();
 
         // consume arguments
-        self.next(); // consume '('
-        let mut arguments: Vec<Identifier> = vec![];
-        let mut last_token = LexerTokenType::OpenParenthesis;
-        let mut closed = false;
-
-        while self.is_peekable() {
-            let token = self.unsafe_peek();
-
-            match token.token_type {
-                LexerTokenType::Comma => {
-                    // '(' and '<identifier>'
-                    if last_token != LexerTokenType::Comma {
-                        last_token = LexerTokenType::Comma;
-                        self.next();
-                    } else {
-                        error::throw(
-                            ErrorType::SyntaxError,
-                            format!("Unexpected token '{}' in function arguments", token.value)
-                                .as_str(),
-                            Some(token.line),
-                        )
-                    }
-                }
-                LexerTokenType::CloseParenthesis => {
-                    if last_token != LexerTokenType::Comma {
-                        closed = true;
-                        self.next();
-                        break;
-                    } else {
-                        error::throw(
-                            ErrorType::SyntaxError,
-                            format!("Unexpected token ',' before closing function arguments")
-                                .as_str(),
-                            Some(token.line),
-                        )
-                    }
-                }
-                LexerTokenType::Identifier => {
-                    arguments.push(Identifier::new(token.value.clone(), token.at, token.line));
-                    last_token = LexerTokenType::Identifier;
-                    self.next();
-                }
-                _ => error::throw(
-                    ErrorType::SyntaxError,
-                    format!("Unexpected token '{}' in function arguments", token.value).as_str(),
-                    Some(token.line),
-                ),
-            }
-        }
-
-        // non closed CallExpression
-        if !closed {
-            error::throw(
-                ErrorType::SyntaxError,
-                format!("Expected ')' to close function arguments").as_str(),
-                Some(token.line),
-            )
-        };
+        let group_node = self.group(Some("function_declaration"));
 
         // check for block
         let token = self.peek("{");
@@ -642,7 +585,7 @@ impl Module {
 
         AstNodeType::FunctionDeclaration(FunctionDeclaration::new(
             identifier_node,
-            arguments,
+            group_node,
             function_body,
             token.at,
             token.line,
@@ -1249,18 +1192,7 @@ impl Module {
         {
             let token = self.unsafe_peek(); // peek '('
 
-            let group = self.group(Some("call expression"));
-            let group_node = if let AstNodeType::Group(g) = group {
-                g
-            } else {
-                error::throw(
-                    ErrorType::ParsingError,
-                    "Expected argument group in call expression",
-                    Some(token.line),
-                );
-                std::process::exit(1);
-            };
-
+            let group_node = self.group(Some("call expression"));
             expr = Expression::CallExpression(CallExpression::new(
                 Box::new(expr),
                 group_node,
