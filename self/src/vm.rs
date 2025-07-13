@@ -414,13 +414,6 @@ impl Vm {
                 Opcode::Call => {
                     self.pc += 1;
                     let args = self.get_function_call_args();
-                    let mut resolved_args = Vec::new();
-                    for val in args {
-                        match self.value_to_string(val) {
-                            Ok(v) => resolved_args.push(v),
-                            Err(e) => return VMExecutionResult::terminate_with_errors(e),
-                        }
-                    }
 
                     // get caller identifier
                     let identifier_name_ref = self.get_stack_values(&1);
@@ -436,6 +429,12 @@ impl Vm {
                                     // PROBABLY BEHIND THE SCENE TO AVOID RUNTIME ERRORS
                                     // WE SHOULD WRAP AI OPCODE WITHIN A BOOLEAN CAST OPCODE
                                     "ai" => {
+                                        let resolved_args = match self.values_to_string(args) {
+                                            Ok(v) => v,
+                                            Err(e) => {
+                                                return VMExecutionResult::terminate_with_errors(e)
+                                            }
+                                        };
                                         let value = ai_handler(resolved_args, debug);
                                         if let Some(v) = value {
                                             let answer_type = v.0;
@@ -495,6 +494,12 @@ impl Vm {
                                         }
                                     }
                                     "read_file" => {
+                                        let resolved_args = match self.values_to_string(args) {
+                                            Ok(v) => v,
+                                            Err(e) => {
+                                                return VMExecutionResult::terminate_with_errors(e)
+                                            }
+                                        };
                                         let value = fs::read_file(&resolved_args[0]);
                                         if let Ok(content) = value {
                                             let heap_ref =
@@ -522,7 +527,16 @@ impl Vm {
                                                         self.resolve_heap_ref(v).clone();
                                                     if let HeapObject::Function(func) = heap_object
                                                     {
-                                                        self.run_function(func, debug);
+                                                        let result = self.run_function(
+                                                            func,
+                                                            args.clone(),
+                                                            debug,
+                                                        );
+                                                        if result.error.is_some() {
+                                                            return VMExecutionResult::terminate_with_errors(
+                                                                result.error.unwrap().error_type,
+                                                            );
+                                                        }
                                                     } else {
                                                         return VMExecutionResult::terminate_with_errors(
                                                             VMErrorType::NotCallableError(identifier_name.clone()),
@@ -546,7 +560,12 @@ impl Vm {
                                 }
                             }
                             HeapObject::Function(f) => {
-                                self.run_function(f.clone(), debug);
+                                let result = self.run_function(f.clone(), args, debug);
+                                if result.error.is_some() {
+                                    return VMExecutionResult::terminate_with_errors(
+                                        result.error.unwrap().error_type,
+                                    );
+                                }
                             }
                             _ => {
                                 panic!("Invalid type for callee string")
@@ -889,7 +908,7 @@ impl Vm {
         None
     }
 
-    fn run_function(&mut self, func: Function, debug: bool) -> VMExecutionResult {
+    fn run_function(&mut self, func: Function, args: Vec<Value>, debug: bool) -> VMExecutionResult {
         // save and set state
         // here we increment by 4 to skip the 4 bytes used
         // to determine the number of args that the function
@@ -1132,6 +1151,18 @@ impl Vm {
                 }
             },
         }
+    }
+
+    fn values_to_string(&mut self, args: Vec<Value>) -> Result<Vec<String>, VMErrorType> {
+        let mut resolved_args = Vec::new();
+        for val in args {
+            match self.value_to_string(val) {
+                Ok(v) => resolved_args.push(v),
+                Err(e) => return Err(e),
+            }
+        }
+
+        Ok(resolved_args)
     }
 
     pub fn read_offset(bytes: &[u8]) -> i32 {
