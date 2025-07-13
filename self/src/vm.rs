@@ -917,6 +917,15 @@ impl Vm {
         let main_bytecode = std::mem::take(&mut self.bytecode);
 
         self.call_stack.push();
+        for (index, param) in func.parameters.iter().enumerate() {
+            if index < args.len() {
+                self.call_stack
+                    .put_to_frame(param.clone(), args[index].clone());
+            } else {
+                self.call_stack
+                    .put_to_frame(param.clone(), Value::RawValue(RawValue::Nothing));
+            }
+        }
         self.bytecode = func.bytecode.clone();
         self.pc = 0;
 
