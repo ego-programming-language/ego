@@ -1,5 +1,3 @@
-use serde::de;
-
 use crate::core::error::InvalidBinaryOperation;
 use crate::core::error::VMErrorType;
 use crate::core::execution::VMExecutionResult;
@@ -595,6 +593,7 @@ impl Vm {
                                 module_fields.insert(field.0, Value::HeapRef(field_ref));
                             }
 
+                            // create the native module struct
                             let module_struct = StructLiteral::new(module_def.0, module_fields);
                             let module_struct_ref =
                                 self.heap.allocate(HeapObject::StructLiteral(module_struct));
@@ -976,9 +975,17 @@ impl Vm {
 
                 return function_exec_result;
             }
-            Engine::Native => {
-                println!("running native function");
-                return VMExecutionResult { error: None };
+            Engine::Native(native) => {
+                let execution_result = native(self, vec![]);
+                if let Ok(result) = execution_result {
+                    // we could return the result value, using
+                    // it as the return value of the function
+                    return VMExecutionResult { error: None };
+                } else {
+                    return VMExecutionResult {
+                        error: Some(execution_result.unwrap_err()),
+                    };
+                };
             }
         }
     }
