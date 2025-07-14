@@ -13,6 +13,7 @@ use crate::heap::HeapRef;
 use crate::opcodes::DataType;
 use crate::opcodes::Opcode;
 use crate::std::fs;
+use crate::std::{generate_native_module, get_native_module_type};
 use crate::translator::Translator;
 use crate::types::object::func::Engine;
 use crate::types::object::func::Function;
@@ -28,8 +29,8 @@ use super::types::*;
 
 pub struct Vm {
     operand_stack: Vec<OperandsStackValue>,
-    call_stack: CallStack,
-    heap: Heap,
+    pub call_stack: CallStack,
+    pub heap: Heap,
     bytecode: Vec<u8>,
     pc: usize,
     handlers: ForeignHandlers,
@@ -582,16 +583,28 @@ impl Vm {
                     let module_name_value = values[0].clone();
 
                     if let Value::HeapRef(obj) = module_name_value {
-                        let module_name = self.resolve_heap_ref(obj);
-
-                        // import module system
-                        match module_name.to_string().as_str() {
-                            "ai" => {
-                                // here we should load a struct with diferent
-                                // function declarations and vars that are
-                                // the execution exposed members of our std lib
+                        let module_name = self.resolve_heap_ref(obj).to_string();
+                        let native_module = get_native_module_type(module_name.as_str());
+                        // native module
+                        if let Some(nm) = native_module {
+                            // load native module fields
+                            let module_def = generate_native_module(nm);
+                            let mut module_fields = HashMap::new();
+                            for field in module_def.1 {
+                                let field_ref = self.heap.allocate(field.1);
+                                module_fields.insert(field.0, Value::HeapRef(field_ref));
                             }
-                            _ => {}
+
+                            let module_struct = StructLiteral::new(module_def.0, module_fields);
+                            let module_struct_ref =
+                                self.heap.allocate(HeapObject::StructLiteral(module_struct));
+
+                            self.call_stack.put_to_frame(
+                                module_name.to_string(),
+                                Value::HeapRef(module_struct_ref),
+                            );
+                        } else {
+                            // custom module
                         }
                     } else {
                         // TODO: use self-vm errors system
@@ -962,6 +975,10 @@ impl Vm {
                 self.bytecode = main_bytecode;
 
                 return function_exec_result;
+            }
+            Engine::Native => {
+                println!("running native function");
+                return VMExecutionResult { error: None };
             }
         }
     }

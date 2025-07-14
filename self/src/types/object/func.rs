@@ -1,6 +1,7 @@
 #[derive(Debug, Clone)]
 pub enum Engine {
     Bytecode(Vec<u8>),
+    Native,
     //Native(fn(&mut VM, Vec<Value>) -> Result<Value, VMError>),
 }
 
