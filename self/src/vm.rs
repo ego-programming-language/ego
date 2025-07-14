@@ -577,6 +577,29 @@ impl Vm {
                         panic!("Invalid type for callee string")
                     };
                 }
+                Opcode::Import => {
+                    let values = self.get_stack_values(&1);
+                    let module_name_value = values[0].clone();
+
+                    if let Value::HeapRef(obj) = module_name_value {
+                        let module_name = self.resolve_heap_ref(obj);
+
+                        // import module system
+                        match module_name.to_string().as_str() {
+                            "ai" => {
+                                // here we should load a struct with diferent
+                                // function declarations and vars that are
+                                // the execution exposed members of our std lib
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        // TODO: use self-vm errors system
+                        panic!("invalid value type as module name for import")
+                    }
+
+                    self.pc += 1;
+                }
                 Opcode::Add => {
                     // execution
                     let right_operand = self.operand_stack.pop();

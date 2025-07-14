@@ -2,7 +2,9 @@ mod bytecode;
 mod handlers;
 
 use crate::{
-    ast::{objects::ObjectLiteral, string_literal::StringLiteral},
+    ast::{
+        import_statement::ImportStatement, objects::ObjectLiteral, string_literal::StringLiteral,
+    },
     core::error::{self, ErrorType},
 };
 use bytecode::get_bytecode;
@@ -58,6 +60,7 @@ impl Compiler {
             AstNodeType::Expression(node) => Compiler::compile_expression(node),
             AstNodeType::WhileStatement(node) => Compiler::compile_while_statement(node),
             AstNodeType::Struct(node) => Compiler::compile_struct_declaration(node),
+            AstNodeType::ImportStatement(node) => Compiler::compile_import(node),
             _ => {
                 // panic!("unhandled node type")
                 // here we should, in the near future throw an error
@@ -378,6 +381,20 @@ impl Compiler {
                 panic!("unhandled expression type")
             }
         }
+    }
+
+    fn compile_import(node: &ImportStatement) -> Vec<u8> {
+        let mut bytecode = vec![];
+
+        // for the moment let's only enable
+        // one deepth
+        let module = node.module[0].clone();
+        bytecode.extend_from_slice(&Compiler::compile_expression(&Expression::StringLiteral(
+            StringLiteral::new(module.to_string(), module, node.at, node.line),
+        )));
+
+        bytecode.push(get_bytecode("import".to_string()));
+        bytecode
     }
 
     fn compile_block(node: &Block) -> Vec<u8> {
