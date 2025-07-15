@@ -1,5 +1,10 @@
+pub mod ai_errors;
 pub mod fs_errors;
-use crate::{core::error::fs_errors::FsError, opcodes::DataType, stack::OperandsStackValue};
+use crate::{
+    core::error::{ai_errors::AIError, fs_errors::FsError},
+    opcodes::DataType,
+    stack::OperandsStackValue,
+};
 
 pub enum VMErrorType {
     TypeCoercionError(OperandsStackValue), // maybe here we should have a more generic value, we'll see with time
@@ -8,6 +13,7 @@ pub enum VMErrorType {
     UndeclaredIdentifierError(String),
     NotCallableError(String),
     Fs(FsError),
+    AI(AIError),
 }
 
 pub struct VMError {
@@ -56,6 +62,9 @@ pub fn throw(error_type: VMErrorType) -> VMError {
             FsError::FileNotFound(s) => ("File not found".to_string(), format!("{}", s)),
             FsError::NotAFile(s) => ("Not a file".to_string(), format!("{}", s)),
             FsError::ReadError(s) => ("Read error".to_string(), format!("{}", s)),
+        },
+        VMErrorType::AI(ai) => match ai {
+            AIError::AIFetchError(s) => ("AI fetch error".to_string(), format!("{}", s)),
         },
     };
 

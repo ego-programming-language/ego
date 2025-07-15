@@ -976,7 +976,16 @@ impl Vm {
                 return function_exec_result;
             }
             Engine::Native(native) => {
-                let execution_result = native(self, vec![]);
+                if args.len() < func.parameters.len() {
+                    // TODO: use self-vm errors system
+                    panic!(
+                        "function '{}' requires {} parameters, provided {}",
+                        func.identifier,
+                        func.parameters.len(),
+                        args.len()
+                    )
+                }
+                let execution_result = native(self, args, debug);
                 if let Ok(result) = execution_result {
                     // we could return the result value, using
                     // it as the return value of the function
