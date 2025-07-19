@@ -8,6 +8,7 @@ use crate::{
 
 pub enum VMErrorType {
     TypeCoercionError(OperandsStackValue), // maybe here we should have a more generic value, we'll see with time
+    TypeMismatch { expected: String, received: String },
     InvalidBinaryOperation(InvalidBinaryOperation),
     DivisionByZero(OperandsStackValue),
     UndeclaredIdentifierError(String),
@@ -38,6 +39,10 @@ pub fn throw(error_type: VMErrorType) -> VMError {
                 ),
             )
         }
+        VMErrorType::TypeMismatch { expected, received } => (
+            "Type mismatch error".to_string(),
+            format!("expected {expected}, received {received}"),
+        ),
         VMErrorType::InvalidBinaryOperation(v) => (
             "Invalid binary operation".to_string(),
             format!("{} {} {}", v.left.as_str(), v.operator, v.right.as_str()),

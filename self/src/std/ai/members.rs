@@ -15,7 +15,8 @@ use serde_json::Value as SValue;
 
 use crate::{
     core::error::{self, ai_errors::AIError, VMError, VMErrorType},
-    types::{raw::RawValue, Value},
+    heap::HeapObject,
+    types::Value,
     vm::Vm,
 };
 
@@ -77,21 +78,53 @@ pub fn infer(
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Option<(String, String)>, VMError> {
-    // probably we dont want to this function to receive
-    // the vm, or maybe yes, i'm having doubts, but i think
-    // that the std lib probably must not be based on the
-    // vm concept. that keepts the std lib pure, and resilient
-    // to the vm interface changes
+    let request_ref = params[0].clone();
+    let request = match request_ref {
+        Value::HeapRef(r) => {
+            let heap_obj = vm.resolve_heap_ref(r);
+            let request = match heap_obj {
+                HeapObject::String(s) => s,
+                _ => {
+                    return Err(error::throw(VMErrorType::TypeMismatch {
+                        expected: "string".to_string(),
+                        received: heap_obj.to_string(),
+                    }));
+                }
+            };
+            request
+        }
+        Value::RawValue(r) => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: r.get_type_string(),
+            }));
+        }
+    };
+    let context_ref = params[1].clone();
+    let context = match context_ref {
+        Value::HeapRef(r) => {
+            let heap_obj = vm.resolve_heap_ref(r);
+            let context = match heap_obj {
+                HeapObject::String(s) => s,
+                _ => {
+                    return Err(error::throw(VMErrorType::TypeMismatch {
+                        expected: "string".to_string(),
+                        received: heap_obj.to_string(),
+                    }));
+                }
+            };
+            context
+        }
+        Value::RawValue(r) => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: r.get_type_string(),
+            }));
+        }
+    };
 
-    // other thing is that, if the arguments must came resolved or not.
-    // probably they should be resolved. but if they are resolved to strings,
-    // we lose the typing system of the params. but if not, we need to
-    // resolve them here.
-
-    let request = params[0].clone();
-    let context = params[1].clone();
     if debug {
-        println!("AI <- {}({})", request.to_string(), context.to_string());
+        println!("AI <- {}({})", request, context.to_string());
     }
     // we should try to avoid prompt injection
     // maybe using multiple prompts?

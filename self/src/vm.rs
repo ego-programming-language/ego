@@ -999,7 +999,7 @@ impl Vm {
         }
     }
 
-    fn resolve_heap_ref(&self, address: HeapRef) -> &HeapObject {
+    pub fn resolve_heap_ref(&self, address: HeapRef) -> &HeapObject {
         if let Some(addr) = self.heap.get(address) {
             return addr;
         } else {
