@@ -83,29 +83,39 @@ pub fn lex(source: String) -> Vec<LexerToken> {
                 }
                 // expressions characters
                 '=' => {
-                    if let Some(next) = chars.peek() {
-                        match next {
-                            '=' => {
-                                // for '=='
-                                chars.next(); // Consume the '='
-                                current_token.push(c);
-                                current_token.push('=');
-                                tokens.push(token_with_type(
-                                    current_token.clone(),
-                                    line_counter,
-                                    line_char_counter,
-                                ));
-                                current_token.clear();
-                            }
-                            _ => {
-                                // for '='
-                                current_token.push(c);
-                                tokens.push(token_with_type(
-                                    current_token.clone(),
-                                    line_counter,
-                                    line_char_counter,
-                                ));
-                                current_token.clear();
+                    if is_string {
+                        current_token.push(c);
+                    } else {
+                        tokens.push(token_with_type(
+                            current_token.clone(),
+                            line_counter,
+                            line_char_counter,
+                        ));
+                        current_token.clear();
+                        if let Some(next) = chars.peek() {
+                            match next {
+                                '=' => {
+                                    // for '=='
+                                    chars.next(); // Consume the '='
+                                    current_token.push(c);
+                                    current_token.push('=');
+                                    tokens.push(token_with_type(
+                                        current_token.clone(),
+                                        line_counter,
+                                        line_char_counter,
+                                    ));
+                                    current_token.clear();
+                                }
+                                _ => {
+                                    // for '='
+                                    current_token.push(c);
+                                    tokens.push(token_with_type(
+                                        current_token.clone(),
+                                        line_counter,
+                                        line_char_counter,
+                                    ));
+                                    current_token.clear();
+                                }
                             }
                         }
                     }
