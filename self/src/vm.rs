@@ -963,7 +963,6 @@ impl Vm {
                 self.bytecode = bytecode;
                 self.pc = 0;
 
-                println!("self {}", self.pc);
                 let function_exec_result = self.run_bytecode(debug);
                 // recover state after execution
                 self.call_stack.pop();
