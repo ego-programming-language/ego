@@ -1290,7 +1290,9 @@ impl Vm {
 
     pub fn debug_bytecode(&mut self) {
         println!("\n--- BYTECODE ----------\n");
-        println!("{:#?}", self.bytecode)
+        for (index, byte) in self.bytecode.iter().enumerate() {
+            println!("[{index}] {}", byte)
+        }
         // -------
         // THIS CODE IS COMMENTED FOR THE REASON THAT
         // I DON'T KNOW HOW TO HANDLE THE BYTECODE
