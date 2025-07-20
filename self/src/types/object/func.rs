@@ -3,7 +3,7 @@ use crate::{core::error::VMError, types::Value, vm::Vm};
 #[derive(Debug, Clone)]
 pub enum Engine {
     Bytecode(Vec<u8>),
-    Native(fn(&mut Vm, Vec<Value>, bool) -> Result<Option<(String, String)>, VMError>),
+    Native(fn(&mut Vm, Vec<Value>, bool) -> Result<Value, VMError>),
 }
 
 #[derive(Debug, Clone)]

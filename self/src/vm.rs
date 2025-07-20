@@ -415,7 +415,6 @@ impl Vm {
                     self.pc += 1;
                     let args = self.get_function_call_args();
 
-                    // get caller identifier
                     let identifier_name_ref = self.get_stack_values(&1);
                     if let Value::HeapRef(_ref) = identifier_name_ref[0].clone() {
                         self.pc += 1; // go to next opcode
@@ -947,7 +946,7 @@ impl Vm {
     }
 
     fn run_function(&mut self, func: Function, args: Vec<Value>, debug: bool) -> VMExecutionResult {
-        match func.engine {
+        let execution_result = match func.engine {
             Engine::Bytecode(bytecode) => {
                 // save and set state
                 // here we increment by 4 to skip the 4 bytes used
@@ -975,7 +974,7 @@ impl Vm {
                 self.pc = return_pc;
                 self.bytecode = main_bytecode;
 
-                return function_exec_result;
+                function_exec_result
             }
             Engine::Native(native) => {
                 if args.len() < func.parameters.len() {
@@ -991,18 +990,24 @@ impl Vm {
                 if let Ok(result) = execution_result {
                     // we could return the result value, using
                     // it as the return value of the function
-                    return VMExecutionResult {
+                    VMExecutionResult {
                         error: None,
-                        result: None,
-                    };
+                        result: Some(result),
+                    }
                 } else {
-                    return VMExecutionResult {
+                    VMExecutionResult {
                         error: Some(execution_result.unwrap_err()),
                         result: None,
-                    };
-                };
+                    }
+                }
             }
+        };
+
+        if let Some(returned_value) = &execution_result.result {
+            //println!("returned_value: {:#?}", returned_value);
         }
+
+        return execution_result;
     }
 
     pub fn resolve_heap_ref(&self, address: HeapRef) -> &HeapObject {

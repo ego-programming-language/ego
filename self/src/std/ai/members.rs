@@ -16,7 +16,10 @@ use serde_json::Value as SValue;
 use crate::{
     core::error::{self, ai_errors::AIError, VMError, VMErrorType},
     heap::HeapObject,
-    types::Value,
+    types::{
+        raw::{bool::Bool, f64::F64, utf8::Utf8, RawValue},
+        Value,
+    },
     vm::Vm,
 };
 
@@ -47,7 +50,7 @@ struct MessageContent {
     content: String,
 }
 
-fn ai_response_parser(response: &String) -> Option<(String, String)> {
+fn ai_response_parser(response: &String) -> Option<Value> {
     let cleaned = response
         .trim()
         .trim_start_matches("```json")
@@ -58,26 +61,27 @@ fn ai_response_parser(response: &String) -> Option<(String, String)> {
     let raw_value = json.get("value")?;
 
     if raw_value.is_boolean() {
-        Some(("bool".to_string(), raw_value.to_string()))
+        let bool = raw_value.as_bool().unwrap();
+        Some(Value::RawValue(RawValue::Bool(Bool::new(bool))))
     } else if raw_value.is_number() {
-        Some(("number".to_string(), raw_value.to_string()))
+        let value = raw_value.as_f64().unwrap();
+        Some(Value::RawValue(RawValue::F64(F64::new(value))))
     } else if raw_value.is_string() {
         let s = raw_value.as_str()?;
         if s.trim().is_empty() || s.trim() == "nothing" {
-            Some(("nothing".to_string(), "nothing".to_string()))
+            Some(Value::RawValue(RawValue::Nothing))
         } else {
-            Some(("string".to_string(), s.to_string()))
+            let value = raw_value.as_str().unwrap();
+            Some(Value::RawValue(RawValue::Utf8(Utf8::new(
+                value.to_string(),
+            ))))
         }
     } else {
-        Some(("nothing".to_string(), "nothing".to_string()))
+        Some(Value::RawValue(RawValue::Nothing))
     }
 }
 
-pub fn infer(
-    vm: &mut Vm,
-    params: Vec<Value>,
-    debug: bool,
-) -> Result<Option<(String, String)>, VMError> {
+pub fn infer(vm: &mut Vm, params: Vec<Value>, debug: bool) -> Result<Value, VMError> {
     let request_ref = params[0].clone();
     let request = match request_ref {
         Value::HeapRef(r) => {
@@ -197,8 +201,8 @@ context: {{ 'arg': {} }}
 
     let parsed_answer = ai_response_parser(answer);
     if let Some(v) = parsed_answer {
-        return Ok(Some((v.0, v.1)));
+        return Ok(v);
     } else {
-        return Ok(None);
+        return Ok(Value::RawValue(RawValue::Nothing));
     }
 }
