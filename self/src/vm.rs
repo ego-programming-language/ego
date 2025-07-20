@@ -991,10 +991,14 @@ impl Vm {
                 if let Ok(result) = execution_result {
                     // we could return the result value, using
                     // it as the return value of the function
-                    return VMExecutionResult { error: None };
+                    return VMExecutionResult {
+                        error: None,
+                        result: None,
+                    };
                 } else {
                     return VMExecutionResult {
                         error: Some(execution_result.unwrap_err()),
+                        result: None,
                     };
                 };
             }
