@@ -421,6 +421,8 @@ impl Vm {
                         self.pc += 1; // go to next opcode
                         let resolved_heap_ref = self.resolve_heap_ref(_ref);
                         match resolved_heap_ref {
+                            // here are defined the callable functions without
+                            // any kind of import required (e.g: print)
                             HeapObject::String(identifier_name) => {
                                 if debug {
                                     println!("CALL -> {}", identifier_name.to_string())

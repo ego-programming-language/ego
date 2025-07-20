@@ -14,7 +14,7 @@ pub fn call_as_bytecode(node: &CallExpression) -> Vec<u8> {
     // load arguments
     for argument in &node.arguments.children {
         if let Some(arg) = argument {
-            bytecode.extend_from_slice(&Compiler::compile_expression(&arg))
+            bytecode.extend_from_slice(&Compiler::compile_expression(&arg, false))
         } else {
             // push nothing to bytecode
         }

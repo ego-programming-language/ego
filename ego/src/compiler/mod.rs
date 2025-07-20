@@ -57,7 +57,7 @@ impl Compiler {
             }
             AstNodeType::FunctionDeclaration(node) => Compiler::compile_function_declaration(node),
             AstNodeType::IfStatement(node) => Compiler::compile_if_statement(node),
-            AstNodeType::Expression(node) => Compiler::compile_expression(node),
+            AstNodeType::Expression(node) => Compiler::compile_expression(node, true),
             AstNodeType::WhileStatement(node) => Compiler::compile_while_statement(node),
             AstNodeType::Struct(node) => Compiler::compile_struct_declaration(node),
             AstNodeType::ImportStatement(node) => Compiler::compile_import(node),
@@ -72,7 +72,7 @@ impl Compiler {
     fn compile_assignament_statement(node: &AssignamentNode) -> Vec<u8> {
         let mut operation_bytecode = vec![];
         // load value
-        operation_bytecode.extend_from_slice(&Compiler::compile_expression(&node.init));
+        operation_bytecode.extend_from_slice(&Compiler::compile_expression(&node.init, false));
 
         // op
         operation_bytecode.push(get_bytecode("store_var".to_string()));
@@ -112,13 +112,15 @@ impl Compiler {
             .collect();
         let params_length = parameters.len();
         for param in parameters {
-            let param_bytecode =
-                Compiler::compile_expression(&Expression::StringLiteral(StringLiteral {
+            let param_bytecode = Compiler::compile_expression(
+                &Expression::StringLiteral(StringLiteral {
                     value: param.to_string(),
                     raw_value: param,
                     at: node.parameters.at,
                     line: node.parameters.line,
-                }));
+                }),
+                false,
+            );
             bytecode.extend_from_slice(&param_bytecode);
         }
 
@@ -168,7 +170,7 @@ impl Compiler {
     fn compile_if_statement(node: &IfStatement) -> Vec<u8> {
         let mut bytecode = vec![];
 
-        let condition_bytecode = &Compiler::compile_expression(&node.condition);
+        let condition_bytecode = &Compiler::compile_expression(&node.condition, false);
         let then_bytecode = Compiler::compile_block(&node.body);
         let else_bytecode = if let Some(else_node) = &node.else_node {
             Compiler::compile_block(&else_node.body)
@@ -197,7 +199,7 @@ impl Compiler {
         // 4: offset bytecode size
         // 1: opcode size
         let mut bytecode = vec![];
-        let condition_bytecode = Compiler::compile_expression(&node.condition);
+        let condition_bytecode = Compiler::compile_expression(&node.condition, false);
         let body_bytecode = Compiler::compile_block(&node.body);
         let body_offset = Compiler::compile_offset((body_bytecode.len() + 4 + 1) as i32);
         let while_offset = Compiler::compile_offset(
@@ -213,7 +215,7 @@ impl Compiler {
         bytecode
     }
 
-    fn compile_expression(node: &Expression) -> Vec<u8> {
+    fn compile_expression(node: &Expression, drop_value: bool) -> Vec<u8> {
         // all expressions push a load_const opcode
         // except of identifier which loads a load_var opcode
         match node {
@@ -222,8 +224,8 @@ impl Compiler {
                     "print" => handlers::print_as_bytecode(v),
                     "println" => handlers::print_as_bytecode(v), // both print types can be handled by the same function
                     "call" => handlers::call_as_bytecode(v),
-                    "ai" => handlers::function_call_as_bytecode(v),
-                    _ => handlers::function_call_as_bytecode(v),
+                    "ai" => handlers::function_call_as_bytecode(v, drop_value),
+                    _ => handlers::function_call_as_bytecode(v, drop_value),
                 };
 
                 call_expression_bytecode
@@ -248,6 +250,7 @@ impl Compiler {
                         v.at,
                         v.line,
                     )),
+                    false,
                 ));
 
                 // compile object fields number
@@ -329,8 +332,8 @@ impl Compiler {
                 // operands
                 let left_operand = *v.left.clone();
                 let right_operand = *v.right.clone();
-                bytecode.extend_from_slice(&Compiler::compile_expression(&left_operand));
-                bytecode.extend_from_slice(&Compiler::compile_expression(&right_operand));
+                bytecode.extend_from_slice(&Compiler::compile_expression(&left_operand, false));
+                bytecode.extend_from_slice(&Compiler::compile_expression(&right_operand, false));
 
                 // operator
                 match v.operator.as_str() {
@@ -360,10 +363,10 @@ impl Compiler {
                     property.line,
                 );
                 let property_bytecode =
-                    Compiler::compile_expression(&Expression::StringLiteral(string_literal));
+                    Compiler::compile_expression(&Expression::StringLiteral(string_literal), false);
 
                 // compile object (a potential nested object_expression)
-                let object_bytecode = Compiler::compile_expression(&object);
+                let object_bytecode = Compiler::compile_expression(&object, false);
 
                 bytecode.extend_from_slice(&object_bytecode);
                 bytecode.extend_from_slice(&property_bytecode);
@@ -389,9 +392,15 @@ impl Compiler {
         // for the moment let's only enable
         // one deepth
         let module = node.module[0].clone();
-        bytecode.extend_from_slice(&Compiler::compile_expression(&Expression::StringLiteral(
-            StringLiteral::new(module.to_string(), module, node.at, node.line),
-        )));
+        bytecode.extend_from_slice(&Compiler::compile_expression(
+            &Expression::StringLiteral(StringLiteral::new(
+                module.to_string(),
+                module,
+                node.at,
+                node.line,
+            )),
+            false,
+        ));
 
         bytecode.push(get_bytecode("import".to_string()));
         bytecode
@@ -411,7 +420,7 @@ impl Compiler {
         let mut bytecode = vec![];
         for argument in &node.children {
             if let Some(arg) = argument {
-                bytecode.extend_from_slice(&Compiler::compile_expression(&arg))
+                bytecode.extend_from_slice(&Compiler::compile_expression(&arg, false))
             } else {
                 // push nothing to bytecode
             }
@@ -455,7 +464,7 @@ impl Compiler {
             bytecode.push(get_bytecode("load_const".to_string()));
             bytecode.extend_from_slice(&Compiler::compile_raw_string(field.0.name.clone()));
             // load expression
-            bytecode.extend_from_slice(&Compiler::compile_expression(&field.1));
+            bytecode.extend_from_slice(&Compiler::compile_expression(&field.1, false));
         }
 
         (node.fields.len(), bytecode)

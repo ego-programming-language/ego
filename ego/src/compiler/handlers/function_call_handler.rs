@@ -1,29 +1,29 @@
 use std::collections::btree_map;
 
 use crate::{
-    ast::{
-        call_expression::CallExpression, identifier::Identifier, string_literal::StringLiteral,
-        Expression,
-    },
+    ast::{call_expression::CallExpression, string_literal::StringLiteral, Expression},
     compiler::{self, bytecode::get_bytecode, Compiler},
 };
 
-use self_vm::utils::{
-    to_bytes::{bytes_from_32, bytes_from_64, bytes_from_utf8},
-    Number,
-};
+use self_vm::utils::{to_bytes::bytes_from_32, Number};
 
-pub fn function_call_as_bytecode(node: &CallExpression) -> Vec<u8> {
+pub fn function_call_as_bytecode(node: &CallExpression, drop_value: bool) -> Vec<u8> {
     let mut bytecode = vec![];
 
     // callee
     let identifier_bytecode = match node.callee.as_ref() {
         Expression::MemberExpression(x) => {
-            Compiler::compile_expression(&Expression::MemberExpression(x.clone()))
+            Compiler::compile_expression(&Expression::MemberExpression(x.clone()), false)
         }
-        Expression::Identifier(x) => Compiler::compile_expression(&Expression::StringLiteral(
-            StringLiteral::new(node.get_callee(), node.get_callee(), 0, 0),
-        )),
+        Expression::Identifier(x) => Compiler::compile_expression(
+            &Expression::StringLiteral(StringLiteral::new(
+                node.get_callee(),
+                node.get_callee(),
+                0,
+                0,
+            )),
+            false,
+        ),
         _ => {
             // TODO: use self-vm errors system
             panic!("compilation error: invalid callee for a function call")
