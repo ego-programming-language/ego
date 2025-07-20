@@ -417,7 +417,6 @@ impl Vm {
 
                     let identifier_name_ref = self.get_stack_values(&1);
                     if let Value::HeapRef(_ref) = identifier_name_ref[0].clone() {
-                        self.pc += 1; // go to next opcode
                         let resolved_heap_ref = self.resolve_heap_ref(_ref);
                         match resolved_heap_ref {
                             // here are defined the callable functions without
@@ -948,11 +947,7 @@ impl Vm {
     fn run_function(&mut self, func: Function, args: Vec<Value>, debug: bool) -> VMExecutionResult {
         let execution_result = match func.engine {
             Engine::Bytecode(bytecode) => {
-                // save and set state
-                // here we increment by 4 to skip the 4 bytes used
-                // to determine the number of args that the function
-                // uses
-                let return_pc = self.pc + 4;
+                let return_pc = self.pc;
                 let main_bytecode = std::mem::take(&mut self.bytecode);
 
                 self.call_stack.push();
@@ -968,6 +963,7 @@ impl Vm {
                 self.bytecode = bytecode;
                 self.pc = 0;
 
+                println!("self {}", self.pc);
                 let function_exec_result = self.run_bytecode(debug);
                 // recover state after execution
                 self.call_stack.pop();
