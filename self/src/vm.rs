@@ -999,7 +999,7 @@ impl Vm {
         };
 
         if let Some(returned_value) = &execution_result.result {
-            //println!("returned_value: {:#?}", returned_value);
+            self.push_to_stack(returned_value.clone(), Some(func.identifier));
         }
 
         return execution_result;
