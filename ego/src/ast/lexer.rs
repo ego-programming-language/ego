@@ -86,12 +86,14 @@ pub fn lex(source: String) -> Vec<LexerToken> {
                     if is_string {
                         current_token.push(c);
                     } else {
-                        tokens.push(token_with_type(
-                            current_token.clone(),
-                            line_counter,
-                            line_char_counter,
-                        ));
-                        current_token.clear();
+                        if current_token.len() > 0 {
+                            tokens.push(token_with_type(
+                                current_token.clone(),
+                                line_counter,
+                                line_char_counter,
+                            ));
+                            current_token.clear();
+                        }
                         if let Some(next) = chars.peek() {
                             match next {
                                 '=' => {

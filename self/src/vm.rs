@@ -493,27 +493,6 @@ impl Vm {
                                             );
                                         }
                                     }
-                                    "read_file" => {
-                                        let resolved_args = match self.values_to_string(args) {
-                                            Ok(v) => v,
-                                            Err(e) => {
-                                                return VMExecutionResult::terminate_with_errors(e)
-                                            }
-                                        };
-                                        let value = fs::read_file(&resolved_args[0]);
-                                        if let Ok(content) = value {
-                                            let heap_ref =
-                                                self.heap.allocate(HeapObject::String(content));
-                                            self.push_to_stack(
-                                                Value::HeapRef(heap_ref),
-                                                Some("read_file".to_string()),
-                                            );
-                                        } else {
-                                            return VMExecutionResult::terminate_with_errors(
-                                                VMErrorType::Fs(value.unwrap_err()),
-                                            );
-                                        }
-                                    }
                                     _ => {
                                         // get the identifier from the heap
                                         if let Some(value) =
