@@ -583,6 +583,10 @@ impl Vm {
                             );
                         } else {
                             // custom module
+                            // for the moment panic for not defined
+                            return VMExecutionResult::terminate_with_errors(
+                                VMErrorType::ModuleNotFound(module_name),
+                            );
                         }
                     } else {
                         // TODO: use self-vm errors system

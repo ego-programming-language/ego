@@ -13,6 +13,7 @@ pub enum VMErrorType {
     DivisionByZero(OperandsStackValue),
     UndeclaredIdentifierError(String),
     NotCallableError(String),
+    ModuleNotFound(String),
     Fs(FsError),
     AI(AIError),
 }
@@ -63,6 +64,7 @@ pub fn throw(error_type: VMErrorType) -> VMError {
             ("Undeclared identifier".to_string(), format!("{}", v))
         }
         VMErrorType::NotCallableError(v) => ("Not callable member".to_string(), format!("{}", v)),
+        VMErrorType::ModuleNotFound(s) => ("Module not found".to_string(), format!("{}", s)),
         VMErrorType::Fs(fs) => match fs {
             FsError::FileNotFound(s) => ("File not found".to_string(), format!("{}", s)),
             FsError::NotAFile(s) => ("Not a file".to_string(), format!("{}", s)),
