@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::{cell::Cell, process::exit};
 
 use crate::{
     ast::{
@@ -860,15 +860,25 @@ impl Module {
 
         // consume '<identifier>'
         self.next();
-        let token = self.peek("<identifier>");
-        if token.token_type != LexerTokenType::Identifier {
-            error::throw(
-                ErrorType::SyntaxError,
-                format!("Unexpected token '{}' after import keyword", token.value).as_str(),
-                Some(token.line),
-            )
-        }
-        let module = vec![token.value.clone()];
+        let token = self.unsafe_peek();
+        let modname = match token.token_type {
+            LexerTokenType::Identifier => token.value.clone(),
+            LexerTokenType::StringLiteral => {
+                let mut chars = token.value.chars();
+                chars.next();
+                chars.next_back();
+                chars.collect()
+            }
+            _ => {
+                error::throw(
+                    ErrorType::SyntaxError,
+                    format!("Unexpected token '{}' after import keyword", token.value).as_str(),
+                    Some(token.line),
+                );
+                exit(1);
+            }
+        };
+        let module = vec![modname];
         self.next();
 
         return AstNodeType::ImportStatement(ImportStatement::new(module, vec![], at, line));
