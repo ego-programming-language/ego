@@ -9,6 +9,7 @@ use crate::{
         function_declaration::FunctionDeclaration,
         group::{self, Group},
         identifier::Identifier,
+        import_statement::ModuleType,
         member_expression::MemberExpression,
         module::ModuleAst,
         number::Number,
@@ -861,13 +862,13 @@ impl Module {
         // consume '<identifier>'
         self.next();
         let token = self.unsafe_peek();
-        let modname = match token.token_type {
-            LexerTokenType::Identifier => token.value.clone(),
+        let (modtype, modname) = match token.token_type {
+            LexerTokenType::Identifier => (ModuleType::Native, token.value.clone()),
             LexerTokenType::StringLiteral => {
                 let mut chars = token.value.chars();
                 chars.next();
                 chars.next_back();
-                chars.collect()
+                (ModuleType::Custom, chars.collect())
             }
             _ => {
                 error::throw(
@@ -881,7 +882,13 @@ impl Module {
         let module = vec![modname];
         self.next();
 
-        return AstNodeType::ImportStatement(ImportStatement::new(module, vec![], at, line));
+        return AstNodeType::ImportStatement(ImportStatement::new(
+            module,
+            modtype,
+            vec![],
+            at,
+            line,
+        ));
     }
 
     // return "hello";

@@ -3,7 +3,9 @@ mod handlers;
 
 use crate::{
     ast::{
-        import_statement::ImportStatement, objects::ObjectLiteral, string_literal::StringLiteral,
+        import_statement::{ImportStatement, ModuleType},
+        objects::ObjectLiteral,
+        string_literal::StringLiteral,
     },
     core::error::{self, ErrorType},
 };
@@ -389,21 +391,26 @@ impl Compiler {
     fn compile_import(node: &ImportStatement) -> Vec<u8> {
         let mut bytecode = vec![];
 
-        // for the moment let's only enable
-        // one deepth
-        let module = node.module[0].clone();
-        bytecode.extend_from_slice(&Compiler::compile_expression(
-            &Expression::StringLiteral(StringLiteral::new(
-                module.to_string(),
-                module,
-                node.at,
-                node.line,
-            )),
-            false,
-        ));
+        match node.module_type {
+            ModuleType::Native => {
+                // for the moment let's only enable
+                // one deepth
+                let module = node.module[0].clone();
+                bytecode.extend_from_slice(&Compiler::compile_expression(
+                    &Expression::StringLiteral(StringLiteral::new(
+                        module.to_string(),
+                        module,
+                        node.at,
+                        node.line,
+                    )),
+                    false,
+                ));
 
-        bytecode.push(get_bytecode("import".to_string()));
-        bytecode
+                bytecode.push(get_bytecode("import".to_string()));
+                bytecode
+            }
+            ModuleType::Custom => bytecode,
+        }
     }
 
     fn compile_block(node: &Block) -> Vec<u8> {
