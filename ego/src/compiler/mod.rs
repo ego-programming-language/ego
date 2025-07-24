@@ -3,6 +3,7 @@ mod handlers;
 
 use std::fs;
 
+use crate::ast::export_statement::ExportStatement;
 use crate::gen_bytecode;
 use crate::{
     ast::{
@@ -66,6 +67,7 @@ impl Compiler {
             AstNodeType::WhileStatement(node) => Compiler::compile_while_statement(node),
             AstNodeType::Struct(node) => Compiler::compile_struct_declaration(node),
             AstNodeType::ImportStatement(node) => Compiler::compile_import(node),
+            AstNodeType::ExportStatement(node) => Compiler::compile_export(node),
             _ => {
                 // panic!("unhandled node type")
                 // here we should, in the near future throw an error
@@ -220,6 +222,9 @@ impl Compiler {
         bytecode
     }
 
+    // drop value: if the value must not be persisted like module level declared string
+    //             or function calling with no receiver of the return value, the value
+    //             must be dropped
     fn compile_expression(node: &Expression, drop_value: bool) -> Vec<u8> {
         // all expressions push a load_const opcode
         // except of identifier which loads a load_var opcode
@@ -442,6 +447,13 @@ impl Compiler {
                 bytecode
             }
         }
+    }
+
+    fn compile_export(node: &ExportStatement) -> Vec<u8> {
+        let mut bytecode = vec![];
+        bytecode.extend_from_slice(&Compiler::compile_expression(&node.value, false));
+        bytecode.push(get_bytecode("export".to_string()));
+        bytecode
     }
 
     fn compile_block(node: &Block) -> Vec<u8> {

@@ -8,7 +8,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     // bytecode interpretation. Opcode can be repeated
     // if they are on different levels.
 
-    // last used opcode: 0x15
+    // last used opcode: 0x16
     // instructions opcodes - level: 0
     m.insert("zero".to_string(), 0x00);
     m.insert("load_const".to_string(), 0x01);
@@ -28,6 +28,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     m.insert("struct_declaration".to_string(), 0x13);
     m.insert("get_property".to_string(), 0x14);
     m.insert("import".to_string(), 0x15);
+    m.insert("export".to_string(), 0x16);
 
     // builtin functions opcode - level: 0
     m.insert("print".to_string(), 0x02);
