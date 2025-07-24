@@ -6,6 +6,7 @@ use crate::{
         block::Block,
         bool::Bool,
         call_expression::CallExpression,
+        export_statement::ExportStatement,
         function_declaration::FunctionDeclaration,
         group::{self, Group},
         identifier::Identifier,
@@ -83,6 +84,10 @@ impl Module {
                 }
                 LexerTokenType::ImportKeyword => {
                     let import_node = self.import_statement();
+                    module_ast.add_child(import_node);
+                }
+                LexerTokenType::ExportKeyword => {
+                    let import_node = self.export_statement();
                     module_ast.add_child(import_node);
                 }
                 _ => {
@@ -889,6 +894,28 @@ impl Module {
             at,
             line,
         ));
+    }
+
+    // export <a>
+    fn export_statement(&self) -> AstNodeType {
+        // consume 'export' keyword
+        let token = self.unsafe_peek();
+        let at = token.at;
+        let line = token.line;
+
+        // consume expression
+        self.next();
+        let expression_node = self.parse_comparison();
+
+        // check for final semicolon
+        if self.is_peekable() {
+            if self.peek(";").token_type == LexerTokenType::EndOfStatement {
+                // consume ';'
+                self.next();
+            }
+        }
+
+        AstNodeType::ExportStatement(ExportStatement::new(expression_node, at, line))
     }
 
     // return "hello";
