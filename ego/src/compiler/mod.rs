@@ -1,6 +1,9 @@
 mod bytecode;
 mod handlers;
 
+use std::fs;
+
+use crate::gen_bytecode;
 use crate::{
     ast::{
         import_statement::{ImportStatement, ModuleType},
@@ -407,9 +410,37 @@ impl Compiler {
                 ));
 
                 bytecode.push(get_bytecode("import".to_string()));
+                // compile an offset to make compatible with the custom module
+                // execution
+                bytecode.extend_from_slice(&Compiler::compile_offset(0 as i32));
                 bytecode
             }
-            ModuleType::Custom => bytecode,
+            ModuleType::Custom => {
+                // here we should handle circular dependency
+                // on imports, to avoid an infinite loop of
+                // compilation
+                let module_name = node.module[0].clone();
+                let path = format!("{}.ego", module_name);
+                let code =
+                    fs::read_to_string(&path).expect(&format!("Failed to read module '{}'", path));
+                let mod_bytecode = gen_bytecode(module_name.to_string(), code, &vec![]);
+
+                // push module_name to stack
+                bytecode.extend_from_slice(&Compiler::compile_expression(
+                    &Expression::StringLiteral(StringLiteral::new(
+                        module_name.to_string(),
+                        module_name,
+                        node.at,
+                        node.line,
+                    )),
+                    false,
+                ));
+                bytecode.push(get_bytecode("import".to_string()));
+                bytecode.extend_from_slice(&Compiler::compile_offset(mod_bytecode.len() as i32));
+                bytecode.extend_from_slice(&mod_bytecode);
+
+                bytecode
+            }
         }
     }
 

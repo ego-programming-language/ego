@@ -11,6 +11,7 @@ use crate::heap::HeapRef;
 use crate::opcodes::DataType;
 use crate::opcodes::Opcode;
 use crate::std::fs;
+use crate::std::generate_module;
 use crate::std::{generate_native_module, get_native_module_type};
 use crate::translator::Translator;
 use crate::types::object::func::Engine;
@@ -558,6 +559,10 @@ impl Vm {
                 Opcode::Import => {
                     let values = self.get_stack_values(&1);
                     let module_name_value = values[0].clone();
+                    // custom module
+                    let mod_bytecode_length =
+                        Vm::read_offset(&self.bytecode[self.pc + 1..self.pc + 5]);
+                    self.pc += 4;
 
                     if let Value::HeapRef(obj) = module_name_value {
                         let module_name = self.resolve_heap_ref(obj).to_string();
@@ -582,11 +587,13 @@ impl Vm {
                                 Value::HeapRef(module_struct_ref),
                             );
                         } else {
-                            // custom module
-                            // for the moment panic for not defined
-                            return VMExecutionResult::terminate_with_errors(
-                                VMErrorType::ModuleNotFound(module_name),
-                            );
+                            let mod_bytecode = &self.bytecode
+                                [self.pc + 1..(self.pc + (mod_bytecode_length as usize)) + 1];
+                            self.pc += mod_bytecode_length as usize;
+                            // here we should generate a definition of the module
+                            // and push it onto the heap and add a HeapRef to the stack
+                            // --
+                            let module_def = generate_module(&module_name, mod_bytecode);
                         }
                     } else {
                         // TODO: use self-vm errors system
