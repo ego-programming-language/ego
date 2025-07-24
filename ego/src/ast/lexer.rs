@@ -1,9 +1,9 @@
 use super::lexer_types::{LexerToken, LexerTokenType};
 use regex::Regex;
 
-const KEYWORDS: [&str; 15] = [
+const KEYWORDS: [&str; 16] = [
     "fn", "let", "if", "else", "while", "true", "false", "import", "return", "break", "nothing",
-    "string", "number", "bool", "struct",
+    "string", "number", "bool", "struct", "export",
 ];
 
 pub fn lex(source: String) -> Vec<LexerToken> {
@@ -341,6 +341,7 @@ fn token_with_type(token: String, line: usize, at: usize) -> LexerToken {
         "true" => LexerToken::new(LexerTokenType::TrueKeyword, token, line, at),
         "false" => LexerToken::new(LexerTokenType::FalseKeyword, token, line, at),
         "return" => LexerToken::new(LexerTokenType::ReturnKeyword, token, line, at),
+        "export" => LexerToken::new(LexerTokenType::ExportKeyword, token, line, at),
         "break" => LexerToken::new(LexerTokenType::BreakKeyword, token, line, at),
         "nothing" => LexerToken::new(LexerTokenType::NothingKeyword, token, line, at),
         "string" => LexerToken::new(LexerTokenType::StringKeyword, token, line, at),
