@@ -507,14 +507,22 @@ impl Vm {
                                                         self.resolve_heap_ref(v).clone();
                                                     if let HeapObject::Function(func) = heap_object
                                                     {
-                                                        let result = self.run_function(
-                                                            func,
+                                                        let exec_result = self.run_function(
+                                                            &func,
                                                             args.clone(),
                                                             debug,
                                                         );
-                                                        if result.error.is_some() {
+                                                        if exec_result.error.is_some() {
                                                             return VMExecutionResult::terminate_with_errors(
-                                                                result.error.unwrap().error_type,
+                                                                exec_result.error.unwrap().error_type,
+                                                            );
+                                                        }
+                                                        if let Some(returned_value) =
+                                                            &exec_result.result
+                                                        {
+                                                            self.push_to_stack(
+                                                                returned_value.clone(),
+                                                                Some(func.identifier),
                                                             );
                                                         }
                                                     } else {
@@ -540,10 +548,17 @@ impl Vm {
                                 }
                             }
                             HeapObject::Function(f) => {
-                                let result = self.run_function(f.clone(), args, debug);
-                                if result.error.is_some() {
+                                let func = f.clone();
+                                let exec_result = self.run_function(&func, args, debug);
+                                if exec_result.error.is_some() {
                                     return VMExecutionResult::terminate_with_errors(
-                                        result.error.unwrap().error_type,
+                                        exec_result.error.unwrap().error_type,
+                                    );
+                                }
+                                if let Some(returned_value) = &exec_result.result {
+                                    self.push_to_stack(
+                                        returned_value.clone(),
+                                        Some(func.identifier),
                                     );
                                 }
                             }
@@ -594,7 +609,7 @@ impl Vm {
                             // and push it onto the heap and add a HeapRef to the stack
                             // --
                             let module_def = generate_module(&module_name, mod_bytecode);
-                            let result = self.run_function(module_def, vec![], debug);
+                            let result = self.run_function(&module_def, vec![], debug);
                             if result.error.is_some() {
                                 return result;
                             }
@@ -938,8 +953,13 @@ impl Vm {
         None
     }
 
-    fn run_function(&mut self, func: Function, args: Vec<Value>, debug: bool) -> VMExecutionResult {
-        let execution_result = match func.engine {
+    fn run_function(
+        &mut self,
+        func: &Function,
+        args: Vec<Value>,
+        debug: bool,
+    ) -> VMExecutionResult {
+        let execution_result = match &func.engine {
             Engine::Bytecode(bytecode) => {
                 let return_pc = self.pc;
                 let main_bytecode = std::mem::take(&mut self.bytecode);
@@ -954,7 +974,7 @@ impl Vm {
                             .put_to_frame(param.clone(), Value::RawValue(RawValue::Nothing));
                     }
                 }
-                self.bytecode = bytecode;
+                self.bytecode = bytecode.clone();
                 self.pc = 0;
 
                 let function_exec_result = self.run_bytecode(debug);
@@ -991,10 +1011,6 @@ impl Vm {
                 }
             }
         };
-
-        if let Some(returned_value) = &execution_result.result {
-            self.push_to_stack(returned_value.clone(), Some(func.identifier));
-        }
 
         return execution_result;
     }
