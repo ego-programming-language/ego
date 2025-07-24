@@ -1,4 +1,8 @@
-use crate::{heap::HeapObject, vm::Vm};
+use crate::{
+    heap::HeapObject,
+    types::object::func::{Engine, Function},
+    vm::Vm,
+};
 
 pub mod ai;
 pub mod fs;
@@ -29,13 +33,10 @@ pub fn generate_native_module(
     }
 }
 
-pub fn generate_module(
-    modname: &String,
-    mod_bytecode: &[u8],
-) -> Option<(std::string::String, Vec<(String, HeapObject)>)> {
-    println!(
-        "[todo custom modules import]\nimporting: {}\n{:#?}",
-        modname, mod_bytecode
-    );
-    None
+pub fn generate_module(modname: &String, mod_bytecode: &[u8]) -> Function {
+    Function::new(
+        modname.clone(),
+        vec![],
+        Engine::Bytecode(mod_bytecode.to_vec()),
+    )
 }

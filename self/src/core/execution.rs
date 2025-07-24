@@ -5,6 +5,7 @@ use super::error::{throw, VMError, VMErrorType};
 pub struct VMExecutionResult {
     pub error: Option<VMError>,
     pub result: Option<Value>,
+    //pub exports: Vec<Value>,
     // eventually here we could implement things like:
     // traceback
     // execution time

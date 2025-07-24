@@ -594,6 +594,10 @@ impl Vm {
                             // and push it onto the heap and add a HeapRef to the stack
                             // --
                             let module_def = generate_module(&module_name, mod_bytecode);
+                            let result = self.run_function(module_def, vec![], debug);
+                            if result.error.is_some() {
+                                return result;
+                            }
                         }
                     } else {
                         // TODO: use self-vm errors system
