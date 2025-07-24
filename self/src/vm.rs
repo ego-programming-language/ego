@@ -11,7 +11,6 @@ use crate::heap::HeapRef;
 use crate::opcodes::DataType;
 use crate::opcodes::Opcode;
 use crate::std::fs;
-use crate::std::generate_module;
 use crate::std::{generate_native_module, get_native_module_type};
 use crate::translator::Translator;
 use crate::types::object::func::Engine;
@@ -608,8 +607,7 @@ impl Vm {
                             // here we should generate a definition of the module
                             // and push it onto the heap and add a HeapRef to the stack
                             // --
-                            let module_def = generate_module(&module_name, mod_bytecode);
-                            let result = self.run_function(&module_def, vec![], debug);
+                            let result = self.run_module(mod_bytecode.to_vec(), debug);
                             if result.error.is_some() {
                                 return result;
                             }
@@ -951,6 +949,23 @@ impl Vm {
 
         self.push_to_stack(value, None);
         None
+    }
+
+    fn run_module(&mut self, mod_bytecode: Vec<u8>, debug: bool) -> VMExecutionResult {
+        let return_pc = self.pc;
+        let main_bytecode = std::mem::take(&mut self.bytecode);
+
+        self.call_stack.push();
+        self.bytecode = mod_bytecode.clone();
+        self.pc = 0;
+        let mod_exec_result = self.run_bytecode(debug);
+
+        // recover state after execution
+        let mod_frame = self.call_stack.pop(); // here we should lookup the exports and store on a struct, then, return that struct on the VMExecutionResult
+        self.pc = return_pc;
+        self.bytecode = main_bytecode;
+
+        mod_exec_result
     }
 
     fn run_function(

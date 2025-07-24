@@ -32,11 +32,3 @@ pub fn generate_native_module(
         NativeModule::Fs => fs::generate_struct(),
     }
 }
-
-pub fn generate_module(modname: &String, mod_bytecode: &[u8]) -> Function {
-    Function::new(
-        modname.clone(),
-        vec![],
-        Engine::Bytecode(mod_bytecode.to_vec()),
-    )
-}

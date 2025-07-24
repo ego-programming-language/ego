@@ -17,8 +17,8 @@ impl CallStack {
         // we (maybe) should save here the return pc
         self.stack.push(StackFrame::new(0));
     }
-    pub fn pop(&mut self) {
-        self.stack.pop();
+    pub fn pop(&mut self) -> Option<StackFrame> {
+        self.stack.pop()
     }
     pub fn put_to_frame(&mut self, key: String, value: Value) {
         let last = self.stack.len() - 1;
@@ -39,6 +39,7 @@ impl CallStack {
 pub struct StackFrame {
     return_pc: usize,
     symbols: HashMap<String, Value>,
+    exports: Vec<String>,
 }
 
 impl StackFrame {
@@ -46,6 +47,7 @@ impl StackFrame {
         StackFrame {
             return_pc: return_pc,
             symbols: HashMap::new(),
+            exports: vec![],
         }
     }
 
