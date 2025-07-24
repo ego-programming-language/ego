@@ -5,6 +5,7 @@ pub mod bool;
 pub mod break_statement;
 pub mod call_expression;
 pub mod else_statement;
+pub mod export_statement;
 pub mod function_declaration;
 pub mod group;
 pub mod identifier;
@@ -23,6 +24,7 @@ pub mod while_statement;
 use std::fmt;
 
 use crate::ast::{
+    export_statement::ExportStatement,
     member_expression::MemberExpression,
     objects::{ObjectLiteral, ObjectType},
     structs::{Struct, StructLiteral},
@@ -43,6 +45,7 @@ pub enum AstNodeType {
     WhileStatement(WhileStatement),
     ImportStatement(ImportStatement),
     ReturnStatement(ReturnStatement),
+    ExportStatement(ExportStatement),
     BreakStatement(BreakStatement),
     ElseStatement(ElseStatement),
     Struct(Struct),
@@ -62,6 +65,7 @@ impl AstNodeType {
             AstNodeType::WhileStatement(v) => v.at,
             AstNodeType::ImportStatement(v) => v.at,
             AstNodeType::ReturnStatement(v) => v.at,
+            AstNodeType::ExportStatement(v) => v.at,
             AstNodeType::BreakStatement(v) => v.at,
             AstNodeType::ElseStatement(v) => v.at,
             AstNodeType::Group(v) => v.at,
@@ -81,6 +85,7 @@ impl AstNodeType {
             AstNodeType::WhileStatement(v) => v.line,
             AstNodeType::ImportStatement(v) => v.line,
             AstNodeType::ReturnStatement(v) => v.line,
+            AstNodeType::ExportStatement(v) => v.line,
             AstNodeType::BreakStatement(v) => v.line,
             AstNodeType::ElseStatement(v) => v.line,
             AstNodeType::Group(v) => v.line,
@@ -103,6 +108,7 @@ impl fmt::Display for AstNodeType {
             AstNodeType::ImportStatement(_) => write!(f, "ImportStatement"),
             AstNodeType::WhileStatement(_) => write!(f, "WhileStatement"),
             AstNodeType::ReturnStatement(_) => write!(f, "ReturnStatement"),
+            AstNodeType::ExportStatement(_) => write!(f, "ExportStatement"),
             AstNodeType::BreakStatement(_) => write!(f, "BreakStatement"),
             AstNodeType::Block(_) => write!(f, "Block"),
             AstNodeType::Group(_) => write!(f, "Group"),
