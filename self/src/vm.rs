@@ -559,7 +559,6 @@ impl Vm {
                 Opcode::Import => {
                     let values = self.get_stack_values(&1);
                     let module_name_value = values[0].clone();
-                    // custom module
                     let mod_bytecode_length =
                         Vm::read_offset(&self.bytecode[self.pc + 1..self.pc + 5]);
                     self.pc += 4;
@@ -587,6 +586,7 @@ impl Vm {
                                 Value::HeapRef(module_struct_ref),
                             );
                         } else {
+                            // custom module
                             let mod_bytecode = &self.bytecode
                                 [self.pc + 1..(self.pc + (mod_bytecode_length as usize)) + 1];
                             self.pc += mod_bytecode_length as usize;
