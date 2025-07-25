@@ -65,6 +65,7 @@ pub enum Opcode {
     Print,
     Println,
     Import,
+    Export,
     Add,
     Substract,
     Multiply,
@@ -105,6 +106,7 @@ impl Opcode {
             0x13 => Opcode::StructDec,
             0x14 => Opcode::GetProperty,
             0x15 => Opcode::Import,
+            0x16 => Opcode::Export,
             _ => Opcode::Unknown,
         }
     }

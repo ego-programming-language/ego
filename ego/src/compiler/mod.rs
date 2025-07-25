@@ -451,7 +451,29 @@ impl Compiler {
 
     fn compile_export(node: &ExportStatement) -> Vec<u8> {
         let mut bytecode = vec![];
-        bytecode.extend_from_slice(&Compiler::compile_expression(&node.value, false));
+        match &node.value {
+            Expression::Identifier(n) => {
+                let identifier = n.name.clone();
+                bytecode.extend_from_slice(&Compiler::compile_expression(
+                    &Expression::StringLiteral(StringLiteral {
+                        value: identifier.clone(),
+                        raw_value: identifier,
+                        at: node.at,
+                        line: node.line,
+                    }),
+                    false,
+                ));
+            }
+            _ => {
+                error::throw(
+                    ErrorType::CompilationError,
+                    "exported member must be an <identifier>",
+                    Some(node.line),
+                );
+                std::process::exit(1);
+            }
+        }
+
         bytecode.push(get_bytecode("export".to_string()));
         bytecode
     }

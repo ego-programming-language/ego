@@ -619,6 +619,24 @@ impl Vm {
 
                     self.pc += 1;
                 }
+                Opcode::Export => {
+                    let arg_ref = self.get_stack_values(&1)[0].clone();
+                    if let Value::HeapRef(r) = arg_ref.clone() {
+                        let arg = self.resolve_heap_ref(r);
+                        if let HeapObject::String(_) = arg {
+                            self.call_stack.put_to_frame("exports".to_string(), arg_ref);
+                        } else {
+                            return VMExecutionResult::terminate_with_errors(
+                                VMErrorType::ExportInvalidMemberType,
+                            );
+                        }
+                    } else {
+                        return VMExecutionResult::terminate_with_errors(
+                            VMErrorType::ExportInvalidMemberType,
+                        );
+                    }
+                    self.pc += 1;
+                }
                 Opcode::Add => {
                     // execution
                     let right_operand = self.operand_stack.pop();
