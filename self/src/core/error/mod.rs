@@ -1,7 +1,8 @@
 pub mod ai_errors;
 pub mod fs_errors;
+pub mod net_errors;
 use crate::{
-    core::error::{ai_errors::AIError, fs_errors::FsError},
+    core::error::{ai_errors::AIError, fs_errors::FsError, net_errors::NetErrors},
     opcodes::DataType,
     stack::OperandsStackValue,
 };
@@ -17,6 +18,7 @@ pub enum VMErrorType {
     ExportInvalidMemberType,
     Fs(FsError),
     AI(AIError),
+    Net(NetErrors),
 }
 
 pub struct VMError {
@@ -77,6 +79,11 @@ pub fn throw(error_type: VMErrorType) -> VMError {
         },
         VMErrorType::AI(ai) => match ai {
             AIError::AIFetchError(s) => ("AI fetch error".to_string(), format!("{}", s)),
+        },
+        VMErrorType::Net(net) => match net {
+            NetErrors::NetConnectError(s) => {
+                ("Network connection error".to_string(), format!("{}", s))
+            }
         },
     };
 
