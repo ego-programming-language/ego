@@ -386,24 +386,42 @@ impl Vm {
                     }
 
                     if let HeapObject::String(property) = property_val {
-                        if let HeapObject::StructLiteral(s) = object_val {
-                            let value = s.property_access(&property);
-                            if let Some(prop) = value {
-                                // this clone is important, we're clonning
-                                // or the ref to the value or the value itself
-                                // if it is a RawValue
-                                self.push_to_stack(prop.clone(), Some(object_val.to_string()));
-                            } else {
-                                // TODO: use self-vm errors
-                                panic!(
-                                    "field '{}' does not exist on StructLiteral of type {}",
-                                    property,
-                                    object_val.to_string()
-                                );
+                        match object_val {
+                            HeapObject::StructLiteral(x) => {
+                                let value = x.property_access(&property);
+                                if let Some(prop) = value {
+                                    // this clone is important, we're clonning
+                                    // or the ref to the value or the value itself
+                                    // if it is a RawValue
+                                    self.push_to_stack(prop.clone(), Some(object_val.to_string()));
+                                } else {
+                                    // TODO: use self-vm errors
+                                    panic!(
+                                        "field '{}' does not exist on StructLiteral of type {}",
+                                        property,
+                                        object_val.to_string()
+                                    );
+                                }
                             }
-                        } else {
-                            // TODO: use self-vm errors
-                            panic!("<get_property> opcode must be used on a StructLiteral type")
+                            HeapObject::NativeStruct(x) => {
+                                let value = x.property_access(&property);
+                                if let Some(prop) = value {
+                                    // this clone is important, we're clonning
+                                    // or the ref to the value or the value itself
+                                    // if it is a RawValue
+                                    self.push_to_stack(prop.clone(), Some(object_val.to_string()));
+                                } else {
+                                    // TODO: use self-vm errors
+                                    panic!(
+                                        "field '{}' does not exist on {}",
+                                        property,
+                                        object_val.to_string()
+                                    );
+                                }
+                            }
+                            _ => {
+                                panic!("<get_property> opcode must be used on a Struct like type")
+                            }
                         }
                     } else {
                         // TODO: use self-vm errors
@@ -503,10 +521,10 @@ impl Vm {
                                                 Value::HeapRef(v) => {
                                                     // clone heap_object to be able to mutate the
                                                     // vm state
-                                                    let heap_object =
-                                                        self.resolve_heap_ref(v).clone();
+                                                    let heap_object = self.resolve_heap_ref(v);
                                                     if let HeapObject::Function(func) = heap_object
                                                     {
+                                                        let func = func.clone();
                                                         let exec_result = self.run_function(
                                                             &func,
                                                             args.clone(),
@@ -522,7 +540,7 @@ impl Vm {
                                                         {
                                                             self.push_to_stack(
                                                                 returned_value.clone(),
-                                                                Some(func.identifier),
+                                                                Some(func.identifier.clone()),
                                                             );
                                                         }
                                                     } else {

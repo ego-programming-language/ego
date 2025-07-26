@@ -1,5 +1,7 @@
 use std::{clone, collections::HashMap};
 
+use crate::std::net::types::NetStream;
+use crate::types::object::native_struct::NativeStruct;
 use crate::types::object::{
     func::Function,
     structs::{StructDeclaration, StructLiteral},
@@ -11,15 +13,13 @@ pub struct Heap {
     next_address: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum HeapObject {
     String(String),
     Function(Function),
     StructDeclaration(StructDeclaration),
     StructLiteral(StructLiteral),
-    // functions
-    // lists
-    // ...
+    NativeStruct(NativeStruct),
 }
 
 #[derive(Debug, Clone)]
@@ -70,6 +70,7 @@ impl HeapObject {
             HeapObject::Function(x) => x.to_string(),
             HeapObject::StructDeclaration(x) => x.to_string(),
             HeapObject::StructLiteral(x) => x.identifier.to_string(),
+            HeapObject::NativeStruct(x) => x.to_string(),
         }
     }
 }

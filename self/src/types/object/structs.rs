@@ -25,8 +25,6 @@ pub struct StructLiteral {
 
 impl StructLiteral {
     pub fn new(identifier: String, fields: HashMap<String, Value>) -> StructLiteral {
-        // here we could inject some kind of custom
-        // prototype fields
         StructLiteral { identifier, fields }
     }
 
