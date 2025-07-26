@@ -434,8 +434,8 @@ impl Vm {
                     self.pc += 1;
                     let args = self.get_function_call_args();
 
-                    let identifier_name_ref = self.get_stack_values(&1);
-                    if let Value::HeapRef(_ref) = identifier_name_ref[0].clone() {
+                    let obj_ref = self.get_stack_values(&1);
+                    if let Value::HeapRef(_ref) = obj_ref[0].clone() {
                         let resolved_heap_ref = self.resolve_heap_ref(_ref);
                         match resolved_heap_ref {
                             // here are defined the callable functions without
