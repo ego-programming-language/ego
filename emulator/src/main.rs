@@ -18,7 +18,7 @@ fn main() {
     }
     let execution = vm.run(&args);
     if let Some(err) = execution.error {
-        let error_msg = format!("[runtime error] {}: {}", err.message, err.semantic_message);
-        println!("{error_msg}");
+        let error_msg = format!("{}: {}", err.message, err.semantic_message);
+        eprintln!("\x1b[31m[ERR] \x1b[0m{error_msg}");
     }
 }
