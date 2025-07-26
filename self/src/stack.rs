@@ -33,6 +33,10 @@ impl CallStack {
 
         None
     }
+    pub fn add_export(&mut self, key: String) {
+        let last = self.stack.len() - 1;
+        self.stack[last].add_export(key);
+    }
 }
 
 #[derive(Debug)]
@@ -53,6 +57,10 @@ impl StackFrame {
 
     pub fn put(&mut self, key: String, value: Value) -> Option<Value> {
         self.symbols.insert(key, value)
+    }
+
+    pub fn add_export(&mut self, key: String) {
+        self.exports.push(key);
     }
 
     pub fn get(&self, key: &str) -> Option<Value> {

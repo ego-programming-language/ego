@@ -623,8 +623,8 @@ impl Vm {
                     let arg_ref = self.get_stack_values(&1)[0].clone();
                     if let Value::HeapRef(r) = arg_ref.clone() {
                         let arg = self.resolve_heap_ref(r);
-                        if let HeapObject::String(_) = arg {
-                            self.call_stack.put_to_frame("exports".to_string(), arg_ref);
+                        if let HeapObject::String(s) = arg {
+                            self.call_stack.add_export(s.to_string());
                         } else {
                             return VMExecutionResult::terminate_with_errors(
                                 VMErrorType::ExportInvalidMemberType,
