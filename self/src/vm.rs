@@ -551,8 +551,11 @@ impl Vm {
                                                 }
                                                 Value::RawValue(_) => {
                                                     return VMExecutionResult::terminate_with_errors(
-                                                    VMErrorType::NotCallableError(identifier_name.clone()),
-                                                );
+                                                        VMErrorType::NotCallableError(identifier_name.clone()),
+                                                    );
+                                                }
+                                                Value::BoundAccess(_) => {
+                                                    return VMExecutionResult::terminate_with_errors(VMErrorType::NotCallableError(identifier_name.clone()));
                                                 }
                                             }
                                         } else {
@@ -998,6 +1001,9 @@ impl Vm {
             (Value::RawValue(_), Value::HeapRef(_)) => {
                 return Some(VMErrorType::TypeCoercionError(right))
             }
+            _ => {
+                panic!("invalid Value type for a binary expression")
+            }
         }
 
         self.push_to_stack(value, None);
@@ -1318,6 +1324,9 @@ impl Vm {
                     panic!("idenifier not defined")
                 }
             },
+            Value::BoundAccess(x) => {
+                panic!("BoundAccess cannot be represented as a string value")
+            }
         }
     }
 

@@ -37,6 +37,12 @@ pub fn connect(vm: &mut Vm, params: Vec<Value>, debug: bool) -> Result<Value, VM
                 received: r.get_type_string(),
             }));
         }
+        Value::BoundAccess(_) => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: "bound_access".to_string(),
+            }));
+        }
     };
 
     let stream = if let Ok(stream) = TcpStream::connect(host) {

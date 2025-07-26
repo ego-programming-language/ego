@@ -37,6 +37,12 @@ pub fn read_file(vm: &mut Vm, params: Vec<Value>, debug: bool) -> Result<Value, 
                 received: r.get_type_string(),
             }));
         }
+        Value::BoundAccess(_) => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: "bound_access".to_string(),
+            }));
+        }
     };
 
     let path_obj = Path::new(path);
