@@ -4,7 +4,7 @@ mod handlers;
 use std::fs;
 
 use crate::ast::export_statement::ExportStatement;
-use crate::gen_bytecode;
+use crate::ast::{lex, Module};
 use crate::{
     ast::{
         import_statement::{ImportStatement, ModuleType},
@@ -31,6 +31,23 @@ use crate::ast::{
     while_statement::WhileStatement,
     AstNodeType, Expression, Type,
 };
+
+pub fn gen_bytecode(modulename: String, code: String, args: &Vec<String>) -> Vec<u8> {
+    let debug = args.contains(&"-d".to_string());
+    let tokens = lex(code);
+    if debug {
+        println!("\n--- TOKEN ----------\n");
+        println!("{:#?}", tokens);
+    }
+    let mut module = Module::new(modulename, tokens);
+    let ast = module.parse();
+    if debug {
+        println!("\n--- AST ----------\n");
+        println!("{:#?}", ast);
+    }
+    let mut compiler = Compiler::new(ast);
+    compiler.gen_bytecode()
+}
 
 pub struct Compiler {
     ast: ModuleAst,
