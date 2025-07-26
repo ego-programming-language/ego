@@ -1,3 +1,4 @@
+pub mod compile;
 pub mod logo;
 pub mod new;
 pub mod run;
@@ -6,6 +7,7 @@ use self::logo::Logo;
 use self::new::New;
 use self::run::Run;
 
+use crate::commands::compile::Compile;
 use crate::core::error;
 use crate::core::error::ErrorType;
 use std::env;
@@ -14,6 +16,7 @@ pub enum Command {
     Run(Run),
     Logo(Logo),
     New(New),
+    Compile(Compile),
 }
 
 impl Command {
@@ -38,6 +41,7 @@ impl Command {
             "run" => Command::Run(Run::new(args)),
             "logo" => Command::Logo(Logo::new(args)),
             "new" => Command::New(New::new(args)),
+            "compile" => Command::Compile(Compile::new(args)),
             _ => Command::Run(Run::new(
                 [command.to_string()]
                     .into_iter()
@@ -51,6 +55,7 @@ impl Command {
             Command::Run(v) => v.exec(),
             Command::Logo(v) => v.exec(),
             Command::New(v) => v.exec(),
+            Command::Compile(v) => v.exec(),
         }
     }
 }
