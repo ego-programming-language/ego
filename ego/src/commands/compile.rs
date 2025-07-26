@@ -60,7 +60,7 @@ impl Compile {
             }
         };
         match file.write_all(&bytecode) {
-            Ok(_) => println!("Bytes saved in bytecode.bin\n{}", out_name),
+            Ok(_) => {}
             Err(_) => {
                 error::throw(ErrorType::SyntaxError, "Cannot write file", None);
                 unreachable!()
