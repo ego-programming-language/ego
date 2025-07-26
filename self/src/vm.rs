@@ -21,6 +21,7 @@ use crate::types::raw::RawValue;
 use crate::types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8};
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
 use std::collections::HashMap;
+use std::path::Path;
 
 use super::stack::*;
 use super::types::*;
@@ -601,15 +602,31 @@ impl Vm {
                             );
                         } else {
                             // custom module
+                            let mod_name = Path::new(&module_name)
+                                .file_name()
+                                .and_then(|s| s.to_str())
+                                .unwrap_or("unknown");
                             let mod_bytecode = &self.bytecode
                                 [self.pc + 1..(self.pc + (mod_bytecode_length as usize)) + 1];
                             self.pc += mod_bytecode_length as usize;
                             // here we should generate a definition of the module
                             // and push it onto the heap and add a HeapRef to the stack
                             // --
-                            let result = self.run_module(mod_bytecode.to_vec(), debug);
-                            if result.error.is_some() {
-                                return result;
+                            let exec_result = self.run_module(
+                                &mod_name.to_string(),
+                                mod_bytecode.to_vec(),
+                                debug,
+                            );
+                            if exec_result.error.is_some() {
+                                return exec_result;
+                            }
+
+                            // if members exported, add them to the scope
+                            if let Some(result) = exec_result.result {
+                                if let Value::HeapRef(r) = result {
+                                    self.call_stack
+                                        .put_to_frame(mod_name.to_string(), Value::HeapRef(r));
+                                }
                             }
                         }
                     } else {
@@ -969,17 +986,31 @@ impl Vm {
         None
     }
 
-    fn run_module(&mut self, mod_bytecode: Vec<u8>, debug: bool) -> VMExecutionResult {
+    fn run_module(
+        &mut self,
+        mod_name: &String,
+        mod_bytecode: Vec<u8>,
+        debug: bool,
+    ) -> VMExecutionResult {
         let return_pc = self.pc;
         let main_bytecode = std::mem::take(&mut self.bytecode);
 
         self.call_stack.push();
         self.bytecode = mod_bytecode.clone();
         self.pc = 0;
-        let mod_exec_result = self.run_bytecode(debug);
+        let mut mod_exec_result = self.run_bytecode(debug);
 
         // recover state after execution
         let mod_frame = self.call_stack.pop(); // here we should lookup the exports and store on a struct, then, return that struct on the VMExecutionResult
+        if let Some(mut frame) = mod_frame {
+            let exported_members = frame.get_exports();
+            let exports_struct = StructLiteral::new(mod_name.to_string(), exported_members);
+            let exports_ref = self
+                .heap
+                .allocate(HeapObject::StructLiteral(exports_struct));
+
+            mod_exec_result.result = Some(Value::HeapRef(exports_ref));
+        }
         self.pc = return_pc;
         self.bytecode = main_bytecode;
 

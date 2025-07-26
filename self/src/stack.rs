@@ -70,6 +70,21 @@ impl StackFrame {
 
         None
     }
+
+    pub fn get_exports(&mut self) -> HashMap<String, Value> {
+        let mut exports = HashMap::new();
+        for export in &self.exports {
+            let var = self.get(export);
+            if let Some(v) = var {
+                exports.insert(export.to_string(), v);
+            } else {
+                // here we should handle the case that
+                // we're exporting an undefined identifier
+            }
+        }
+
+        exports
+    }
 }
 
 // OPERANDS_STACK VALUE
