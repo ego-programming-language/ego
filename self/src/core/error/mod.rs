@@ -92,6 +92,10 @@ pub fn throw(error_type: VMErrorType) -> VMError {
                 "Socket write error".to_string(),
                 format!("couldn't write to {}", s),
             ),
+            NetErrors::ReadError(s) => (
+                "Socket write error".to_string(),
+                format!("couldn't read from {}", s),
+            ),
         },
         VMErrorType::Struct(strc) => match strc {
             StructError::FieldNotFound { field, struct_type } => (

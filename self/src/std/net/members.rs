@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::net::TcpStream;
 
 use crate::core::error::net_errors::NetErrors;
@@ -72,6 +72,38 @@ fn write(
     }
 }
 
+fn read(
+    vm: &mut Vm,
+    _self: Option<HeapRef>,
+    params: Vec<Value>,
+    debug: bool,
+) -> Result<Value, VMError> {
+    // resolve 'self'
+    let _self = if let Some(_this) = _self {
+        if let HeapObject::NativeStruct(NativeStruct::NetStream(ns)) =
+            vm.resolve_heap_mut_ref(_this)
+        {
+            ns
+        } else {
+            unreachable!()
+        }
+    } else {
+        unreachable!()
+    };
+
+    let mut buffer = [0; 4096];
+    let read_result = _self.stream.read(&mut buffer);
+    let bytes_count = if let Ok(bytes_count) = read_result {
+        bytes_count
+    } else {
+        return Err(error::throw(VMErrorType::Net(NetErrors::ReadError(
+            _self.host.to_string(),
+        ))));
+    };
+    let read_obj = HeapObject::String(String::from_utf8_lossy(&buffer[..bytes_count]).to_string());
+    Ok(Value::HeapRef(vm.heap.allocate(read_obj)))
+}
+
 pub fn connect(
     vm: &mut Vm,
     _self: Option<HeapRef>,
@@ -123,9 +155,15 @@ pub fn connect(
         vec![],
         Engine::Native(write),
     )));
+    let read_ref = vm.heap.allocate(HeapObject::Function(Function::new(
+        "read".to_string(),
+        vec![],
+        Engine::Native(read),
+    )));
 
     shape.insert("host".to_string(), Value::HeapRef(host_ref));
     shape.insert("write".to_string(), Value::HeapRef(write_ref));
+    shape.insert("read".to_string(), Value::HeapRef(read_ref));
 
     let net_stream = NetStream::new(owned_host, stream, shape);
     let net_stream_ref = vm
