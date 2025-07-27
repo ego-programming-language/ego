@@ -1,8 +1,11 @@
 pub mod ai_errors;
 pub mod fs_errors;
 pub mod net_errors;
+pub mod struct_errors;
 use crate::{
-    core::error::{ai_errors::AIError, fs_errors::FsError, net_errors::NetErrors},
+    core::error::{
+        ai_errors::AIError, fs_errors::FsError, net_errors::NetErrors, struct_errors::StructError,
+    },
     opcodes::DataType,
     stack::OperandsStackValue,
 };
@@ -19,6 +22,7 @@ pub enum VMErrorType {
     Fs(FsError),
     AI(AIError),
     Net(NetErrors),
+    Struct(StructError),
 }
 
 pub struct VMError {
@@ -84,6 +88,12 @@ pub fn throw(error_type: VMErrorType) -> VMError {
             NetErrors::NetConnectError(s) => {
                 ("Network connection error".to_string(), format!("{}", s))
             }
+        },
+        VMErrorType::Struct(strc) => match strc {
+            StructError::FieldNotFound { field, struct_type } => (
+                "Field not found".to_string(),
+                format!("'{}' on {}", field, struct_type),
+            ),
         },
     };
 

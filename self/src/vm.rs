@@ -1,3 +1,4 @@
+use crate::core::error::struct_errors::StructError;
 use crate::core::error::InvalidBinaryOperation;
 use crate::core::error::VMErrorType;
 use crate::core::execution::VMExecutionResult;
@@ -400,11 +401,11 @@ impl Vm {
                                         Some(object_val.to_string()),
                                     );
                                 } else {
-                                    // TODO: use self-vm errors
-                                    panic!(
-                                        "field '{}' does not exist on StructLiteral of type {}",
-                                        property_key,
-                                        object_val.to_string()
+                                    return VMExecutionResult::terminate_with_errors(
+                                        VMErrorType::Struct(StructError::FieldNotFound {
+                                            field: property_key.to_string(),
+                                            struct_type: object_val.to_string(),
+                                        }),
                                     );
                                 }
                             }
@@ -421,11 +422,11 @@ impl Vm {
                                         Some(object_val.to_string()),
                                     );
                                 } else {
-                                    // TODO: use self-vm errors
-                                    panic!(
-                                        "field '{}' does not exist on {}",
-                                        property_key,
-                                        object_val.to_string()
+                                    return VMExecutionResult::terminate_with_errors(
+                                        VMErrorType::Struct(StructError::FieldNotFound {
+                                            field: property_key.to_string(),
+                                            struct_type: object_val.to_string(),
+                                        }),
                                     );
                                 }
                             }
