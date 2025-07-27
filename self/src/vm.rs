@@ -433,134 +433,71 @@ impl Vm {
                 Opcode::Call => {
                     self.pc += 1;
                     let args = self.get_function_call_args();
+                    let callee_value = self.get_stack_values(&1);
+                    let callee_ref = if let Value::HeapRef(_ref) = callee_value[0].clone() {
+                        self.resolve_heap_ref(_ref)
+                    } else {
+                        // TODO: use self-vm error system
+                        panic!("Invalid type for callee string")
+                    };
 
-                    let obj_ref = self.get_stack_values(&1);
-                    if let Value::HeapRef(_ref) = obj_ref[0].clone() {
-                        let resolved_heap_ref = self.resolve_heap_ref(_ref);
-                        match resolved_heap_ref {
-                            // here are defined the callable functions without
-                            // any kind of import required (e.g: print)
-                            HeapObject::String(identifier_name) => {
-                                if debug {
-                                    println!("CALL -> {}", identifier_name.to_string())
-                                };
-                                match identifier_name.as_str() {
-                                    // PROBABLY BEHIND THE SCENE TO AVOID RUNTIME ERRORS
-                                    // WE SHOULD WRAP AI OPCODE WITHIN A BOOLEAN CAST OPCODE
-                                    "ai" => {
-                                        let resolved_args = match self.values_to_string(args) {
-                                            Ok(v) => v,
-                                            Err(e) => {
-                                                return VMExecutionResult::terminate_with_errors(e)
-                                            }
-                                        };
-                                        let value = ai_handler(resolved_args, debug);
-                                        if let Some(v) = value {
-                                            let answer_type = v.0;
-                                            let value = v.1;
+                    match callee_ref {
+                        // FOR NAMED FUNCTIONS ACCESS
+                        HeapObject::String(identifier_name) => {
+                            if debug {
+                                println!("CALL -> {}", identifier_name.to_string())
+                            };
+                            match identifier_name.as_str() {
+                                // BUILTIN FUNCTIONS
+                                "eprintln" => {
+                                    println!("------ eprintln")
+                                }
+                                // CUSTOM DEFINED FUNCTIONS
+                                _ => {
+                                    // get the identifier from the heap
+                                    let value = if let Some(value) =
+                                        self.call_stack.resolve(&identifier_name)
+                                    {
+                                        value
+                                    } else {
+                                        return VMExecutionResult::terminate_with_errors(
+                                            VMErrorType::UndeclaredIdentifierError(
+                                                identifier_name.clone(),
+                                            ),
+                                        );
+                                    };
 
-                                            // here the <value>'s should be well
-                                            // formatted since we verify their format
-                                            // on the ai_handler
-                                            match answer_type.as_str() {
-                                                "bool" => {
-                                                    let bool_value: bool = value.parse().unwrap();
-                                                    self.push_to_stack(
-                                                        Value::RawValue(RawValue::Bool(Bool::new(
-                                                            bool_value,
-                                                        ))),
-                                                        Some("AI_INFERRED".to_string()),
-                                                    );
-                                                }
-                                                "string" => {
-                                                    // heap allocated
-                                                    let heap_ref = self
-                                                        .heap
-                                                        .allocate(HeapObject::String(value));
-                                                    self.push_to_stack(
-                                                        Value::HeapRef(heap_ref),
-                                                        Some("AI_INFERRED".to_string()),
-                                                    );
-                                                }
-                                                "number" => {
-                                                    // number inferred
-                                                    let num_value: f64 = value.parse().unwrap();
-                                                    self.push_to_stack(
-                                                        Value::RawValue(RawValue::F64(F64::new(
-                                                            num_value,
-                                                        ))),
-                                                        Some("AI_INFERRED".to_string()),
-                                                    );
-                                                }
-                                                "nothing" => {
-                                                    self.push_to_stack(
-                                                        Value::RawValue(RawValue::Nothing),
-                                                        Some("AI_INFERRED".to_string()),
-                                                    );
-                                                }
-                                                _ => {
-                                                    self.push_to_stack(
-                                                        Value::RawValue(RawValue::Nothing),
-                                                        Some("AI_INFERRED".to_string()),
-                                                    );
-                                                }
-                                            };
-                                        } else {
-                                            self.push_to_stack(
-                                                Value::RawValue(RawValue::Nothing),
-                                                Some("AI_INFERRED".to_string()),
-                                            );
-                                        }
-                                    }
-                                    _ => {
-                                        // get the identifier from the heap
-                                        if let Some(value) =
-                                            self.call_stack.resolve(&identifier_name)
-                                        {
-                                            match value {
-                                                Value::HeapRef(v) => {
-                                                    // clone heap_object to be able to mutate the
-                                                    // vm state
-                                                    let heap_object = self.resolve_heap_ref(v);
-                                                    if let HeapObject::Function(func) = heap_object
-                                                    {
-                                                        let func = func.clone();
-                                                        let exec_result = self.run_function(
-                                                            &func,
-                                                            args.clone(),
-                                                            debug,
-                                                        );
-                                                        if exec_result.error.is_some() {
-                                                            return VMExecutionResult::terminate_with_errors(
+                                    match value {
+                                        Value::HeapRef(v) => {
+                                            // clone heap_object to be able to mutate the
+                                            // vm state
+                                            let heap_object = self.resolve_heap_ref(v);
+                                            if let HeapObject::Function(func) = heap_object {
+                                                let func = func.clone();
+                                                let exec_result =
+                                                    self.run_function(&func, args.clone(), debug);
+                                                if exec_result.error.is_some() {
+                                                    return VMExecutionResult::terminate_with_errors(
                                                                 exec_result.error.unwrap().error_type,
                                                             );
-                                                        }
-                                                        if let Some(returned_value) =
-                                                            &exec_result.result
-                                                        {
-                                                            self.push_to_stack(
-                                                                returned_value.clone(),
-                                                                Some(func.identifier.clone()),
-                                                            );
-                                                        }
-                                                    } else {
-                                                        return VMExecutionResult::terminate_with_errors(
-                                                            VMErrorType::NotCallableError(identifier_name.clone()),
-                                                        );
-                                                    }
                                                 }
-                                                Value::RawValue(_) => {
-                                                    return VMExecutionResult::terminate_with_errors(
-                                                        VMErrorType::NotCallableError(identifier_name.clone()),
+                                                if let Some(returned_value) = &exec_result.result {
+                                                    self.push_to_stack(
+                                                        returned_value.clone(),
+                                                        Some(func.identifier.clone()),
                                                     );
                                                 }
-                                                Value::BoundAccess(_) => {
-                                                    return VMExecutionResult::terminate_with_errors(VMErrorType::NotCallableError(identifier_name.clone()));
-                                                }
+                                            } else {
+                                                return VMExecutionResult::terminate_with_errors(
+                                                    VMErrorType::NotCallableError(
+                                                        identifier_name.clone(),
+                                                    ),
+                                                );
                                             }
-                                        } else {
+                                        }
+                                        _ => {
                                             return VMExecutionResult::terminate_with_errors(
-                                                VMErrorType::UndeclaredIdentifierError(
+                                                VMErrorType::NotCallableError(
                                                     identifier_name.clone(),
                                                 ),
                                             );
@@ -568,29 +505,25 @@ impl Vm {
                                     }
                                 }
                             }
-                            HeapObject::Function(f) => {
-                                let func = f.clone();
-                                let exec_result = self.run_function(&func, args, debug);
-                                if exec_result.error.is_some() {
-                                    return VMExecutionResult::terminate_with_errors(
-                                        exec_result.error.unwrap().error_type,
-                                    );
-                                }
-                                if let Some(returned_value) = &exec_result.result {
-                                    self.push_to_stack(
-                                        returned_value.clone(),
-                                        Some(func.identifier),
-                                    );
-                                }
+                        }
+
+                        // FOR STRUCTS CALLABLE MEMBERS
+                        HeapObject::Function(f) => {
+                            let func = f.clone();
+                            let exec_result = self.run_function(&func, args, debug);
+                            if exec_result.error.is_some() {
+                                return VMExecutionResult::terminate_with_errors(
+                                    exec_result.error.unwrap().error_type,
+                                );
                             }
-                            _ => {
-                                panic!("Invalid type for callee string")
+                            if let Some(returned_value) = &exec_result.result {
+                                self.push_to_stack(returned_value.clone(), Some(func.identifier));
                             }
                         }
-                    } else {
-                        // TODO: use self-vm error system
-                        panic!("Invalid type for callee string")
-                    };
+                        _ => {
+                            panic!("Invalid type for callee string")
+                        }
+                    }
                 }
                 Opcode::Import => {
                     let values = self.get_stack_values(&1);
