@@ -1,7 +1,6 @@
 use crate::core::error::InvalidBinaryOperation;
 use crate::core::error::VMErrorType;
 use crate::core::execution::VMExecutionResult;
-use crate::core::handlers::ai_handler::ai_handler;
 use crate::core::handlers::call_handler::call_handler;
 use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::core::handlers::print_handler::print_handler;
@@ -17,6 +16,7 @@ use crate::types::object::func::Engine;
 use crate::types::object::func::Function;
 use crate::types::object::structs::StructDeclaration;
 use crate::types::object::structs::StructLiteral;
+use crate::types::object::BoundAccess;
 use crate::types::raw::RawValue;
 use crate::types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8};
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
@@ -374,8 +374,8 @@ impl Vm {
                         _ => panic!("Expected two HeapRef values for <get_property> opcode"),
                     };
 
-                    let object_val = self.resolve_heap_ref(object);
-                    let property_val = self.resolve_heap_ref(property);
+                    let object_val = self.resolve_heap_ref(object.clone());
+                    let property_val = self.resolve_heap_ref(property.clone());
 
                     if debug {
                         println!(
@@ -385,36 +385,46 @@ impl Vm {
                         );
                     }
 
-                    if let HeapObject::String(property) = property_val {
+                    if let HeapObject::String(property_key) = property_val {
                         match object_val {
                             HeapObject::StructLiteral(x) => {
-                                let value = x.property_access(&property);
+                                let value = x.property_access(&property_key);
                                 if let Some(prop) = value {
                                     // this clone is important, we're clonning
                                     // or the ref to the value or the value itself
                                     // if it is a RawValue
-                                    self.push_to_stack(prop.clone(), Some(object_val.to_string()));
+                                    let bound_access =
+                                        BoundAccess::new(object.clone(), Box::new(prop.clone()));
+                                    self.push_to_stack(
+                                        Value::BoundAccess(bound_access),
+                                        Some(object_val.to_string()),
+                                    );
                                 } else {
                                     // TODO: use self-vm errors
                                     panic!(
                                         "field '{}' does not exist on StructLiteral of type {}",
-                                        property,
+                                        property_key,
                                         object_val.to_string()
                                     );
                                 }
                             }
                             HeapObject::NativeStruct(x) => {
-                                let value = x.property_access(&property);
+                                let value = x.property_access(&property_key);
                                 if let Some(prop) = value {
                                     // this clone is important, we're clonning
                                     // or the ref to the value or the value itself
                                     // if it is a RawValue
-                                    self.push_to_stack(prop.clone(), Some(object_val.to_string()));
+                                    let bound_access =
+                                        BoundAccess::new(object.clone(), Box::new(prop.clone()));
+                                    self.push_to_stack(
+                                        Value::BoundAccess(bound_access),
+                                        Some(object_val.to_string()),
+                                    );
                                 } else {
                                     // TODO: use self-vm errors
                                     panic!(
                                         "field '{}' does not exist on {}",
-                                        property,
+                                        property_key,
                                         object_val.to_string()
                                     );
                                 }
@@ -434,14 +444,31 @@ impl Vm {
                     self.pc += 1;
                     let args = self.get_function_call_args();
                     let callee_value = self.get_stack_values(&1);
-                    let callee_ref = if let Value::HeapRef(_ref) = callee_value[0].clone() {
-                        self.resolve_heap_ref(_ref)
-                    } else {
-                        // TODO: use self-vm error system
-                        panic!("Invalid type for callee string")
+                    let ((caller_obj, caller_ref), callee_ref): (
+                        (&HeapObject, HeapRef),
+                        Option<HeapRef>,
+                    ) = match callee_value[0].clone() {
+                        Value::HeapRef(_ref) => {
+                            let owned_ref = _ref.clone();
+                            ((self.resolve_heap_ref(_ref), owned_ref), None)
+                        }
+                        Value::BoundAccess(b) => {
+                            if let Value::HeapRef(callee_ref) = b.property.as_ref() {
+                                (
+                                    (self.resolve_heap_ref(b.object), callee_ref.clone()),
+                                    Some(callee_ref.clone()),
+                                )
+                            } else {
+                                panic!("Invalid type for callee string")
+                            }
+                        }
+                        _ => {
+                            // TODO: use self-vm error system
+                            panic!("Invalid type for callee string")
+                        }
                     };
 
-                    match callee_ref {
+                    match caller_obj {
                         // FOR NAMED FUNCTIONS ACCESS
                         HeapObject::String(identifier_name) => {
                             if debug {
@@ -452,7 +479,7 @@ impl Vm {
                                 "eprintln" => {
                                     println!("------ eprintln")
                                 }
-                                // CUSTOM DEFINED FUNCTIONS
+                                // RUNTIME DEFINED FUNCTIONS
                                 _ => {
                                     // get the identifier from the heap
                                     let value = if let Some(value) =
@@ -474,8 +501,12 @@ impl Vm {
                                             let heap_object = self.resolve_heap_ref(v);
                                             if let HeapObject::Function(func) = heap_object {
                                                 let func = func.clone();
-                                                let exec_result =
-                                                    self.run_function(&func, args.clone(), debug);
+                                                let exec_result = self.run_function(
+                                                    &func,
+                                                    None,
+                                                    args.clone(),
+                                                    debug,
+                                                );
                                                 if exec_result.error.is_some() {
                                                     return VMExecutionResult::terminate_with_errors(
                                                                 exec_result.error.unwrap().error_type,
@@ -508,16 +539,34 @@ impl Vm {
                         }
 
                         // FOR STRUCTS CALLABLE MEMBERS
-                        HeapObject::Function(f) => {
-                            let func = f.clone();
-                            let exec_result = self.run_function(&func, args, debug);
-                            if exec_result.error.is_some() {
+                        HeapObject::StructLiteral(caller) => {
+                            let callee_ref = if let Some(c) = callee_ref {
+                                c
+                            } else {
+                                // TODO: use self-vm error system
+                                panic!("callee is not defined for a struct as function caller")
+                            };
+
+                            let callee = self.resolve_heap_ref(callee_ref);
+                            if let HeapObject::Function(func) = callee {
+                                let func = func.clone();
+                                let exec_result =
+                                    self.run_function(&func, Some(caller_ref), args.clone(), debug);
+                                if exec_result.error.is_some() {
+                                    return VMExecutionResult::terminate_with_errors(
+                                        exec_result.error.unwrap().error_type,
+                                    );
+                                }
+                                if let Some(returned_value) = &exec_result.result {
+                                    self.push_to_stack(
+                                        returned_value.clone(),
+                                        Some(func.identifier.clone()),
+                                    );
+                                }
+                            } else {
                                 return VMExecutionResult::terminate_with_errors(
-                                    exec_result.error.unwrap().error_type,
+                                    VMErrorType::NotCallableError(caller.identifier.clone()),
                                 );
-                            }
-                            if let Some(returned_value) = &exec_result.result {
-                                self.push_to_stack(returned_value.clone(), Some(func.identifier));
                             }
                         }
                         _ => {
@@ -977,6 +1026,7 @@ impl Vm {
     fn run_function(
         &mut self,
         func: &Function,
+        caller: Option<HeapRef>,
         args: Vec<Value>,
         debug: bool,
     ) -> VMExecutionResult {
