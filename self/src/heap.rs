@@ -46,6 +46,10 @@ impl Heap {
         self.memory.get(&heap_ref.address)
     }
 
+    pub fn get_mut(&mut self, heap_ref: HeapRef) -> Option<&mut HeapObject> {
+        self.memory.get_mut(&heap_ref.address)
+    }
+
     pub fn free(&mut self, heap_ref: HeapRef) -> Option<HeapObject> {
         self.memory.remove(&heap_ref.address)
     }

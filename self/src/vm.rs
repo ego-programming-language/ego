@@ -1127,6 +1127,14 @@ impl Vm {
         }
     }
 
+    pub fn resolve_heap_mut_ref(&mut self, address: HeapRef) -> &mut HeapObject {
+        if let Some(addr) = self.heap.get_mut(address) {
+            return addr;
+        } else {
+            panic!("ref is not defined in the heap")
+        }
+    }
+
     fn free_heap_ref(&mut self, address: HeapRef) -> HeapObject {
         if let Some(obj) = self.heap.free(address) {
             return obj;
