@@ -1,4 +1,4 @@
-use crate::heap::HeapRef;
+use crate::{heap::HeapRef, types::Value};
 
 pub mod func;
 pub mod native_struct;
@@ -6,20 +6,16 @@ pub mod structs;
 
 #[derive(Debug, Clone)]
 pub struct BoundAccess {
-    object: HeapRef,
-    property: HeapRef,
+    pub object: HeapRef,
+    pub property: Box<Value>,
 }
 
 impl BoundAccess {
-    pub fn new(object: HeapRef, property: HeapRef) -> Self {
+    pub fn new(object: HeapRef, property: Box<Value>) -> Self {
         BoundAccess { object, property }
     }
 
     pub fn to_string(&self) -> String {
-        format!(
-            "property({}) of struct({})",
-            self.property.get_address(),
-            self.object.get_address()
-        )
+        format!("property access of struct({})", self.object.get_address())
     }
 }
