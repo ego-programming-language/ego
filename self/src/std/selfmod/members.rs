@@ -8,7 +8,7 @@ PROVIDER.
 
 use crate::{
     core::error::VMError,
-    heap::HeapObject,
+    heap::{HeapObject, HeapRef},
     types::{
         object::func::{Engine, Function},
         raw::RawValue,
@@ -17,7 +17,12 @@ use crate::{
     vm::Vm,
 };
 
-pub fn get_stack(vm: &mut Vm, params: Vec<Value>, debug: bool) -> Result<Value, VMError> {
+pub fn get_stack(
+    vm: &mut Vm,
+    _self: Option<HeapRef>,
+    params: Vec<Value>,
+    debug: bool,
+) -> Result<Value, VMError> {
     Ok(Value::RawValue(RawValue::Nothing))
 }
 

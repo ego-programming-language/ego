@@ -1,9 +1,9 @@
-use crate::{core::error::VMError, types::Value, vm::Vm};
+use crate::{core::error::VMError, heap::HeapRef, types::Value, vm::Vm};
 
 #[derive(Debug, Clone)]
 pub enum Engine {
     Bytecode(Vec<u8>),
-    Native(fn(&mut Vm, Vec<Value>, bool) -> Result<Value, VMError>),
+    Native(fn(&mut Vm, Option<HeapRef>, Vec<Value>, bool) -> Result<Value, VMError>),
 }
 
 #[derive(Debug, Clone)]

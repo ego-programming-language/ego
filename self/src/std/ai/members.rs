@@ -15,7 +15,7 @@ use serde_json::Value as SValue;
 
 use crate::{
     core::error::{self, ai_errors::AIError, VMError, VMErrorType},
-    heap::HeapObject,
+    heap::{HeapObject, HeapRef},
     types::{
         raw::{bool::Bool, f64::F64, utf8::Utf8, RawValue},
         Value,
@@ -81,7 +81,12 @@ fn ai_response_parser(response: &String) -> Option<Value> {
     }
 }
 
-pub fn infer(vm: &mut Vm, params: Vec<Value>, debug: bool) -> Result<Value, VMError> {
+pub fn infer(
+    vm: &mut Vm,
+    _self: Option<HeapRef>,
+    params: Vec<Value>,
+    debug: bool,
+) -> Result<Value, VMError> {
     let request_ref = params[0].clone();
     let request = match request_ref {
         Value::HeapRef(r) => {

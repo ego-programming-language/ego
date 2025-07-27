@@ -3,8 +3,10 @@ use std::net::TcpStream;
 
 use crate::core::error::net_errors::NetErrors;
 use crate::core::error::{self, VMErrorType};
+use crate::heap::HeapRef;
 use crate::std::net::types::NetStream;
 use crate::types::object::native_struct::NativeStruct;
+use crate::types::raw::RawValue;
 use crate::{
     core::error::VMError,
     heap::HeapObject,
@@ -15,7 +17,12 @@ use crate::{
     vm::Vm,
 };
 
-pub fn connect(vm: &mut Vm, params: Vec<Value>, debug: bool) -> Result<Value, VMError> {
+pub fn connect(
+    vm: &mut Vm,
+    _self: Option<HeapRef>,
+    params: Vec<Value>,
+    debug: bool,
+) -> Result<Value, VMError> {
     let host_ref = params[0].clone();
     let host = match host_ref {
         Value::HeapRef(r) => {
@@ -55,6 +62,7 @@ pub fn connect(vm: &mut Vm, params: Vec<Value>, debug: bool) -> Result<Value, VM
 
     let mut shape = HashMap::new();
     let host_ref = vm.heap.allocate(HeapObject::String(host.clone()));
+
     shape.insert("host".to_string(), Value::HeapRef(host_ref));
 
     let net_stream = NetStream::new(stream, shape);

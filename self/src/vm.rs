@@ -456,7 +456,7 @@ impl Vm {
                         Value::BoundAccess(b) => {
                             if let Value::HeapRef(callee_ref) = b.property.as_ref() {
                                 (
-                                    (self.resolve_heap_ref(b.object), callee_ref.clone()),
+                                    (self.resolve_heap_ref(b.object.clone()), b.object),
                                     Some(callee_ref.clone()),
                                 )
                             } else {
@@ -567,6 +567,38 @@ impl Vm {
                             } else {
                                 return VMExecutionResult::terminate_with_errors(
                                     VMErrorType::NotCallableError(caller.identifier.clone()),
+                                );
+                            }
+                        }
+
+                        // FOR NATIVE_STRUCTS CALLABLE MEMBERS
+                        HeapObject::NativeStruct(caller) => {
+                            let callee_ref = if let Some(c) = callee_ref {
+                                c
+                            } else {
+                                // TODO: use self-vm error system
+                                panic!("callee is not defined for a struct as function caller")
+                            };
+
+                            let callee = self.resolve_heap_ref(callee_ref);
+                            if let HeapObject::Function(func) = callee {
+                                let func = func.clone();
+                                let exec_result =
+                                    self.run_function(&func, Some(caller_ref), args.clone(), debug);
+                                if exec_result.error.is_some() {
+                                    return VMExecutionResult::terminate_with_errors(
+                                        exec_result.error.unwrap().error_type,
+                                    );
+                                }
+                                if let Some(returned_value) = &exec_result.result {
+                                    self.push_to_stack(
+                                        returned_value.clone(),
+                                        Some(func.identifier.clone()),
+                                    );
+                                }
+                            } else {
+                                return VMExecutionResult::terminate_with_errors(
+                                    VMErrorType::NotCallableError(caller.to_string()),
                                 );
                             }
                         }
@@ -1067,7 +1099,7 @@ impl Vm {
                         args.len()
                     )
                 }
-                let execution_result = native(self, args, debug);
+                let execution_result = native(self, caller, args, debug);
                 if let Ok(result) = execution_result {
                     // we could return the result value, using
                     // it as the return value of the function

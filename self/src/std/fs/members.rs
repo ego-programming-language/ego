@@ -3,6 +3,7 @@ use std::path::Path;
 
 use crate::core::error::fs_errors::FsError;
 use crate::core::error::{self, VMErrorType};
+use crate::heap::HeapRef;
 use crate::std::heap_utils::put_string;
 use crate::{
     core::error::VMError,
@@ -15,7 +16,12 @@ use crate::{
     vm::Vm,
 };
 
-pub fn read_file(vm: &mut Vm, params: Vec<Value>, debug: bool) -> Result<Value, VMError> {
+pub fn read_file(
+    vm: &mut Vm,
+    _self: Option<HeapRef>,
+    params: Vec<Value>,
+    debug: bool,
+) -> Result<Value, VMError> {
     let path_ref = params[0].clone();
     let path = match path_ref {
         Value::HeapRef(r) => {
