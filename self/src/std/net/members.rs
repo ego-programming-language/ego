@@ -4,7 +4,7 @@ use std::net::TcpStream;
 
 use crate::core::error::net_errors::NetErrors;
 use crate::core::error::{self, VMErrorType};
-use crate::heap::HeapRef;
+use crate::heap::{self, HeapRef};
 use crate::std::net::types::NetStream;
 use crate::types::object::native_struct::NativeStruct;
 use crate::types::raw::u64::U64;
@@ -41,11 +41,12 @@ fn write(
             };
             request
         }
+        Value::RawValue(RawValue::Utf8(s)) => s.value,
         _ => {
             return Err(error::throw(VMErrorType::TypeMismatch {
                 expected: "string".to_string(),
                 received: "bound_access".to_string(),
-            }))
+            }));
         }
     };
 
