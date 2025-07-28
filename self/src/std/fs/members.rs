@@ -1,10 +1,13 @@
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use std::path::Path;
 
 use crate::core::error::fs_errors::FsError;
+use crate::core::error::type_errors::TypeError;
 use crate::core::error::{self, VMErrorType};
 use crate::heap::HeapRef;
 use crate::std::heap_utils::put_string;
+use crate::types::raw::bool::Bool;
 use crate::{
     core::error::VMError,
     heap::HeapObject,
@@ -73,10 +76,133 @@ pub fn read_file(
     }
 }
 
-pub fn read_file_ref() -> HeapObject {
+pub fn write_file(
+    vm: &mut Vm,
+    _self: Option<HeapRef>,
+    params: Vec<Value>,
+    debug: bool,
+) -> Result<Value, VMError> {
+    if params.len() < 2 {
+        return Err(error::throw(VMErrorType::TypeError(
+            TypeError::InvalidArgsCount {
+                expected: 2,
+                received: params.len() as u32,
+            },
+        )));
+    }
+
+    let path = match &params[0] {
+        Value::HeapRef(r) => {
+            let heap_obj = vm.resolve_heap_ref(r.clone());
+            match heap_obj {
+                HeapObject::String(s) => s,
+                _ => {
+                    return Err(error::throw(VMErrorType::TypeMismatch {
+                        expected: "string".to_string(),
+                        received: heap_obj.to_string(),
+                    }))
+                }
+            }
+        }
+        _ => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: params[0].get_type(),
+            }))
+        }
+    };
+
+    let content = match &params[1] {
+        Value::HeapRef(r) => {
+            let heap_obj = vm.resolve_heap_ref(r.clone());
+            match heap_obj {
+                HeapObject::String(s) => s,
+                _ => {
+                    return Err(error::throw(VMErrorType::TypeMismatch {
+                        expected: "string".to_string(),
+                        received: heap_obj.to_string(),
+                    }))
+                }
+            }
+        }
+        _ => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: params[1].get_type(),
+            }))
+        }
+    };
+
+    let overwrite_or_create = if let Some(param2) = params.get(2) {
+        match param2 {
+            Value::RawValue(RawValue::Bool(b)) => b.value,
+            _ => {
+                return Err(error::throw(VMErrorType::TypeMismatch {
+                    expected: "bool".to_string(),
+                    received: param2.get_type(),
+                }))
+            }
+        }
+    } else {
+        false // default if not passed
+    };
+
+    let path_obj = Path::new(path);
+
+    if !path_obj.exists() && !overwrite_or_create {
+        return Err(error::throw(VMErrorType::Fs(FsError::FileNotFound(
+            path.to_string(),
+        ))));
+    }
+
+    let file = if overwrite_or_create {
+        OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(path_obj)
+    } else {
+        OpenOptions::new().append(true).open(path_obj)
+    };
+
+    match file {
+        Ok(mut f) => {
+            let write_result = f.write(content.as_bytes());
+            match write_result {
+                Ok(_) => Ok(Value::RawValue(RawValue::Bool(Bool::new(true)))),
+                Err(err) => {
+                    println!("err{:#?}", err);
+                    Err(error::throw(VMErrorType::Fs(FsError::WriteError(
+                        path.to_string(),
+                    ))))
+                }
+            }
+        }
+        Err(err) => {
+            println!("err{:#?}", err);
+            Err(error::throw(VMErrorType::Fs(FsError::WriteError(
+                path.to_string(),
+            ))))
+        }
+    }
+}
+
+// generate members heap objects
+pub fn read_file_obj() -> HeapObject {
     HeapObject::Function(Function::new(
         "read_file".to_string(),
         vec![], // TODO: load params to native functions
         Engine::Native(read_file),
+    ))
+}
+pub fn write_file_obj() -> HeapObject {
+    HeapObject::Function(Function::new(
+        "read_file".to_string(),
+        vec![
+            "path".to_string(),
+            "data".to_string(),
+            //"create | overwrite".to_string(),
+        ],
+        Engine::Native(write_file),
     ))
 }
