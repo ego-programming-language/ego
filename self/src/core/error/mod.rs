@@ -2,9 +2,11 @@ pub mod ai_errors;
 pub mod fs_errors;
 pub mod net_errors;
 pub mod struct_errors;
+pub mod type_errors;
 use crate::{
     core::error::{
         ai_errors::AIError, fs_errors::FsError, net_errors::NetErrors, struct_errors::StructError,
+        type_errors::TypeError,
     },
     opcodes::DataType,
     stack::OperandsStackValue,
@@ -13,6 +15,7 @@ use crate::{
 pub enum VMErrorType {
     TypeCoercionError(OperandsStackValue), // maybe here we should have a more generic value, we'll see with time
     TypeMismatch { expected: String, received: String },
+    TypeError(TypeError),
     InvalidBinaryOperation(InvalidBinaryOperation),
     DivisionByZero(OperandsStackValue),
     UndeclaredIdentifierError(String),
@@ -51,6 +54,12 @@ pub fn throw(error_type: VMErrorType) -> VMError {
             "Type mismatch error".to_string(),
             format!("expected {expected}, received {received}"),
         ),
+        VMErrorType::TypeError(ai) => match ai {
+            TypeError::InvalidArgsCount { expected, received } => (
+                "Invalid args count".to_string(),
+                format!("expected {}, received {}", expected, received),
+            ),
+        },
         VMErrorType::InvalidBinaryOperation(v) => (
             "Invalid binary operation".to_string(),
             format!("{} {} {}", v.left.as_str(), v.operator, v.right.as_str()),
@@ -80,6 +89,7 @@ pub fn throw(error_type: VMErrorType) -> VMError {
             FsError::FileNotFound(s) => ("File not found".to_string(), format!("{}", s)),
             FsError::NotAFile(s) => ("Not a file".to_string(), format!("{}", s)),
             FsError::ReadError(s) => ("Read error".to_string(), format!("{}", s)),
+            FsError::WriteError(s) => ("Write error".to_string(), format!("{}", s)),
         },
         VMErrorType::AI(ai) => match ai {
             AIError::AIFetchError(s) => ("AI fetch error".to_string(), format!("{}", s)),
