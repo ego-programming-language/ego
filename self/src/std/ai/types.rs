@@ -1,19 +1,24 @@
-use crate::types::{
-    raw::{utf8::Utf8, RawValue},
-    Value,
+use crate::{
+    heap::HeapRef,
+    types::{
+        raw::{utf8::Utf8, RawValue},
+        Value,
+    },
 };
 
 #[derive(Debug)]
 pub struct Action {
     pub module: String,
     pub member: String,
+    pub exec: HeapRef, // heap_ref to the executor function
     pub params: Vec<Value>,
 }
 
 impl Action {
-    pub fn new(module: String, member: String, params: Vec<Value>) -> Action {
+    pub fn new(module: String, exec: HeapRef, member: String, params: Vec<Value>) -> Action {
         Action {
             module,
+            exec,
             member,
             params,
         }
@@ -31,6 +36,7 @@ impl Action {
             "member" => Some(Value::RawValue(RawValue::Utf8(Utf8::new(
                 self.member.clone(),
             )))),
+            "exec" => Some(Value::HeapRef(self.exec.clone())),
             //"params" => self.params,
             _ => None,
         }

@@ -18,7 +18,10 @@ use crate::{
     heap::{HeapObject, HeapRef},
     std::{ai::types::Action, gen_native_modules_defs},
     types::{
-        object::native_struct::NativeStruct,
+        object::{
+            func::{Engine, Function},
+            native_struct::NativeStruct,
+        },
         raw::{bool::Bool, f64::F64, utf8::Utf8, RawValue},
         Value,
     },
@@ -344,8 +347,17 @@ Instruction: {}",
     if instructions.len() < 1 {
         return Ok(Value::RawValue(RawValue::Nothing));
     }
+
+    // for the moment the function is allocated on
+    // execution. but we should have a way of on a
+    // native module import executed the generic code
+    // to have things on scope, like, exec function.
+    let exec_fn = Function::new("exec".to_string(), vec![], Engine::Native(exec));
+    let exec_ref = vm.heap.allocate(HeapObject::Function(exec_fn));
+
     let action = Action::new(
         instructions[0].module.clone(),
+        exec_ref,
         instructions[0].member.clone(),
         vec![],
     );
@@ -354,4 +366,25 @@ Instruction: {}",
         .heap
         .allocate(HeapObject::NativeStruct(NativeStruct::Action(action)));
     return Ok(Value::HeapRef(action_ref));
+}
+
+pub fn exec(
+    vm: &mut Vm,
+    _self: Option<HeapRef>,
+    params: Vec<Value>,
+    debug: bool,
+) -> Result<Value, VMError> {
+    // resolve 'self'
+    let _self = if let Some(_this) = _self {
+        if let HeapObject::NativeStruct(NativeStruct::Action(ns)) = vm.resolve_heap_mut_ref(_this) {
+            ns
+        } else {
+            unreachable!()
+        }
+    } else {
+        unreachable!()
+    };
+
+    println!("executing action: {:#?}", _self);
+    return Ok(Value::RawValue(RawValue::Nothing));
 }
