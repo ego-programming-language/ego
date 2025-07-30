@@ -16,8 +16,9 @@ use serde_json::Value as SValue;
 use crate::{
     core::error::{self, ai_errors::AIError, VMError, VMErrorType},
     heap::{HeapObject, HeapRef},
-    std::gen_native_modules_defs,
+    std::{ai::types::Action, gen_native_modules_defs},
     types::{
+        object::native_struct::NativeStruct,
         raw::{bool::Bool, f64::F64, utf8::Utf8, RawValue},
         Value,
     },
@@ -88,8 +89,8 @@ fn ai_response_parser(response: &String) -> Option<Value> {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct Instruction {
+#[derive(Debug, Deserialize, Clone)]
+struct AIAction {
     module: String,
     member: String,
     params: Vec<serde_json::Value>,
@@ -293,7 +294,7 @@ You must respond to the following instruction with a list of JSON objects, where
 - 'member': the specific function name to call (from the members),
 - 'params': an array of arguments.
 
-⚠️ You must only use the modules and members listed above. Do not invent anything.
+You must only use the modules and members listed above. Do not invent anything.
 
 Respond only with JSON. Do not include any explanations or markdown.
 
@@ -335,11 +336,22 @@ Instruction: {}",
     }
 
     let cleaned = get_response_json(answer);
-    let instructions: Vec<Instruction> = if let Ok(val) = serde_json::from_str(cleaned.as_str()) {
+    let instructions: Vec<AIAction> = if let Ok(val) = serde_json::from_str(cleaned.as_str()) {
         val
     } else {
         return Ok(Value::RawValue(RawValue::Nothing));
     };
-    println!("cleaned: {:#?}", instructions);
-    return Ok(Value::RawValue(RawValue::Nothing));
+    if instructions.len() < 1 {
+        return Ok(Value::RawValue(RawValue::Nothing));
+    }
+    let action = Action::new(
+        instructions[0].module.clone(),
+        instructions[0].member.clone(),
+        vec![],
+    );
+
+    let action_ref = vm
+        .heap
+        .allocate(HeapObject::NativeStruct(NativeStruct::Action(action)));
+    return Ok(Value::HeapRef(action_ref));
 }
