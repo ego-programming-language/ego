@@ -16,6 +16,7 @@ use serde_json::Value as SValue;
 use crate::{
     core::error::{self, ai_errors::AIError, VMError, VMErrorType},
     heap::{HeapObject, HeapRef},
+    std::gen_native_modules_defs,
     types::{
         raw::{bool::Bool, f64::F64, utf8::Utf8, RawValue},
         Value,
@@ -50,14 +51,20 @@ struct MessageContent {
     content: String,
 }
 
-fn ai_response_parser(response: &String) -> Option<Value> {
+fn get_response_json(response: &String) -> String {
     let cleaned = response
         .trim()
         .trim_start_matches("```json")
         .trim_start_matches("```")
         .trim_end_matches("```")
         .trim();
-    let json: SValue = serde_json::from_str(cleaned).ok()?;
+
+    cleaned.to_string()
+}
+
+fn ai_response_parser(response: &String) -> Option<Value> {
+    let cleaned = get_response_json(response);
+    let json: SValue = serde_json::from_str(cleaned.as_str()).ok()?;
     let raw_value = json.get("value")?;
 
     if raw_value.is_boolean() {
@@ -79,6 +86,13 @@ fn ai_response_parser(response: &String) -> Option<Value> {
     } else {
         Some(Value::RawValue(RawValue::Nothing))
     }
+}
+
+#[derive(Debug, Deserialize)]
+struct Instruction {
+    module: String,
+    member: String,
+    params: Vec<serde_json::Value>,
 }
 
 pub fn infer(
@@ -222,4 +236,110 @@ context: {{ 'arg': {} }}
     } else {
         return Ok(Value::RawValue(RawValue::Nothing));
     }
+}
+
+pub fn do_fn(
+    vm: &mut Vm,
+    _self: Option<HeapRef>,
+    params: Vec<Value>,
+    debug: bool,
+) -> Result<Value, VMError> {
+    let request_ref = params[0].clone();
+    let request = match request_ref {
+        Value::HeapRef(r) => {
+            let heap_obj = vm.resolve_heap_ref(r);
+            let request = match heap_obj {
+                HeapObject::String(s) => s,
+                _ => {
+                    return Err(error::throw(VMErrorType::TypeMismatch {
+                        expected: "string".to_string(),
+                        received: heap_obj.to_string(),
+                    }));
+                }
+            };
+            request
+        }
+        Value::RawValue(r) => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: r.get_type_string(),
+            }));
+        }
+        Value::BoundAccess(_) => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: "bound_access".to_string(),
+            }));
+        }
+    };
+
+    if debug {
+        println!("AI.DO <- {}", request);
+    }
+
+    let stdlib_defs: Vec<String> = gen_native_modules_defs()
+        .iter()
+        .map(|nm| nm.to_string())
+        .collect();
+
+    // we should try to avoid prompt injection
+    // maybe using multiple prompts?
+    let prompt = format!(
+        "You are a virtual machine assistant with access to the following native modules:\n\n{}\n\n
+        
+You must respond to the following instruction with a list of JSON objects, where each object contains:
+
+- 'module': the name of the module from the list above,
+- 'member': the specific function name to call (from the members),
+- 'params': an array of arguments.
+
+⚠️ You must only use the modules and members listed above. Do not invent anything.
+
+Respond only with JSON. Do not include any explanations or markdown.
+
+Instruction: {}",
+        stdlib_defs.join("\n\n"),
+        request
+    );
+
+    let api_key = env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
+
+    let client = Client::new();
+    let request_body = ChatRequest {
+        model: "gpt-4o".to_string(),
+        messages: vec![Message {
+            role: "system".to_string(),
+            content: prompt,
+        }],
+    };
+
+    let res = client
+        .post("https://api.openai.com/v1/chat/completions")
+        .bearer_auth(api_key)
+        .json(&request_body)
+        .send()
+        .expect("AI.DO: Failed to send request");
+
+    if !res.status().is_success() {
+        println!("AI.DO (FAILED) -> {}", res.status());
+        return Err(error::throw(VMErrorType::AI(AIError::AIFetchError(
+            res.status().to_string(),
+        ))));
+    }
+
+    let response: ChatResponse = res.json().expect("AI.DO: Failed to parse response");
+    let answer = &response.choices[0].message.content;
+
+    if debug {
+        println!("AI -> {}", answer);
+    }
+
+    let cleaned = get_response_json(answer);
+    let instructions: Vec<Instruction> = if let Ok(val) = serde_json::from_str(cleaned.as_str()) {
+        val
+    } else {
+        return Ok(Value::RawValue(RawValue::Nothing));
+    };
+    println!("cleaned: {:#?}", instructions);
+    return Ok(Value::RawValue(RawValue::Nothing));
 }

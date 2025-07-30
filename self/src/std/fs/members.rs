@@ -7,6 +7,7 @@ use crate::core::error::type_errors::TypeError;
 use crate::core::error::{self, VMErrorType};
 use crate::heap::HeapRef;
 use crate::std::heap_utils::put_string;
+use crate::std::NativeMember;
 use crate::types::raw::bool::Bool;
 use crate::{
     core::error::VMError,
@@ -19,6 +20,7 @@ use crate::{
     vm::Vm,
 };
 
+// read_file
 pub fn read_file(
     vm: &mut Vm,
     _self: Option<HeapRef>,
@@ -74,6 +76,39 @@ pub fn read_file(
             path
         ))))),
     }
+}
+
+pub fn read_file_obj() -> HeapObject {
+    HeapObject::Function(Function::new(
+        "read_file".to_string(),
+        vec![], // TODO: load params to native functions
+        Engine::Native(read_file),
+    ))
+}
+
+// write_file
+pub fn write_file_def() -> NativeMember {
+    NativeMember {
+        name: "write_file".to_string(), 
+        description: "write a file on the host filesystem on the given path. It can also create files depeding on the third flag".to_string(), 
+        params: Some(vec![
+            "path(string)".to_string(),
+            "content(string)".to_string(),
+            "create_or_overwrite(bool)".to_string(),
+        ])
+    }
+}
+
+pub fn write_file_obj() -> HeapObject {
+    HeapObject::Function(Function::new(
+        "write_file".to_string(),
+        vec![
+            "path".to_string(),
+            "content".to_string(),
+            "create_or_overwrite".to_string(),
+        ],
+        Engine::Native(write_file),
+    ))
 }
 
 pub fn write_file(
@@ -185,24 +220,4 @@ pub fn write_file(
             ))))
         }
     }
-}
-
-// generate members heap objects
-pub fn read_file_obj() -> HeapObject {
-    HeapObject::Function(Function::new(
-        "read_file".to_string(),
-        vec![], // TODO: load params to native functions
-        Engine::Native(read_file),
-    ))
-}
-pub fn write_file_obj() -> HeapObject {
-    HeapObject::Function(Function::new(
-        "read_file".to_string(),
-        vec![
-            "path".to_string(),
-            "data".to_string(),
-            //"create | overwrite".to_string(),
-        ],
-        Engine::Native(write_file),
-    ))
 }
