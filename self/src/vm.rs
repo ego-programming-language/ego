@@ -391,11 +391,8 @@ impl Vm {
                             HeapObject::StructLiteral(x) => {
                                 let value = x.property_access(&property_key);
                                 if let Some(prop) = value {
-                                    // this clone is important, we're clonning
-                                    // or the ref to the value or the value itself
-                                    // if it is a RawValue
                                     let bound_access =
-                                        BoundAccess::new(object.clone(), Box::new(prop.clone()));
+                                        BoundAccess::new(object.clone(), Box::new(prop));
                                     self.push_to_stack(
                                         Value::BoundAccess(bound_access),
                                         Some(object_val.to_string()),
@@ -412,11 +409,8 @@ impl Vm {
                             HeapObject::NativeStruct(x) => {
                                 let value = x.property_access(&property_key);
                                 if let Some(prop) = value {
-                                    // this clone is important, we're clonning
-                                    // or the ref to the value or the value itself
-                                    // if it is a RawValue
                                     let bound_access =
-                                        BoundAccess::new(object.clone(), Box::new(prop.clone()));
+                                        BoundAccess::new(object.clone(), Box::new(prop));
                                     self.push_to_stack(
                                         Value::BoundAccess(bound_access),
                                         Some(object_val.to_string()),

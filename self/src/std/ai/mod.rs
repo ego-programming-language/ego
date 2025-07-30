@@ -1,4 +1,5 @@
 mod members;
+pub mod types;
 
 use crate::{
     heap::HeapObject,

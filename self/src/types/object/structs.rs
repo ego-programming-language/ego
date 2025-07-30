@@ -28,8 +28,8 @@ impl StructLiteral {
         StructLiteral { identifier, fields }
     }
 
-    pub fn property_access(&self, property: &str) -> Option<&Value> {
-        self.fields.get(property)
+    pub fn property_access(&self, property: &str) -> Option<Value> {
+        self.fields.get(property).cloned()
     }
 
     pub fn to_string(&self) -> String {
