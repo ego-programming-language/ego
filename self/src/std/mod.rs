@@ -9,6 +9,7 @@ pub mod fs;
 pub mod heap_utils;
 pub mod net;
 pub mod selfmod;
+mod utils;
 
 pub enum NativeModule {
     AI,

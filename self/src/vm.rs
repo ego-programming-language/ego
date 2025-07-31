@@ -372,6 +372,8 @@ impl Vm {
                             (obj_ref.clone(), prop_ref.clone())
                         }
                         // TODO: use self-vm errors
+                        // here we should handle if a function returns an
+                        // nothing istead of a struct
                         _ => panic!("Expected two HeapRef values for <get_property> opcode"),
                     };
 
@@ -1050,7 +1052,7 @@ impl Vm {
         mod_exec_result
     }
 
-    fn run_function(
+    pub fn run_function(
         &mut self,
         func: &Function,
         caller: Option<HeapRef>,

@@ -11,16 +11,16 @@ pub struct Action {
     pub module: String,
     pub member: String,
     pub exec: HeapRef, // heap_ref to the executor function
-    pub params: Vec<Value>,
+    pub args: Vec<Value>,
 }
 
 impl Action {
-    pub fn new(module: String, exec: HeapRef, member: String, params: Vec<Value>) -> Action {
+    pub fn new(module: String, exec: HeapRef, member: String, args: Vec<Value>) -> Action {
         Action {
             module,
             exec,
             member,
-            params,
+            args,
         }
     }
 

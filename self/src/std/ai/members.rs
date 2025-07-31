@@ -8,15 +8,17 @@ PROVIDER.
 
 use std::env;
 
-use regex::Regex;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as SValue;
 
 use crate::{
-    core::error::{self, ai_errors::AIError, VMError, VMErrorType},
+    core::error::{self, action_errors::ActionError, ai_errors::AIError, VMError, VMErrorType},
     heap::{HeapObject, HeapRef},
-    std::{ai::types::Action, gen_native_modules_defs},
+    std::{
+        ai::types::Action, gen_native_modules_defs, generate_native_module, get_native_module_type,
+        utils::cast_json_value,
+    },
     types::{
         object::{
             func::{Engine, Function},
@@ -359,9 +361,22 @@ Instruction: {}",
         instructions[0].module.clone(),
         exec_ref,
         instructions[0].member.clone(),
-        vec![],
+        instructions[0]
+            .params
+            .iter()
+            .map(|p| {
+                if let Some(v) = cast_json_value(p) {
+                    v
+                } else {
+                    Value::RawValue(RawValue::Nothing)
+                }
+            })
+            .collect::<Vec<Value>>(),
     );
 
+    if debug {
+        println!("AI.DO <- {}({})", action.module, action.member)
+    }
     let action_ref = vm
         .heap
         .allocate(HeapObject::NativeStruct(NativeStruct::Action(action)));
@@ -375,9 +390,11 @@ pub fn exec(
     debug: bool,
 ) -> Result<Value, VMError> {
     // resolve 'self'
-    let _self = if let Some(_this) = _self {
-        if let HeapObject::NativeStruct(NativeStruct::Action(ns)) = vm.resolve_heap_mut_ref(_this) {
-            ns
+    let (_self, _self_ref) = if let Some(_this) = _self {
+        if let HeapObject::NativeStruct(NativeStruct::Action(ns)) =
+            vm.resolve_heap_ref(_this.clone())
+        {
+            (ns, _this)
         } else {
             unreachable!()
         }
@@ -385,6 +402,46 @@ pub fn exec(
         unreachable!()
     };
 
-    println!("executing action: {:#?}", _self);
-    return Ok(Value::RawValue(RawValue::Nothing));
+    if debug {
+        println!("ACTION <- {}.{}", _self.module, _self.member);
+    }
+    let native_module_type = if let Some(nmt) = get_native_module_type(&_self.module) {
+        nmt
+    } else {
+        return Err(error::throw(VMErrorType::Action(
+            ActionError::InvalidModule(_self.module.clone()),
+        )));
+    };
+    let native_module = generate_native_module(native_module_type);
+    let fields = native_module.1;
+    let member = if let Some(member) = fields.iter().find(|m| m.0 == _self.member) {
+        member
+    } else {
+        return Err(error::throw(VMErrorType::Action(
+            ActionError::InvalidMember {
+                module: _self.module.clone(),
+                member: _self.member.clone(),
+            },
+        )));
+    };
+
+    match &member.1 {
+        HeapObject::Function(f) => {
+            let execution = vm.run_function(&f.clone(), Some(_self_ref), _self.args.clone(), debug);
+            if let Some(err) = execution.error {
+                return Err(err);
+            }
+            if let Some(result) = execution.result {
+                return Ok(result);
+            }
+            return Ok(Value::RawValue(RawValue::Nothing));
+        }
+        _ => {
+            // TODO: use self-vm errors system
+            // in principle this should not happen since
+            // to the AI should arrive only valid callable
+            // members from the stdlib modules
+            panic!("error, member is not callable");
+        }
+    }
 }

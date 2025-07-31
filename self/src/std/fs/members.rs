@@ -139,6 +139,7 @@ pub fn write_file(
                 }
             }
         }
+        Value::RawValue(RawValue::Utf8(s)) => &s.value,
         _ => {
             return Err(error::throw(VMErrorType::TypeMismatch {
                 expected: "string".to_string(),
@@ -160,6 +161,7 @@ pub fn write_file(
                 }
             }
         }
+        Value::RawValue(RawValue::Utf8(s)) => &s.value,
         _ => {
             return Err(error::throw(VMErrorType::TypeMismatch {
                 expected: "string".to_string(),
