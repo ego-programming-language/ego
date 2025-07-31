@@ -3,6 +3,7 @@ use crate::{heap::HeapRef, types::Value};
 pub mod func;
 pub mod native_struct;
 pub mod structs;
+pub mod vector;
 
 #[derive(Debug, Clone)]
 pub struct BoundAccess {

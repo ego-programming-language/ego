@@ -1,7 +1,7 @@
-use std::{clone, collections::HashMap};
+use std::collections::HashMap;
 
-use crate::std::net::types::NetStream;
 use crate::types::object::native_struct::NativeStruct;
+use crate::types::object::vector::Vector;
 use crate::types::object::{
     func::Function,
     structs::{StructDeclaration, StructLiteral},
@@ -20,6 +20,7 @@ pub enum HeapObject {
     StructDeclaration(StructDeclaration),
     StructLiteral(StructLiteral),
     NativeStruct(NativeStruct),
+    Vector(Vector),
 }
 
 #[derive(Debug, Clone)]
@@ -75,6 +76,7 @@ impl HeapObject {
             HeapObject::StructDeclaration(x) => x.to_string(),
             HeapObject::StructLiteral(x) => x.identifier.to_string(),
             HeapObject::NativeStruct(x) => x.to_string(),
+            HeapObject::Vector(x) => x.to_string(),
         }
     }
 }

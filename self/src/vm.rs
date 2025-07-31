@@ -17,6 +17,7 @@ use crate::types::object::func::Engine;
 use crate::types::object::func::Function;
 use crate::types::object::structs::StructDeclaration;
 use crate::types::object::structs::StructLiteral;
+use crate::types::object::vector::Vector;
 use crate::types::object::BoundAccess;
 use crate::types::raw::RawValue;
 use crate::types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8};
@@ -1177,6 +1178,7 @@ impl Vm {
                     panic!("Unexpected value type for string length");
                 }
             }
+            DataType::Vector => 4, // elements count
             _ => {
                 println!("data_type: {:#?}", data_type);
                 panic!("Unsupported datatype")
@@ -1252,6 +1254,26 @@ impl Vm {
                 printable_value = value.to_string();
 
                 let value_ref = self.heap.allocate(HeapObject::String(value));
+                Value::HeapRef(value_ref)
+            }
+            DataType::Vector => {
+                let elements_count_bytes = if value.len() >= 4 {
+                    &value[value.len() - 4..]
+                } else {
+                    panic!("Struct literal must contain more than 4 bytes");
+                };
+
+                let elements_count = u32::from_le_bytes(
+                    elements_count_bytes
+                        .try_into()
+                        .expect("Provided value is incorrect"),
+                );
+                let elements = self.get_stack_values(&elements_count);
+
+                let value = Vector::new(elements);
+                printable_value = value.to_string();
+
+                let value_ref = self.heap.allocate(HeapObject::Vector(value));
                 Value::HeapRef(value_ref)
             }
             DataType::StructLiteral => {

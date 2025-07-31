@@ -285,6 +285,21 @@ impl Compiler {
 
                 bytecode
             }
+            Expression::Vector(v) => {
+                let mut bytecode = vec![];
+                let elements_num = v.children.len();
+
+                for child in &v.children {
+                    bytecode.extend_from_slice(&Compiler::compile_expression(child, false));
+                }
+
+                // compile struct
+                bytecode.push(get_bytecode("load_const".to_string()));
+                bytecode.push(get_bytecode("vector".to_string()));
+                bytecode.extend_from_slice(&Compiler::compile_offset(elements_num as i32));
+
+                bytecode
+            }
             Expression::Number(v) => {
                 let mut bytecode = vec![];
                 bytecode.push(get_bytecode("load_const".to_string()));

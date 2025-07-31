@@ -50,6 +50,7 @@ pub fn get_codes_map() -> HashMap<String, u8> {
     m.insert("bool".to_string(), 0x06);
     m.insert("f64".to_string(), 0x07);
     m.insert("struct_literal".to_string(), 0x08);
+    m.insert("vector".to_string(), 0x09);
     m
 }
 
@@ -121,6 +122,7 @@ pub enum DataType {
     F64,
     Utf8,
     Nothing,
+    Vector,
     Bool,
     StructLiteral,
     Unknown,
@@ -138,6 +140,7 @@ impl DataType {
             0x06 => DataType::Bool,
             0x07 => DataType::F64,
             0x08 => DataType::StructLiteral,
+            0x09 => DataType::Vector,
             _ => DataType::Unknown,
         }
     }
@@ -153,6 +156,7 @@ impl DataType {
             DataType::Utf8 => "utf8",
             DataType::StructLiteral => "struct_literal",
             DataType::Nothing => "nothing",
+            DataType::Vector => "vector",
             DataType::Unknown => "unknown",
         }
     }
@@ -169,6 +173,7 @@ impl PartialEq for DataType {
             (DataType::Utf8, DataType::Utf8) => true,
             (DataType::Bool, DataType::Bool) => true,
             (DataType::Nothing, DataType::Nothing) => true,
+            (DataType::Vector, DataType::Vector) => true,
             _ => false,
         }
     }
