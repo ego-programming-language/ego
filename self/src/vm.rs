@@ -34,19 +34,19 @@ pub struct Vm {
     pub heap: Heap,
     bytecode: Vec<u8>,
     pc: usize,
-    handlers: ForeignHandlers,
+    ffi_handlers: ForeignHandlers,
 }
 
 impl Vm {
     pub fn new(bytecode: Vec<u8>) -> Vm {
         //let mut translator = Translator::new(bytecode);
         //let instructions = translator.translate();
-        let mut handlers = ForeignHandlers::new();
+        let mut ffi_handlers = ForeignHandlers::new();
         let foreign_handlers = get_foreign_handlers();
 
         if let Some(loaded_handlers) = foreign_handlers {
             for handler in loaded_handlers.functions {
-                handlers.add(handler);
+                ffi_handlers.add(handler);
             }
         }
 
@@ -56,7 +56,7 @@ impl Vm {
             heap: Heap::new(),
             bytecode,
             pc: 0,
-            handlers,
+            ffi_handlers,
         }
     }
 
@@ -844,7 +844,7 @@ impl Vm {
                     if debug {
                         println!("CALL -> {}", resolved_args[0].to_string())
                     }
-                    call_handler(&self.handlers, resolved_args);
+                    call_handler(&self.ffi_handlers, resolved_args);
                 }
                 _ => {
                     println!("unhandled opcode");
