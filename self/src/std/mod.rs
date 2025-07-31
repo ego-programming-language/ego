@@ -10,6 +10,7 @@ pub mod heap_utils;
 pub mod net;
 pub mod selfmod;
 mod utils;
+pub mod vector;
 
 pub enum NativeModule {
     AI,
@@ -82,6 +83,13 @@ pub fn generate_native_module(
         NativeModule::Fs => fs::generate_struct(),
         NativeModule::Net => net::generate_struct(),
     }
+}
+
+// generate builtin lib members
+pub fn bootstrap_default_lib() -> Vec<(String, HeapObject)> {
+    let mut default_lib = vec![];
+    default_lib.extend(vector::init_lib());
+    default_lib
 }
 
 pub fn gen_native_modules_defs() -> Vec<NativeModuleDef> {

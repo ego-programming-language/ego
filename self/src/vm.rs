@@ -10,7 +10,8 @@ use crate::heap::HeapObject;
 use crate::heap::HeapRef;
 use crate::opcodes::DataType;
 use crate::opcodes::Opcode;
-use crate::std::fs;
+use crate::std::bootstrap_default_lib;
+use crate::std::vector;
 use crate::std::{generate_native_module, get_native_module_type};
 use crate::translator::Translator;
 use crate::types::object::func::Engine;
@@ -34,6 +35,7 @@ pub struct Vm {
     pub heap: Heap,
     bytecode: Vec<u8>,
     pc: usize,
+    handlers: HashMap<String, HeapRef>,
     ffi_handlers: ForeignHandlers,
 }
 
@@ -41,6 +43,8 @@ impl Vm {
     pub fn new(bytecode: Vec<u8>) -> Vm {
         //let mut translator = Translator::new(bytecode);
         //let instructions = translator.translate();
+
+        // load ffi_handlers
         let mut ffi_handlers = ForeignHandlers::new();
         let foreign_handlers = get_foreign_handlers();
 
@@ -56,6 +60,7 @@ impl Vm {
             heap: Heap::new(),
             bytecode,
             pc: 0,
+            handlers: HashMap::new(),
             ffi_handlers,
         }
     }
@@ -66,6 +71,15 @@ impl Vm {
             println!("last PC value: {}", self.bytecode.len());
             println!("-");
         }
+
+        // load builtin handlers
+        let raw_handlers = bootstrap_default_lib();
+        let mut handlers = HashMap::new();
+        for (handler_name, handler_obj) in raw_handlers {
+            let obj_ref = self.heap.allocate(handler_obj);
+            handlers.insert(handler_name, obj_ref);
+        }
+        self.handlers = handlers;
 
         self.run_bytecode(debug)
     }
@@ -427,6 +441,24 @@ impl Vm {
                                     );
                                 }
                             }
+                            HeapObject::Vector(x) => {
+                                let value = x.property_access(&property_key);
+                                if let Some(prop) = value {
+                                    let bound_access =
+                                        BoundAccess::new(object.clone(), Box::new(prop));
+                                    self.push_to_stack(
+                                        Value::BoundAccess(bound_access),
+                                        Some(object_val.to_string()),
+                                    );
+                                } else {
+                                    return VMExecutionResult::terminate_with_errors(
+                                        VMErrorType::Struct(StructError::FieldNotFound {
+                                            field: property_key.to_string(),
+                                            struct_type: object_val.to_string(),
+                                        }),
+                                    );
+                                }
+                            }
                             _ => {
                                 panic!("<get_property> opcode must be used on a Struct like type")
                             }
@@ -575,6 +607,38 @@ impl Vm {
                             } else {
                                 // TODO: use self-vm error system
                                 panic!("callee is not defined for a struct as function caller")
+                            };
+
+                            let callee = self.resolve_heap_ref(callee_ref);
+                            if let HeapObject::Function(func) = callee {
+                                let func = func.clone();
+                                let exec_result =
+                                    self.run_function(&func, Some(caller_ref), args.clone(), debug);
+                                if exec_result.error.is_some() {
+                                    return VMExecutionResult::terminate_with_errors(
+                                        exec_result.error.unwrap().error_type,
+                                    );
+                                }
+                                if let Some(returned_value) = &exec_result.result {
+                                    self.push_to_stack(
+                                        returned_value.clone(),
+                                        Some(func.identifier.clone()),
+                                    );
+                                }
+                            } else {
+                                return VMExecutionResult::terminate_with_errors(
+                                    VMErrorType::NotCallableError(caller.to_string()),
+                                );
+                            }
+                        }
+
+                        // FOR VECTOR CALLABLE MEMBERS
+                        HeapObject::Vector(caller) => {
+                            let callee_ref = if let Some(c) = callee_ref {
+                                c
+                            } else {
+                                // TODO: use self-vm error system
+                                panic!("callee is not defined for a vec as a function caller")
                             };
 
                             let callee = self.resolve_heap_ref(callee_ref);
@@ -1270,10 +1334,11 @@ impl Vm {
                 );
                 let elements = self.get_stack_values(&elements_count);
 
-                let value = Vector::new(elements);
-                printable_value = value.to_string();
+                let mut vector = Vector::new(elements);
+                vector::init_vector_members(&mut vector, &self);
+                printable_value = vector.to_string();
 
-                let value_ref = self.heap.allocate(HeapObject::Vector(value));
+                let value_ref = self.heap.allocate(HeapObject::Vector(vector));
                 Value::HeapRef(value_ref)
             }
             DataType::StructLiteral => {
@@ -1421,6 +1486,9 @@ impl Vm {
         args
     }
 
+    pub fn get_handler(&self, handler: &str) -> Option<HeapRef> {
+        self.handlers.get(handler).cloned()
+    }
     pub fn push_to_stack(&mut self, value: Value, origin: Option<String>) {
         self.operand_stack
             .push(OperandsStackValue { value, origin });
