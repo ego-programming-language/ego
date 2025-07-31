@@ -102,6 +102,10 @@ pub fn throw(error_type: VMErrorType) -> VMError {
                 "Invalid module".to_string(),
                 format!("module '{}' does not exist on self's stdlib", s),
             ),
+            ActionError::InvalidMember { module, member } => (
+                "Invalid member".to_string(),
+                format!("member '{}' does not exist on '{}' module", member, module),
+            ),
         },
         VMErrorType::Net(net) => match net {
             NetErrors::NetConnectError(s) => {
