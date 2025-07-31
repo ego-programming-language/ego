@@ -51,7 +51,6 @@ pub enum AstNodeType {
     Struct(Struct),
     ObjectType(ObjectType),
     Group(Group),
-    Vector(Vector),
     Block(Block),
     Expression(Expression),
     AssignamentStatement(AssignamentNode),
@@ -69,7 +68,6 @@ impl AstNodeType {
             AstNodeType::BreakStatement(v) => v.at,
             AstNodeType::ElseStatement(v) => v.at,
             AstNodeType::Group(v) => v.at,
-            AstNodeType::Vector(v) => v.at,
             AstNodeType::Block(_v) => 0,
             AstNodeType::Expression(_v) => 0,
             AstNodeType::AssignamentStatement(v) => v.at,
@@ -89,7 +87,6 @@ impl AstNodeType {
             AstNodeType::BreakStatement(v) => v.line,
             AstNodeType::ElseStatement(v) => v.line,
             AstNodeType::Group(v) => v.line,
-            AstNodeType::Vector(v) => v.line,
             AstNodeType::Block(_v) => 0,
             AstNodeType::Expression(_v) => 0,
             AstNodeType::AssignamentStatement(v) => v.line,
@@ -112,13 +109,13 @@ impl fmt::Display for AstNodeType {
             AstNodeType::BreakStatement(_) => write!(f, "BreakStatement"),
             AstNodeType::Block(_) => write!(f, "Block"),
             AstNodeType::Group(_) => write!(f, "Group"),
-            AstNodeType::Vector(_) => write!(f, "Vector"),
             AstNodeType::FunctionDeclaration(_) => write!(f, "FunctionDeclaration"),
             AstNodeType::AssignamentStatement(_) => write!(f, "AssignamentStatement"),
             AstNodeType::Expression(Expression::StringLiteral(_)) => write!(f, "StringLiteral"),
             AstNodeType::Expression(Expression::Number(_)) => write!(f, "Number"),
             AstNodeType::Expression(Expression::Bool(_)) => write!(f, "Number"),
             AstNodeType::Expression(Expression::Identifier(_)) => write!(f, "Identifier"),
+            AstNodeType::Expression(Expression::Vector(_)) => write!(f, "Vector"),
             AstNodeType::Expression(Expression::Nothing(_)) => write!(f, "Nothing"),
             AstNodeType::Expression(Expression::CallExpression(node)) => {
                 write!(f, "CallExpression: {:#?}", node)
@@ -155,6 +152,7 @@ pub enum Expression {
     StructLiteral(StructLiteral),
     ObjectLiteral(ObjectLiteral),
     MemberExpression(MemberExpression),
+    Vector(Vector),
     Nothing(Nothing),
 }
 

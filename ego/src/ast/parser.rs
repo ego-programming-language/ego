@@ -310,6 +310,9 @@ impl Module {
                         Expression::StructLiteral(_) => {
                             last_token = Some(LexerTokenType::Identifier)
                         }
+                        Expression::Vector(_) => {
+                            last_token = Some(LexerTokenType::OpenSquareBracket)
+                        }
                         Expression::ObjectLiteral(_) => {
                             // use identifier as a fallback
                             last_token = Some(LexerTokenType::Identifier)
@@ -339,7 +342,7 @@ impl Module {
     }
 
     // [a, b, x]
-    fn vector(&self, context: Option<&str>) -> AstNodeType {
+    fn vector(&self, context: Option<&str>) -> Expression {
         // where am i
         let context_msg = match context {
             Some(str) => format!(" in {}", str),
@@ -370,7 +373,11 @@ impl Module {
             match token.token_type {
                 LexerTokenType::Comma => {
                     if last_token == Some(LexerTokenType::Comma) {
-                        vector_node.add_child(None);
+                        error::throw(
+                            ErrorType::MissingMemberError,
+                            format!("<empty> not valid as a vector member").as_str(),
+                            Some(group_token.line),
+                        )
                     }
 
                     last_token = Some(LexerTokenType::Comma);
@@ -378,7 +385,11 @@ impl Module {
                 }
                 LexerTokenType::CloseSquareBracket => {
                     if last_token == Some(LexerTokenType::Comma) {
-                        vector_node.add_child(None);
+                        error::throw(
+                            ErrorType::MissingMemberError,
+                            format!("<empty> not valid as a vector member").as_str(),
+                            Some(group_token.line),
+                        )
                     }
 
                     closed = true;
@@ -403,6 +414,9 @@ impl Module {
                         Expression::StructLiteral(_) => {
                             last_token = Some(LexerTokenType::Identifier)
                         }
+                        Expression::Vector(_) => {
+                            last_token = Some(LexerTokenType::OpenSquareBracket)
+                        }
                         Expression::ObjectLiteral(_) => {
                             // use identifier as a fallback
                             last_token = Some(LexerTokenType::Identifier)
@@ -411,7 +425,7 @@ impl Module {
                             last_token = Some(LexerTokenType::Identifier)
                         }
                     }
-                    vector_node.add_child(Some(node));
+                    vector_node.add_child(node);
                 }
             }
         }
@@ -427,7 +441,7 @@ impl Module {
 
         // consume ']'
         self.next();
-        AstNodeType::Vector(vector_node)
+        Expression::Vector(vector_node)
     }
 
     // let a = 20
@@ -1070,6 +1084,7 @@ impl Module {
                     std::process::exit(1);
                 }
             }
+            LexerTokenType::OpenSquareBracket => self.vector(Some("assignament statement")),
             LexerTokenType::Number => {
                 let number_node = Number::from_string(token.value.clone(), token.at, token.line);
 

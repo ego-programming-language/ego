@@ -2,7 +2,7 @@ use super::Expression;
 
 #[derive(Debug, Clone)]
 pub struct Vector {
-    pub children: Vec<Option<Expression>>,
+    pub children: Vec<Expression>,
     pub at: usize,
     pub line: usize,
 }
@@ -15,7 +15,7 @@ impl Vector {
             line,
         }
     }
-    pub fn add_child(&mut self, node: Option<Expression>) {
+    pub fn add_child(&mut self, node: Expression) {
         self.children.push(node);
     }
 }
