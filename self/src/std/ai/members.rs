@@ -6,7 +6,7 @@ PROVIDER OR ENABLE USER IMPLEMENTATION OF
 PROVIDER.
 */
 
-use std::env;
+use std::{env, vec};
 
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
@@ -17,12 +17,13 @@ use crate::{
     heap::{HeapObject, HeapRef},
     std::{
         ai::types::Action, gen_native_modules_defs, generate_native_module, get_native_module_type,
-        utils::cast_json_value,
+        utils::cast_json_value, vector,
     },
     types::{
         object::{
             func::{Engine, Function},
             native_struct::NativeStruct,
+            vector::Vector,
         },
         raw::{bool::Bool, f64::F64, utf8::Utf8, RawValue},
         Value,
@@ -116,7 +117,7 @@ pub fn infer(
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
-                        received: heap_obj.to_string(),
+                        received: heap_obj.to_string(vm),
                     }));
                 }
             };
@@ -144,7 +145,7 @@ pub fn infer(
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
-                        received: heap_obj.to_string(),
+                        received: heap_obj.to_string(vm),
                     }));
                 }
             };
@@ -259,7 +260,7 @@ pub fn do_fn(
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
-                        received: heap_obj.to_string(),
+                        received: heap_obj.to_string(vm),
                     }));
                 }
             };
@@ -357,30 +358,46 @@ Instruction: {}",
     let exec_fn = Function::new("exec".to_string(), vec![], Engine::Native(exec));
     let exec_ref = vm.heap.allocate(HeapObject::Function(exec_fn));
 
-    let action = Action::new(
-        instructions[0].module.clone(),
-        exec_ref,
-        instructions[0].member.clone(),
-        instructions[0]
-            .params
-            .iter()
-            .map(|p| {
-                if let Some(v) = cast_json_value(p) {
-                    v
-                } else {
-                    Value::RawValue(RawValue::Nothing)
-                }
-            })
-            .collect::<Vec<Value>>(),
-    );
+    let actions: Vec<Action> = instructions
+        .iter()
+        .map(|instr| {
+            Action::new(
+                instr.module.clone(),
+                exec_ref.clone(),
+                instr.member.clone(),
+                instr
+                    .params
+                    .iter()
+                    .map(|p| {
+                        if let Some(v) = cast_json_value(p) {
+                            v
+                        } else {
+                            Value::RawValue(RawValue::Nothing)
+                        }
+                    })
+                    .collect::<Vec<Value>>(),
+            )
+        })
+        .collect();
 
     if debug {
-        println!("AI.DO <- {}({})", action.module, action.member)
+        println!("AI.DO <- {:#?}", actions)
     }
-    let action_ref = vm
-        .heap
-        .allocate(HeapObject::NativeStruct(NativeStruct::Action(action)));
-    return Ok(Value::HeapRef(action_ref));
+
+    let mut actions_ref = vec![];
+    for action in actions {
+        actions_ref
+            .push(Value::HeapRef(vm.heap.allocate(HeapObject::NativeStruct(
+                NativeStruct::Action(action),
+            ))));
+    }
+
+    // store all actions ref in a vector and return the
+    // vector allocated heap ref
+    let mut vector = Vector::new(actions_ref);
+    vector::init_vector_members(&mut vector, vm);
+    let vector_ref = vm.heap.allocate(HeapObject::Vector(vector));
+    return Ok(Value::HeapRef(vector_ref));
 }
 
 pub fn exec(
