@@ -35,7 +35,7 @@ fn write(
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
-                        received: heap_obj.to_string(),
+                        received: heap_obj.to_string(vm),
                     }));
                 }
             };
@@ -120,7 +120,7 @@ pub fn connect(
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
-                        received: heap_obj.to_string(),
+                        received: heap_obj.to_string(vm),
                     }));
                 }
             };

@@ -6,6 +6,7 @@ use crate::types::object::{
     func::Function,
     structs::{StructDeclaration, StructLiteral},
 };
+use crate::vm::Vm;
 
 #[derive(Debug)]
 pub struct Heap {
@@ -69,14 +70,14 @@ impl HeapRef {
 }
 
 impl HeapObject {
-    pub fn to_string(&self) -> String {
+    pub fn to_string(&self, vm: &Vm) -> String {
         match self {
             HeapObject::String(x) => x.to_string(),
             HeapObject::Function(x) => x.to_string(),
             HeapObject::StructDeclaration(x) => x.to_string(),
             HeapObject::StructLiteral(x) => x.identifier.to_string(),
             HeapObject::NativeStruct(x) => x.to_string(),
-            HeapObject::Vector(x) => x.to_string(),
+            HeapObject::Vector(x) => x.to_string(vm),
         }
     }
 }

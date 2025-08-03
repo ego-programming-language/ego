@@ -398,8 +398,8 @@ impl Vm {
                     if debug {
                         println!(
                             "GET_PROPERTY <- {}({:?})",
-                            object_val.to_string(),
-                            property_val.to_string()
+                            object_val.to_string(self),
+                            property_val.to_string(self)
                         );
                     }
 
@@ -412,13 +412,13 @@ impl Vm {
                                         BoundAccess::new(object.clone(), Box::new(prop));
                                     self.push_to_stack(
                                         Value::BoundAccess(bound_access),
-                                        Some(object_val.to_string()),
+                                        Some(object_val.to_string(self)),
                                     );
                                 } else {
                                     return VMExecutionResult::terminate_with_errors(
                                         VMErrorType::Struct(StructError::FieldNotFound {
                                             field: property_key.to_string(),
-                                            struct_type: object_val.to_string(),
+                                            struct_type: object_val.to_string(self),
                                         }),
                                     );
                                 }
@@ -430,13 +430,13 @@ impl Vm {
                                         BoundAccess::new(object.clone(), Box::new(prop));
                                     self.push_to_stack(
                                         Value::BoundAccess(bound_access),
-                                        Some(object_val.to_string()),
+                                        Some(object_val.to_string(self)),
                                     );
                                 } else {
                                     return VMExecutionResult::terminate_with_errors(
                                         VMErrorType::Struct(StructError::FieldNotFound {
                                             field: property_key.to_string(),
-                                            struct_type: object_val.to_string(),
+                                            struct_type: object_val.to_string(self),
                                         }),
                                     );
                                 }
@@ -448,13 +448,13 @@ impl Vm {
                                         BoundAccess::new(object.clone(), Box::new(prop));
                                     self.push_to_stack(
                                         Value::BoundAccess(bound_access),
-                                        Some(object_val.to_string()),
+                                        Some(object_val.to_string(self)),
                                     );
                                 } else {
                                     return VMExecutionResult::terminate_with_errors(
                                         VMErrorType::Struct(StructError::FieldNotFound {
                                             field: property_key.to_string(),
-                                            struct_type: object_val.to_string(),
+                                            struct_type: object_val.to_string(self),
                                         }),
                                     );
                                 }
@@ -659,7 +659,7 @@ impl Vm {
                                 }
                             } else {
                                 return VMExecutionResult::terminate_with_errors(
-                                    VMErrorType::NotCallableError(caller.to_string()),
+                                    VMErrorType::NotCallableError(caller.to_string(self)),
                                 );
                             }
                         }
@@ -676,7 +676,7 @@ impl Vm {
                     self.pc += 4;
 
                     if let Value::HeapRef(obj) = module_name_value {
-                        let module_name = self.resolve_heap_ref(obj).to_string();
+                        let module_name = self.resolve_heap_ref(obj).to_string(self);
                         let native_module = get_native_module_type(module_name.as_str());
                         // native module
                         if let Some(nm) = native_module {
@@ -1336,7 +1336,7 @@ impl Vm {
 
                 let mut vector = Vector::new(elements);
                 vector::init_vector_members(&mut vector, &self);
-                printable_value = vector.to_string();
+                printable_value = vector.to_string(self);
 
                 let value_ref = self.heap.allocate(HeapObject::Vector(vector));
                 Value::HeapRef(value_ref)
@@ -1424,7 +1424,7 @@ impl Vm {
         match value {
             Value::RawValue(x) => Ok(x.to_string()),
             Value::HeapRef(x) => match self.heap.get(x) {
-                Some(x) => Ok(x.to_string()),
+                Some(x) => Ok(x.to_string(self)),
                 None => {
                     // identifier not defined
                     //Err(VMErrorType::Iden)

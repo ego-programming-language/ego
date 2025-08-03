@@ -28,8 +28,19 @@ impl Vector {
         self.members = members
     }
 
-    pub fn to_string(&self) -> String {
-        format!("elements[{}]", self.elements.len())
+    pub fn to_string(&self, vm: &Vm) -> String {
+        let elements: Vec<String> = self
+            .elements
+            .iter()
+            .map(|ele| match ele {
+                Value::RawValue(v) => v.to_string(),
+                Value::HeapRef(v) => vm.resolve_heap_ref(v.clone()).to_string(vm),
+                Value::BoundAccess(v) => {
+                    panic!("to string not implemented for BoundAccess element on vector");
+                }
+            })
+            .collect();
+        format!("{:#?}", elements)
     }
 
     pub fn property_access(&self, property: &str) -> Option<Value> {

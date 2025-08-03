@@ -36,7 +36,7 @@ pub fn read_file(
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
-                        received: heap_obj.to_string(),
+                        received: heap_obj.to_string(vm),
                     }));
                 }
             };
@@ -134,7 +134,7 @@ pub fn write_file(
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
-                        received: heap_obj.to_string(),
+                        received: heap_obj.to_string(vm),
                     }))
                 }
             }
@@ -156,7 +156,7 @@ pub fn write_file(
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
-                        received: heap_obj.to_string(),
+                        received: heap_obj.to_string(vm),
                     }))
                 }
             }
