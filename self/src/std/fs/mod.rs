@@ -3,7 +3,7 @@ mod members;
 use crate::{
     heap::HeapObject,
     std::{
-        fs::members::{read_file_obj, write_file_def, write_file_obj},
+        fs::members::{read_file_def, read_file_obj, write_file_def, write_file_obj},
         NativeModuleDef,
     },
 };
@@ -18,7 +18,7 @@ pub fn generate_struct() -> (String, Vec<(String, HeapObject)>) {
 }
 
 pub fn generate_mod_def() -> NativeModuleDef {
-    let members = vec![write_file_def()];
+    let members = vec![write_file_def(), read_file_def()];
 
     NativeModuleDef {
         module: "fs".to_string(),

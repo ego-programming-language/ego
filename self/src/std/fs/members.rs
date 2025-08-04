@@ -21,6 +21,22 @@ use crate::{
 };
 
 // read_file
+pub fn read_file_def() -> NativeMember {
+    NativeMember {
+        name: "read_file".to_string(),
+        description: "read a file on the host filesystem on the given path.".to_string(),
+        params: Some(vec!["path(string)".to_string()]),
+    }
+}
+
+pub fn read_file_obj() -> HeapObject {
+    HeapObject::Function(Function::new(
+        "read_file".to_string(),
+        vec![], // TODO: load params to native functions
+        Engine::Native(read_file),
+    ))
+}
+
 pub fn read_file(
     vm: &mut Vm,
     _self: Option<HeapRef>,
@@ -32,7 +48,7 @@ pub fn read_file(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r);
             let request = match heap_obj {
-                HeapObject::String(s) => s,
+                HeapObject::String(s) => s.clone(),
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
@@ -42,12 +58,15 @@ pub fn read_file(
             };
             request
         }
-        Value::RawValue(r) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: r.get_type_string(),
-            }));
-        }
+        Value::RawValue(r) => match r {
+            RawValue::Utf8(s) => s.value,
+            _ => {
+                return Err(error::throw(VMErrorType::TypeMismatch {
+                    expected: "string".to_string(),
+                    received: r.get_type_string(),
+                }));
+            }
+        },
         Value::BoundAccess(_) => {
             return Err(error::throw(VMErrorType::TypeMismatch {
                 expected: "string".to_string(),
@@ -56,7 +75,7 @@ pub fn read_file(
         }
     };
 
-    let path_obj = Path::new(path);
+    let path_obj = Path::new(&path);
     if !path_obj.exists() {
         return Err(error::throw(VMErrorType::Fs(FsError::FileNotFound(
             format!("{}", path),
@@ -76,14 +95,6 @@ pub fn read_file(
             path
         ))))),
     }
-}
-
-pub fn read_file_obj() -> HeapObject {
-    HeapObject::Function(Function::new(
-        "read_file".to_string(),
-        vec![], // TODO: load params to native functions
-        Engine::Native(read_file),
-    ))
 }
 
 // write_file
