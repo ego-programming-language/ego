@@ -234,3 +234,95 @@ pub fn write_file(
         }
     }
 }
+
+// delete_file
+pub fn delete_def() -> NativeMember {
+    NativeMember {
+        name: "delete".to_string(), 
+        description: "delete a file or a folder on the host filesystem on the given path. The second parameter serves as a flag to delete folders (recursively) or not".to_string(), 
+        params: Some(vec![
+            "path(string)".to_string(),
+            "delete_folder_recursively(string)".to_string(),
+        ])
+    }
+}
+
+pub fn delete_obj() -> HeapObject {
+    HeapObject::Function(Function::new(
+        "delete".to_string(),
+        vec!["path".to_string()],
+        Engine::Native(delete),
+    ))
+}
+
+pub fn delete(
+    vm: &mut Vm,
+    _self: Option<HeapRef>,
+    params: Vec<Value>,
+    debug: bool,
+) -> Result<Value, VMError> {
+    if params.len() < 1 {
+        return Err(error::throw(VMErrorType::TypeError(
+            TypeError::InvalidArgsCount {
+                expected: 1,
+                received: params.len() as u32,
+            },
+        )));
+    }
+
+    let path = match &params[0] {
+        Value::HeapRef(r) => {
+            let heap_obj = vm.resolve_heap_ref(r.clone());
+            match heap_obj {
+                HeapObject::String(s) => s,
+                _ => {
+                    return Err(error::throw(VMErrorType::TypeMismatch {
+                        expected: "string".to_string(),
+                        received: heap_obj.to_string(vm),
+                    }))
+                }
+            }
+        }
+        Value::RawValue(RawValue::Utf8(s)) => &s.value,
+        _ => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: params[0].get_type(),
+            }))
+        }
+    };
+
+    let remove_recursively = if let Some(param2) = params.get(1) {
+        match param2 {
+            Value::RawValue(RawValue::Bool(b)) => b.value,
+            _ => {
+                return Err(error::throw(VMErrorType::TypeMismatch {
+                    expected: "bool".to_string(),
+                    received: param2.get_type(),
+                }))
+            }
+        }
+    } else {
+        false // default if not passed
+    };
+
+    let path_obj = Path::new(path);
+    if !path_obj.exists() {
+        return Err(error::throw(VMErrorType::Fs(FsError::FileNotFound(
+            path.to_string(),
+        ))));
+    }
+
+    let op_result = if remove_recursively {
+        fs::remove_dir_all(path_obj)
+    } else {
+        fs::remove_file(path_obj)
+    };
+
+    match op_result {
+        Ok(_) => Ok(Value::RawValue(RawValue::Bool(Bool::new(true)))),
+        Err(_) => Err(error::throw(VMErrorType::Fs(FsError::DeleteError(
+            path.to_string(),
+        )))),
+    }
+}

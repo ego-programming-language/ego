@@ -3,4 +3,5 @@ pub enum FsError {
     NotAFile(String),
     ReadError(String),
     WriteError(String),
+    DeleteError(String),
 }

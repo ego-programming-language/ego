@@ -93,6 +93,7 @@ pub fn throw(error_type: VMErrorType) -> VMError {
             FsError::NotAFile(s) => ("Not a file".to_string(), format!("{}", s)),
             FsError::ReadError(s) => ("Read error".to_string(), format!("{}", s)),
             FsError::WriteError(s) => ("Write error".to_string(), format!("{}", s)),
+            FsError::DeleteError(s) => ("Delete error".to_string(), format!("{}", s)),
         },
         VMErrorType::AI(ai) => match ai {
             AIError::AIFetchError(s) => ("AI fetch error".to_string(), format!("{}", s)),
