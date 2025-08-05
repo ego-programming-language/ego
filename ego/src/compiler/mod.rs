@@ -4,6 +4,7 @@ mod handlers;
 use std::fs;
 
 use crate::ast::export_statement::ExportStatement;
+use crate::ast::return_statement::ReturnStatement;
 use crate::ast::{lex, Module};
 use crate::{
     ast::{
@@ -82,6 +83,7 @@ impl Compiler {
             AstNodeType::IfStatement(node) => Compiler::compile_if_statement(node),
             AstNodeType::Expression(node) => Compiler::compile_expression(node, true),
             AstNodeType::WhileStatement(node) => Compiler::compile_while_statement(node),
+            AstNodeType::ReturnStatement(node) => Compiler::compile_return_statement(node),
             AstNodeType::Struct(node) => Compiler::compile_struct_declaration(node),
             AstNodeType::ImportStatement(node) => Compiler::compile_import(node),
             AstNodeType::ExportStatement(node) => Compiler::compile_export(node),
@@ -236,6 +238,15 @@ impl Compiler {
         bytecode.extend_from_slice(&body_bytecode);
         bytecode.push(get_bytecode("jump".to_string()));
         bytecode.extend_from_slice(&while_offset);
+        bytecode
+    }
+
+    fn compile_return_statement(node: &ReturnStatement) -> Vec<u8> {
+        let mut bytecode = vec![];
+
+        bytecode.extend_from_slice(&Compiler::compile_expression(&node.value, false));
+        bytecode.push(get_bytecode("return".to_string()));
+
         bytecode
     }
 

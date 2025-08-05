@@ -751,6 +751,10 @@ impl Vm {
                     }
                     self.pc += 1;
                 }
+                Opcode::Return => {
+                    let return_value = self.get_stack_values(&1)[0].clone();
+                    return VMExecutionResult::terminate(Some(return_value));
+                }
                 Opcode::Add => {
                     // execution
                     let right_operand = self.operand_stack.pop();
@@ -917,7 +921,7 @@ impl Vm {
             };
         }
 
-        VMExecutionResult::terminate()
+        VMExecutionResult::terminate(None)
     }
 
     fn run_binary_expression(

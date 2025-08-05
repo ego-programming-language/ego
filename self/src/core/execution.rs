@@ -13,10 +13,10 @@ pub struct VMExecutionResult {
 }
 
 impl VMExecutionResult {
-    pub fn terminate() -> VMExecutionResult {
+    pub fn terminate(result: Option<Value>) -> VMExecutionResult {
         VMExecutionResult {
             error: None,
-            result: None,
+            result: result,
         }
     }
 
