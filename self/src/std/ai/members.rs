@@ -6,18 +6,23 @@ PROVIDER OR ENABLE USER IMPLEMENTATION OF
 PROVIDER.
 */
 
-use std::{env, vec};
+use std::vec;
 
-use reqwest::blocking::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::Value as SValue;
 
 use crate::{
     core::error::{self, action_errors::ActionError, ai_errors::AIError, VMError, VMErrorType},
     heap::{HeapObject, HeapRef},
     std::{
-        ai::types::Action, gen_native_modules_defs, generate_native_module, get_native_module_type,
-        utils::cast_json_value, vector,
+        ai::{
+            prompts::{do_prompt, infer_prompt},
+            providers::{fetch_ai, ChatRequest, ChatResponse, Message},
+            types::Action,
+        },
+        gen_native_modules_defs, generate_native_module, get_native_module_type,
+        utils::cast_json_value,
+        vector,
     },
     types::{
         object::{
@@ -30,33 +35,6 @@ use crate::{
     },
     vm::Vm,
 };
-
-#[derive(Serialize)]
-struct Message {
-    role: String,
-    content: String,
-}
-
-#[derive(Serialize)]
-struct ChatRequest {
-    model: String,
-    messages: Vec<Message>,
-}
-
-#[derive(Deserialize)]
-struct ChatResponse {
-    choices: Vec<Choice>,
-}
-
-#[derive(Deserialize)]
-struct Choice {
-    message: MessageContent,
-}
-
-#[derive(Deserialize)]
-struct MessageContent {
-    content: String,
-}
 
 fn get_response_json(response: &String) -> String {
     let cleaned = response
@@ -168,60 +146,11 @@ pub fn infer(
     if debug {
         println!("AI <- {}({})", request, context.to_string());
     }
+
     // we should try to avoid prompt injection
     // maybe using multiple prompts?
-    let prompt = format!(
-        "
-Analyze the query and respond with a single value in the following json format:
-
-{{
-  \"value\": response-value
-}}
-
-You are provided two elements:
-
-query: a string that describes a condition for example:
-   '<arg> is greater than 10'
-
-context: a dictionary of variables and their current values, for example:
-   {{ 'arg': 11 }}
-
-Context variables appears in the query enclosed in < >, and you must evaluate them correctly.
-
-Response rules: 
-
-* For boolean or logical values use true or false.
-* If the conditional expression is not met, respond with nothing.
-* If there are no conditionals but you can infer the type and value, do so.
-* If you cannot determine a type with certainty, respond with nothing.
-* Never respond with any additional text. Only the final value.
-
-Infer the following input: 
-
-query: {} 
-context: {{ 'arg': {} }}
-",
-        request.to_string(),
-        context.to_string()
-    );
-
-    let api_key = env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
-
-    let client = Client::new();
-    let request_body = ChatRequest {
-        model: "gpt-4o".to_string(),
-        messages: vec![Message {
-            role: "system".to_string(),
-            content: prompt,
-        }],
-    };
-
-    let res = client
-        .post("https://api.openai.com/v1/chat/completions")
-        .bearer_auth(api_key)
-        .json(&request_body)
-        .send()
-        .expect("AI: Failed to send request");
+    let prompt = infer_prompt(request, context);
+    let res = fetch_ai(prompt);
 
     if !res.status().is_success() {
         println!("AI (FAILED) -> {}", res.status());
@@ -291,41 +220,8 @@ pub fn do_fn(
 
     // we should try to avoid prompt injection
     // maybe using multiple prompts?
-    let prompt = format!(
-        "You are a virtual machine assistant with access to the following native modules:\n\n{}\n\n
-        
-You must respond to the following instruction with a list of JSON objects, where each object contains:
-
-- 'module': the name of the module from the list above,
-- 'member': the specific function name to call (from the members),
-- 'params': an array of arguments.
-
-You must only use the modules and members listed above. Do not invent anything.
-
-Respond only with JSON. Do not include any explanations or markdown.
-
-Instruction: {}",
-        stdlib_defs.join("\n\n"),
-        request
-    );
-
-    let api_key = env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
-
-    let client = Client::new();
-    let request_body = ChatRequest {
-        model: "gpt-4o".to_string(),
-        messages: vec![Message {
-            role: "system".to_string(),
-            content: prompt,
-        }],
-    };
-
-    let res = client
-        .post("https://api.openai.com/v1/chat/completions")
-        .bearer_auth(api_key)
-        .json(&request_body)
-        .send()
-        .expect("AI.DO: Failed to send request");
+    let prompt = do_prompt(stdlib_defs, request);
+    let res = fetch_ai(prompt);
 
     if !res.status().is_success() {
         println!("AI.DO (FAILED) -> {}", res.status());
