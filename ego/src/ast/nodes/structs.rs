@@ -1,5 +1,6 @@
 use crate::ast::{
     identifier::Identifier,
+    member_expression::MemberExpression,
     objects::{ObjectLiteral, ObjectType},
 };
 
@@ -23,8 +24,14 @@ impl Struct {
 }
 
 #[derive(Debug, Clone)]
+pub enum StructTypeExpr {
+    Identifier(Identifier),
+    MemberExpression(Box<MemberExpression>),
+}
+
+#[derive(Debug, Clone)]
 pub struct StructLiteral {
-    pub identifier: Identifier,
+    pub identifier: StructTypeExpr,
     pub fields: ObjectLiteral,
     pub at: usize,
     pub line: usize,
@@ -32,7 +39,7 @@ pub struct StructLiteral {
 
 impl StructLiteral {
     pub fn new(
-        identifier: Identifier,
+        identifier: StructTypeExpr,
         fields: ObjectLiteral,
         at: usize,
         line: usize,

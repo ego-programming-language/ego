@@ -16,7 +16,7 @@ use crate::{
         number::Number,
         objects::{ObjectLiteral, ObjectType},
         string_literal::StringLiteral,
-        structs::{Struct, StructLiteral},
+        structs::{Struct, StructLiteral, StructTypeExpr},
         AstNodeType, Expression, LexerToken, LexerTokenType,
     },
     core::error::{self, ErrorType},
@@ -1266,7 +1266,7 @@ impl Module {
         };
 
         Expression::StructLiteral(StructLiteral::new(
-            identifier_node,
+            StructTypeExpr::Identifier(identifier_node),
             object_literal_node,
             token.at,
             token.line,

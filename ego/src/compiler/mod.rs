@@ -5,6 +5,7 @@ use std::fs;
 
 use crate::ast::export_statement::ExportStatement;
 use crate::ast::return_statement::ReturnStatement;
+use crate::ast::structs::StructTypeExpr;
 use crate::ast::{lex, Module};
 use crate::{
     ast::{
@@ -280,16 +281,16 @@ impl Compiler {
                 bytecode.push(get_bytecode("load_const".to_string()));
                 bytecode.push(get_bytecode("struct_literal".to_string()));
 
-                // identifier raw string
-                bytecode.extend_from_slice(&Compiler::compile_expression(
-                    &Expression::StringLiteral(StringLiteral::new(
-                        v.identifier.name.clone(),
-                        v.identifier.name.clone(),
-                        v.at,
-                        v.line,
-                    )),
-                    false,
-                ));
+                // struct type compilation
+                let struct_type = match &v.identifier {
+                    StructTypeExpr::Identifier(i) => &Expression::StringLiteral(
+                        StringLiteral::new(i.name.clone(), i.name.clone(), v.at, v.line),
+                    ),
+                    StructTypeExpr::MemberExpression(m) => {
+                        &Expression::MemberExpression(m.as_ref().clone())
+                    }
+                };
+                bytecode.extend_from_slice(&Compiler::compile_expression(struct_type, false));
 
                 // compile object fields number
                 bytecode.extend_from_slice(&Compiler::compile_offset(*fields_num as i32));
