@@ -3,6 +3,11 @@ use std::{env, vec};
 use reqwest::{blocking::Client, blocking::Response};
 use serde::{Deserialize, Serialize};
 
+use crate::core::error::{ai_errors::AIError, VMErrorType};
+
+mod mistral;
+mod openai;
+
 #[derive(Serialize)]
 pub struct Message {
     pub role: String,
@@ -30,24 +35,17 @@ pub struct MessageContent {
     pub content: String,
 }
 
-pub fn fetch_ai(prompt: String) -> Response {
-    let api_key = env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
-
-    let client = Client::new();
-    let request_body = ChatRequest {
-        model: "gpt-4o".to_string(),
-        messages: vec![Message {
-            role: "system".to_string(),
-            content: prompt,
-        }],
+pub fn fetch_ai(prompt: String) -> Result<Response, VMErrorType> {
+    let ai_engine = env::var("SELF_AI_ENGINE");
+    let ai_engine = if let Ok(engine) = ai_engine {
+        engine
+    } else {
+        return Err(VMErrorType::AI(AIError::AIEngineNotSet()));
     };
 
-    let res = client
-        .post("https://api.openai.com/v1/chat/completions")
-        .bearer_auth(api_key)
-        .json(&request_body)
-        .send()
-        .expect("AI: Failed to send request");
-
-    res
+    match ai_engine.as_str() {
+        "openai" => Ok(openai::fetch(prompt)),
+        "mistral" => Ok(mistral::fetch(prompt)),
+        _ => Err(VMErrorType::AI(AIError::AIEngineNotImplemented(ai_engine))),
+    }
 }

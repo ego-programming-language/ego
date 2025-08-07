@@ -97,6 +97,13 @@ pub fn throw(error_type: VMErrorType) -> VMError {
         },
         VMErrorType::AI(ai) => match ai {
             AIError::AIFetchError(s) => ("AI fetch error".to_string(), format!("{}", s)),
+            AIError::AIEngineNotSet() => (
+                "AI engine not set".to_string(),
+                format!("set SELF_AI_ENGINE envar to an engine"),
+            ),
+            AIError::AIEngineNotImplemented(s) => {
+                ("AI engine not implemented".to_string(), format!("{}", s))
+            }
         },
         VMErrorType::Action(a) => match a {
             ActionError::InvalidModule(s) => (

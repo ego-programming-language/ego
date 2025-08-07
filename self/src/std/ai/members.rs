@@ -17,7 +17,7 @@ use crate::{
     std::{
         ai::{
             prompts::{do_prompt, infer_prompt},
-            providers::{fetch_ai, ChatRequest, ChatResponse, Message},
+            providers::{fetch_ai, ChatResponse},
             types::Action,
         },
         gen_native_modules_defs, generate_native_module, get_native_module_type,
@@ -151,6 +151,12 @@ pub fn infer(
     // maybe using multiple prompts?
     let prompt = infer_prompt(request, context);
     let res = fetch_ai(prompt);
+    let res = match res {
+        Ok(r) => r,
+        Err(vm_err) => {
+            return Err(error::throw(vm_err));
+        }
+    };
 
     if !res.status().is_success() {
         println!("AI (FAILED) -> {}", res.status());
@@ -222,6 +228,12 @@ pub fn do_fn(
     // maybe using multiple prompts?
     let prompt = do_prompt(stdlib_defs, request);
     let res = fetch_ai(prompt);
+    let res = match res {
+        Ok(r) => r,
+        Err(vm_err) => {
+            return Err(error::throw(vm_err));
+        }
+    };
 
     if !res.status().is_success() {
         println!("AI.DO (FAILED) -> {}", res.status());
