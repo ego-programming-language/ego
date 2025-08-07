@@ -1176,17 +1176,56 @@ impl Module {
     // a.b()
     fn parse_postfix_expression(&self) -> Expression {
         let mut expr = self.member_expression();
-        while self.is_peekable() && self.unsafe_peek().token_type == LexerTokenType::OpenParenthesis
-        {
-            let token = self.unsafe_peek(); // peek '('
+        while self.is_peekable() {
+            let next = self.unsafe_peek();
+            match next.token_type {
+                LexerTokenType::OpenParenthesis => {
+                    let group_node = self.group(Some("call expression"));
+                    expr = Expression::CallExpression(CallExpression::new(
+                        Box::new(expr),
+                        group_node,
+                        next.at,
+                        next.line,
+                    ));
+                }
+                LexerTokenType::OpenCurlyBrace => {
+                    let struct_type = match expr {
+                        Expression::Identifier(i) => StructTypeExpr::Identifier(i),
+                        Expression::MemberExpression(m) => {
+                            StructTypeExpr::MemberExpression(Box::new(m))
+                        }
+                        _ => {
+                            error::throw(
+                                ErrorType::ParsingError,
+                                "Expected 'object literal' for struct initialization",
+                                Some(next.line),
+                            );
+                            std::process::exit(1);
+                        }
+                    };
+                    let object_literal = self.object_literal();
+                    let object_literal_node = match object_literal {
+                        Expression::ObjectLiteral(b) => b,
+                        _ => {
+                            error::throw(
+                                ErrorType::ParsingError,
+                                "Expected 'object literal' for struct initialization",
+                                Some(next.line),
+                            );
+                            std::process::exit(1);
+                        }
+                    };
 
-            let group_node = self.group(Some("call expression"));
-            expr = Expression::CallExpression(CallExpression::new(
-                Box::new(expr),
-                group_node,
-                token.at,
-                token.line,
-            ));
+                    expr = Expression::StructLiteral(StructLiteral::new(
+                        struct_type,
+                        object_literal_node,
+                        next.at,
+                        next.line,
+                    ));
+                    break; // after struct literal is not another member_expression enabled
+                }
+                _ => break,
+            }
         }
 
         expr

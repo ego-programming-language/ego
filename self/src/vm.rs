@@ -489,6 +489,7 @@ impl Vm {
                                     Some(callee_ref.clone()),
                                 )
                             } else {
+                                // nested bound accesses
                                 panic!("Invalid type for callee string")
                             }
                         }
