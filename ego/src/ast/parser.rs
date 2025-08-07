@@ -1204,21 +1204,10 @@ impl Module {
                         }
                     };
                     let object_literal = self.object_literal();
-                    let object_literal_node = match object_literal {
-                        Expression::ObjectLiteral(b) => b,
-                        _ => {
-                            error::throw(
-                                ErrorType::ParsingError,
-                                "Expected 'object literal' for struct initialization",
-                                Some(next.line),
-                            );
-                            std::process::exit(1);
-                        }
-                    };
 
                     expr = Expression::StructLiteral(StructLiteral::new(
                         struct_type,
-                        object_literal_node,
+                        object_literal,
                         next.at,
                         next.line,
                     ));
@@ -1291,18 +1280,7 @@ impl Module {
 
         // check for block
         self.next();
-        let node = self.object_literal();
-        let object_literal_node = match node {
-            Expression::ObjectLiteral(b) => b,
-            _ => {
-                error::throw(
-                    ErrorType::ParsingError,
-                    "Expected 'object literal' for struct initialization",
-                    Some(token.line),
-                );
-                std::process::exit(1);
-            }
-        };
+        let object_literal_node = self.object_literal();
 
         Expression::StructLiteral(StructLiteral::new(
             StructTypeExpr::Identifier(identifier_node),
@@ -1317,7 +1295,7 @@ impl Module {
     //   ...: value,
     //   ...: value
     // }
-    fn object_literal(&self) -> Expression {
+    fn object_literal(&self) -> ObjectLiteral {
         // check '{'
         let token = self.unsafe_peek();
         if token.token_type == LexerTokenType::OpenCurlyBrace {
@@ -1399,7 +1377,7 @@ impl Module {
             );
         };
 
-        Expression::ObjectLiteral(object_literal_node)
+        object_literal_node
     }
 
     // : bool | : string | : number | : nothing
