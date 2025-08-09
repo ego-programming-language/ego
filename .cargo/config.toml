@@ -1,0 +1,3 @@
+[alias]
+fmtc = "fmt --all -- --check"
+fixfmt = "fmt --all"
