@@ -596,7 +596,7 @@ impl Vm {
                                 }
                             } else {
                                 return VMExecutionResult::terminate_with_errors(
-                                    VMErrorType::NotCallableError(caller.identifier.clone()),
+                                    VMErrorType::NotCallableError(caller.struct_type.clone()),
                                 );
                             }
                         }
@@ -1236,21 +1236,8 @@ impl Vm {
                     panic!("Unexpected value type for string length");
                 }
             }
-            DataType::StructLiteral => {
-                self.pc += 3; // skip struct opcode and utf8 opcode
-                let (data_type, value) = self.get_value_length();
-                if data_type != DataType::U32 {
-                    panic!("bad utf8 value length")
-                }
-
-                let (string_length, _) = self.bytes_to_data(&DataType::U32, &value);
-                if let Value::RawValue(RawValue::U32(val)) = string_length {
-                    val.value as usize + 4 // '+ 4' to include the fields count encoded in 4 bytes
-                } else {
-                    panic!("Unexpected value type for string length");
-                }
-            }
-            DataType::Vector => 4, // elements count
+            DataType::StructLiteral => 4, // fields count
+            DataType::Vector => 4,        // elements count
             _ => {
                 println!("data_type: {:#?}", data_type);
                 panic!("Unsupported datatype")
@@ -1350,6 +1337,7 @@ impl Vm {
                 Value::HeapRef(value_ref)
             }
             DataType::StructLiteral => {
+                let struct_type = self.get_stack_values(&1)[0].clone();
                 let fields_count_bytes = if value.len() >= 4 {
                     &value[value.len() - 4..]
                 } else {
@@ -1387,16 +1375,30 @@ impl Vm {
                     };
                 }
 
-                let struct_identifier =
-                    // TODO: handle with self-vm errors system
-                    std::str::from_utf8(&value[..value.len() - 4])
-                        .expect("invalid UTF-8")
-                        .to_string();
-                printable_value = struct_identifier.to_string();
+                let resolved_struct_type = match struct_type {
+                    Value::HeapRef(v) => {
+                        let resolved = self.heap.get(v);
+                        match resolved {
+                            Some(v) => v.to_string(self),
+                            None => {
+                                // TODO: use self-vm errors system
+                                panic!("test")
+                            }
+                        }
+                    }
+                    Value::BoundAccess(v) => {
+                        panic!("TODO: implement structs from bound acceses ")
+                    }
+                    _ => {
+                        // TODO: use self-vm errors system
+                        panic!("invalid struct type")
+                    }
+                };
+                printable_value = resolved_struct_type.to_string();
 
                 // here we should check if the struct exists and the each field
                 // before allocating it in the heap
-                let struct_literal = StructLiteral::new(struct_identifier, fields);
+                let struct_literal = StructLiteral::new(resolved_struct_type, fields);
                 let value_ref = self
                     .heap
                     .allocate(HeapObject::StructLiteral(struct_literal));

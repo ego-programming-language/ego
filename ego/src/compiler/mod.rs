@@ -277,20 +277,27 @@ impl Compiler {
                     &Compiler::compile_object_literal(&v.fields);
                 bytecode.extend_from_slice(&object_literal_bytecode);
 
+                // struct type
+                let struct_type_bytecode = match &v.identifier {
+                    StructTypeExpr::MemberExpression(x) => Compiler::compile_expression(
+                        &Expression::MemberExpression(x.as_ref().clone()),
+                        false,
+                    ),
+                    StructTypeExpr::Identifier(x) => Compiler::compile_expression(
+                        &Expression::StringLiteral(StringLiteral::new(
+                            x.name.clone(),
+                            x.name.clone(),
+                            0,
+                            0,
+                        )),
+                        false,
+                    ),
+                };
+                bytecode.extend_from_slice(&struct_type_bytecode);
+
                 // compile struct
                 bytecode.push(get_bytecode("load_const".to_string()));
                 bytecode.push(get_bytecode("struct_literal".to_string()));
-
-                // struct type compilation
-                let struct_type = match &v.identifier {
-                    StructTypeExpr::Identifier(i) => &Expression::StringLiteral(
-                        StringLiteral::new(i.name.clone(), i.name.clone(), v.at, v.line),
-                    ),
-                    StructTypeExpr::MemberExpression(m) => {
-                        &Expression::MemberExpression(m.as_ref().clone())
-                    }
-                };
-                bytecode.extend_from_slice(&Compiler::compile_expression(struct_type, false));
 
                 // compile object fields number
                 bytecode.extend_from_slice(&Compiler::compile_offset(*fields_num as i32));

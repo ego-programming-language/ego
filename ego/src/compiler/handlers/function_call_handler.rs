@@ -1,5 +1,3 @@
-use std::collections::btree_map;
-
 use crate::{
     ast::{call_expression::CallExpression, string_literal::StringLiteral, Expression},
     compiler::{self, bytecode::get_bytecode, Compiler},

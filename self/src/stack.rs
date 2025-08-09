@@ -80,6 +80,8 @@ impl StackFrame {
             } else {
                 // here we should handle the case that
                 // we're exporting an undefined identifier
+                // TODO: use self-vm errors system
+                println!("cannot export");
             }
         }
 

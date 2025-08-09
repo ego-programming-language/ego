@@ -19,13 +19,16 @@ impl StructDeclaration {
 
 #[derive(Debug, Clone)]
 pub struct StructLiteral {
-    pub identifier: String,
+    pub struct_type: String,
     pub fields: HashMap<String, Value>,
 }
 
 impl StructLiteral {
-    pub fn new(identifier: String, fields: HashMap<String, Value>) -> StructLiteral {
-        StructLiteral { identifier, fields }
+    pub fn new(struct_type: String, fields: HashMap<String, Value>) -> StructLiteral {
+        StructLiteral {
+            struct_type,
+            fields,
+        }
     }
 
     pub fn property_access(&self, property: &str) -> Option<Value> {
@@ -33,6 +36,6 @@ impl StructLiteral {
     }
 
     pub fn to_string(&self) -> String {
-        format!("[instance] {}", self.identifier)
+        format!("[instance] {}", self.struct_type)
     }
 }

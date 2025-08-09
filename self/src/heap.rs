@@ -75,7 +75,7 @@ impl HeapObject {
             HeapObject::String(x) => x.to_string(),
             HeapObject::Function(x) => x.to_string(),
             HeapObject::StructDeclaration(x) => x.to_string(),
-            HeapObject::StructLiteral(x) => x.identifier.to_string(),
+            HeapObject::StructLiteral(x) => x.struct_type.to_string(),
             HeapObject::NativeStruct(x) => x.to_string(),
             HeapObject::Vector(x) => x.to_string(vm),
         }
