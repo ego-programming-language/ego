@@ -1483,7 +1483,9 @@ impl Vm {
         for _ in 0..*num_of_values {
             match self.operand_stack.pop() {
                 Some(v) => args.push(v.value),
-                None => panic!("Cannot get argument for function call: stack underflow"),
+                None => {
+                    panic!("Stack underflow: trying to get '{num_of_values}' values from the stack")
+                }
             }
         }
 
