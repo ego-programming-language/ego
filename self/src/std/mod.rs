@@ -7,6 +7,7 @@ use crate::{
 pub mod ai;
 pub mod env;
 pub mod fs;
+pub mod os;
 pub mod heap_utils;
 pub mod net;
 pub mod selfmod;
@@ -17,6 +18,7 @@ pub enum NativeModule {
     AI,
     SelfMod,
     Fs,
+    Os,
     Net,
     Env,
 }
@@ -71,6 +73,7 @@ pub fn get_native_module_type(module_name: &str) -> Option<NativeModule> {
         "ai" => Some(NativeModule::AI),
         "self" => Some(NativeModule::SelfMod),
         "fs" => Some(NativeModule::Fs),
+        "os" => Some(NativeModule::Os),
         "net" => Some(NativeModule::Net),
         "env" => Some(NativeModule::Env),
         _ => None,
@@ -84,6 +87,7 @@ pub fn generate_native_module(
         NativeModule::AI => ai::generate_struct(),
         NativeModule::SelfMod => selfmod::generate_struct(),
         NativeModule::Fs => fs::generate_struct(),
+        NativeModule::Os => os::generate_struct(),
         NativeModule::Net => net::generate_struct(),
         NativeModule::Env => env::generate_struct(),
     }

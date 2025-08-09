@@ -100,7 +100,7 @@ pub fn read_file(
 // write_file
 pub fn write_file_def() -> NativeMember {
     NativeMember {
-        name: "write_file".to_string(), 
+        name: "write_file".to_string(),
         description: "write a file on the host filesystem on the given path. It can also create files depeding on the third flag".to_string(), 
         params: Some(vec![
             "path(string)".to_string(),
