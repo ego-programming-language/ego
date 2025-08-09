@@ -739,6 +739,9 @@ impl Vm {
                     if let Value::HeapRef(r) = arg_ref.clone() {
                         let arg = self.resolve_heap_ref(r);
                         if let HeapObject::String(s) = arg {
+                            if debug {
+                                println!("EXPORT -> {}", s)
+                            }
                             self.call_stack.add_export(s.to_string());
                         } else {
                             return VMExecutionResult::terminate_with_errors(
