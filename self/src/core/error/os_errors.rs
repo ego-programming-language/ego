@@ -1,3 +1,3 @@
 pub enum OsError {
-    __placeholder(String)
+    __placeholder(String),
 }

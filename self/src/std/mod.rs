@@ -7,9 +7,9 @@ use crate::{
 pub mod ai;
 pub mod env;
 pub mod fs;
-pub mod os;
 pub mod heap_utils;
 pub mod net;
+pub mod os;
 pub mod selfmod;
 mod utils;
 pub mod vector;

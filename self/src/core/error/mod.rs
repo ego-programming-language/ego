@@ -1,15 +1,15 @@
 pub mod action_errors;
 pub mod ai_errors;
 pub mod fs_errors;
-pub mod os_errors;
 pub mod net_errors;
+pub mod os_errors;
 pub mod struct_errors;
 pub mod type_errors;
 
 use crate::{
     core::error::{
-        action_errors::ActionError, ai_errors::AIError, fs_errors::FsError, os_errors::OsError, net_errors::NetErrors,
-        struct_errors::StructError, type_errors::TypeError,
+        action_errors::ActionError, ai_errors::AIError, fs_errors::FsError, net_errors::NetErrors,
+        os_errors::OsError, struct_errors::StructError, type_errors::TypeError,
     },
     opcodes::DataType,
     stack::OperandsStackValue,
@@ -98,8 +98,8 @@ pub fn throw(error_type: VMErrorType) -> VMError {
             FsError::DeleteError(s) => ("Delete error".to_string(), format!("{}", s)),
         },
         VMErrorType::Os(os) => match os {
-            OsError::__placeholder(s) => ("dev note: implement this".to_string(), s.clone())
-        }
+            OsError::__placeholder(s) => ("dev note: implement this".to_string(), s.clone()),
+        },
         VMErrorType::AI(ai) => match ai {
             AIError::AIFetchError(s) => ("AI fetch error".to_string(), format!("{}", s)),
             AIError::AIEngineNotSet() => (
