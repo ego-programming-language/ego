@@ -1,5 +1,6 @@
 mod members;
 pub mod types;
+pub mod utils;
 
 use crate::{heap::HeapObject, std::net::members::connect_ref};
 

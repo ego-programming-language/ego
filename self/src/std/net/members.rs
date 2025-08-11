@@ -5,7 +5,8 @@ use std::net::TcpStream;
 use crate::core::error::net_errors::NetErrors;
 use crate::core::error::{self, VMErrorType};
 use crate::heap::{self, HeapRef};
-use crate::std::net::types::NetStream;
+use crate::std::net::types::{NetStream, StreamKind};
+use crate::std::net::utils::tls;
 use crate::types::object::native_struct::NativeStruct;
 use crate::types::raw::u64::U64;
 use crate::types::raw::RawValue;
@@ -140,12 +141,37 @@ pub fn connect(
         }
     };
 
-    let stream = if let Ok(stream) = TcpStream::connect(host) {
-        stream
+    let use_tls = if let Some(second) = params.get(1) {
+        match second {
+            Value::RawValue(RawValue::Bool(b)) => b.value,
+            _ => {
+                return Err(error::throw(VMErrorType::TypeMismatch {
+                    expected: "bool".to_string(),
+                    received: second.get_type(),
+                }))
+            }
+        }
     } else {
-        return Err(error::throw(VMErrorType::Net(NetErrors::NetConnectError(
-            format!("host {}", host),
-        ))));
+        false // default if not passed
+    };
+
+    let stream = if use_tls {
+        let tls_stream = tls(host);
+        if let Ok(_stream) = tls_stream {
+            StreamKind::Tls(_stream)
+        } else {
+            return Err(error::throw(VMErrorType::Net(NetErrors::NetConnectError(
+                format!("host {}", host),
+            ))));
+        }
+    } else {
+        if let Ok(stream) = TcpStream::connect(host) {
+            StreamKind::Plain(stream)
+        } else {
+            return Err(error::throw(VMErrorType::Net(NetErrors::NetConnectError(
+                format!("host {}", host),
+            ))));
+        }
     };
 
     let mut shape = HashMap::new();
