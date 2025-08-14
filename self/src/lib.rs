@@ -1,6 +1,7 @@
 mod core;
 mod heap;
 mod instructions;
+mod memory;
 mod opcodes;
 mod stack;
 mod std;

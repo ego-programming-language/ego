@@ -8,6 +8,7 @@ use crate::core::handlers::print_handler::print_handler;
 use crate::heap::Heap;
 use crate::heap::HeapObject;
 use crate::heap::HeapRef;
+use crate::memory::MemoryManager;
 use crate::opcodes::DataType;
 use crate::opcodes::Opcode;
 use crate::std::bootstrap_default_lib;
@@ -33,6 +34,7 @@ pub struct Vm {
     operand_stack: Vec<OperandsStackValue>,
     pub call_stack: CallStack,
     pub heap: Heap,
+    memory: MemoryManager,
     bytecode: Vec<u8>,
     pc: usize,
     handlers: HashMap<String, HeapRef>,
@@ -58,6 +60,7 @@ impl Vm {
             operand_stack: vec![],
             call_stack: CallStack::new(),
             heap: Heap::new(),
+            memory: MemoryManager::new(),
             bytecode,
             pc: 0,
             handlers: HashMap::new(),
