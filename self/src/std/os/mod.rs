@@ -1,6 +1,7 @@
 use crate::core::error::os_errors::OsError;
 use crate::core::error::{self, VMError, VMErrorType};
-use crate::heap::{HeapObject, HeapRef};
+use crate::heap::HeapRef;
+use crate::memory::MemObject;
 use crate::std::heap_utils::put_string;
 use crate::std::{NativeMember, NativeModuleDef};
 use crate::types::object::func::{Engine, Function};
@@ -32,12 +33,12 @@ fn get_cwd(
     }
 }
 
-pub fn generate_struct() -> (String, Vec<(String, HeapObject)>) {
+pub fn generate_struct() -> (String, Vec<(String, MemObject)>) {
     (
         "os".to_string(),
         vec![(
             "get_cwd".to_string(),
-            HeapObject::Function(Function::new(
+            MemObject::Function(Function::new(
                 "get_cwd".to_string(),
                 vec![],
                 Engine::Native(get_cwd),

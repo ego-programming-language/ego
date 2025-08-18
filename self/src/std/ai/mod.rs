@@ -4,19 +4,19 @@ mod providers;
 pub mod types;
 
 use crate::{
-    heap::HeapObject,
+    memory::MemObject,
     std::ai::members::{do_fn, infer},
     types::object::func::{Engine, Function},
 };
 
-pub fn generate_struct() -> (String, Vec<(String, HeapObject)>) {
+pub fn generate_struct() -> (String, Vec<(String, MemObject)>) {
     let mut fields = vec![];
-    let infer_ref = HeapObject::Function(Function::new(
+    let infer_ref = MemObject::Function(Function::new(
         "infer".to_string(),
         vec![], // TODO: load params to native functions
         Engine::Native(infer),
     ));
-    let do_ref = HeapObject::Function(Function::new(
+    let do_ref = MemObject::Function(Function::new(
         "do".to_string(),
         vec![], // TODO: load params to native functions
         Engine::Native(do_fn),

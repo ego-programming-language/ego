@@ -1,5 +1,5 @@
 use crate::{
-    heap::HeapObject,
+    memory::MemObject,
     types::object::func::{Engine, Function},
     vm::Vm,
 };
@@ -82,7 +82,7 @@ pub fn get_native_module_type(module_name: &str) -> Option<NativeModule> {
 
 pub fn generate_native_module(
     module: NativeModule,
-) -> (std::string::String, Vec<(String, HeapObject)>) {
+) -> (std::string::String, Vec<(String, MemObject)>) {
     match module {
         NativeModule::AI => ai::generate_struct(),
         NativeModule::SelfMod => selfmod::generate_struct(),
@@ -94,7 +94,7 @@ pub fn generate_native_module(
 }
 
 // generate builtin lib members
-pub fn bootstrap_default_lib() -> Vec<(String, HeapObject)> {
+pub fn bootstrap_default_lib() -> Vec<(String, MemObject)> {
     let mut default_lib = vec![];
     default_lib.extend(vector::init_lib());
     default_lib

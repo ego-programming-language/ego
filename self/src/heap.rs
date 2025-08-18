@@ -1,27 +1,12 @@
 use std::collections::HashMap;
 
-use crate::types::object::native_struct::NativeStruct;
-use crate::types::object::vector::Vector;
-use crate::types::object::{
-    func::Function,
-    structs::{StructDeclaration, StructLiteral},
-};
+use crate::memory::MemObject;
 use crate::vm::Vm;
 
 #[derive(Debug)]
 pub struct Heap {
-    memory: HashMap<usize, HeapObject>,
+    memory: HashMap<usize, MemObject>,
     next_address: usize,
-}
-
-#[derive(Debug)]
-pub enum HeapObject {
-    String(String),
-    Function(Function),
-    StructDeclaration(StructDeclaration),
-    StructLiteral(StructLiteral),
-    NativeStruct(NativeStruct),
-    Vector(Vector),
 }
 
 #[derive(Debug, Clone)]
@@ -37,22 +22,22 @@ impl Heap {
         }
     }
 
-    pub fn allocate(&mut self, obj: HeapObject) -> HeapRef {
+    pub fn allocate(&mut self, obj: MemObject) -> HeapRef {
         let address = self.next_address;
         self.next_address += 1;
         self.memory.insert(address, obj);
         HeapRef::new(address)
     }
 
-    pub fn get(&self, heap_ref: HeapRef) -> Option<&HeapObject> {
+    pub fn get(&self, heap_ref: HeapRef) -> Option<&MemObject> {
         self.memory.get(&heap_ref.address)
     }
 
-    pub fn get_mut(&mut self, heap_ref: HeapRef) -> Option<&mut HeapObject> {
+    pub fn get_mut(&mut self, heap_ref: HeapRef) -> Option<&mut MemObject> {
         self.memory.get_mut(&heap_ref.address)
     }
 
-    pub fn free(&mut self, heap_ref: HeapRef) -> Option<HeapObject> {
+    pub fn free(&mut self, heap_ref: HeapRef) -> Option<MemObject> {
         self.memory.remove(&heap_ref.address)
     }
 
@@ -66,18 +51,5 @@ impl HeapRef {
 
     pub fn get_address(&self) -> usize {
         self.address
-    }
-}
-
-impl HeapObject {
-    pub fn to_string(&self, vm: &Vm) -> String {
-        match self {
-            HeapObject::String(x) => x.to_string(),
-            HeapObject::Function(x) => x.to_string(),
-            HeapObject::StructDeclaration(x) => x.to_string(),
-            HeapObject::StructLiteral(x) => x.struct_type.to_string(),
-            HeapObject::NativeStruct(x) => x.to_string(),
-            HeapObject::Vector(x) => x.to_string(vm),
-        }
     }
 }

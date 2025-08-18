@@ -1,10 +1,10 @@
 mod members;
 use crate::{
-    heap::HeapObject,
+    memory::MemObject,
     std::env::members::{get_obj, set_obj},
 };
 
-pub fn generate_struct() -> (String, Vec<(String, HeapObject)>) {
+pub fn generate_struct() -> (String, Vec<(String, MemObject)>) {
     let mut fields = vec![];
 
     fields.push(("set".to_string(), set_obj()));

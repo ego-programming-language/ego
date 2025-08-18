@@ -1,14 +1,14 @@
 mod members;
 
 use crate::{
-    heap::HeapObject,
+    memory::MemObject,
     std::{
         fs::members::{delete_obj, read_file_def, read_file_obj, write_file_def, write_file_obj},
         NativeModuleDef,
     },
 };
 
-pub fn generate_struct() -> (String, Vec<(String, HeapObject)>) {
+pub fn generate_struct() -> (String, Vec<(String, MemObject)>) {
     let mut fields = vec![];
 
     fields.push(("read_file".to_string(), read_file_obj()));

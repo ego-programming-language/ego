@@ -11,7 +11,7 @@ use crate::std::NativeMember;
 use crate::types::raw::bool::Bool;
 use crate::{
     core::error::VMError,
-    heap::HeapObject,
+    memory::MemObject,
     types::{
         object::func::{Engine, Function},
         raw::RawValue,
@@ -29,8 +29,8 @@ pub fn read_file_def() -> NativeMember {
     }
 }
 
-pub fn read_file_obj() -> HeapObject {
-    HeapObject::Function(Function::new(
+pub fn read_file_obj() -> MemObject {
+    MemObject::Function(Function::new(
         "read_file".to_string(),
         vec![], // TODO: load params to native functions
         Engine::Native(read_file),
@@ -48,7 +48,7 @@ pub fn read_file(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r);
             let request = match heap_obj {
-                HeapObject::String(s) => s.clone(),
+                MemObject::String(s) => s.clone(),
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
@@ -110,8 +110,8 @@ pub fn write_file_def() -> NativeMember {
     }
 }
 
-pub fn write_file_obj() -> HeapObject {
-    HeapObject::Function(Function::new(
+pub fn write_file_obj() -> MemObject {
+    MemObject::Function(Function::new(
         "write_file".to_string(),
         vec![
             "path".to_string(),
@@ -141,7 +141,7 @@ pub fn write_file(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r.clone());
             match heap_obj {
-                HeapObject::String(s) => s,
+                MemObject::String(s) => s,
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
@@ -163,7 +163,7 @@ pub fn write_file(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r.clone());
             match heap_obj {
-                HeapObject::String(s) => s,
+                MemObject::String(s) => s,
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
@@ -247,8 +247,8 @@ pub fn delete_def() -> NativeMember {
     }
 }
 
-pub fn delete_obj() -> HeapObject {
-    HeapObject::Function(Function::new(
+pub fn delete_obj() -> MemObject {
+    MemObject::Function(Function::new(
         "delete".to_string(),
         vec!["path".to_string()],
         Engine::Native(delete),
@@ -274,7 +274,7 @@ pub fn delete(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r.clone());
             match heap_obj {
-                HeapObject::String(s) => s,
+                MemObject::String(s) => s,
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),

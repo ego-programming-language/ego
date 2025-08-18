@@ -8,7 +8,8 @@ PROVIDER.
 
 use crate::{
     core::error::VMError,
-    heap::{HeapObject, HeapRef},
+    heap::HeapRef,
+    memory::MemObject,
     types::{
         object::func::{Engine, Function},
         raw::RawValue,
@@ -26,8 +27,8 @@ pub fn get_stack(
     Ok(Value::RawValue(RawValue::Nothing))
 }
 
-pub fn get_stack_fn_ref() -> HeapObject {
-    HeapObject::Function(Function::new(
+pub fn get_stack_fn_ref() -> MemObject {
+    MemObject::Function(Function::new(
         "get_stack".to_string(),
         vec![], // TODO: load params to native functions
         Engine::Native(get_stack),

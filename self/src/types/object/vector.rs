@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     core::error::VMError,
-    heap::{HeapObject, HeapRef},
+    heap::HeapRef,
+    memory::MemObject,
     types::{
         raw::{u32::U32, RawValue},
         Value,

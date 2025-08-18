@@ -12,7 +12,7 @@ use crate::types::raw::u64::U64;
 use crate::types::raw::RawValue;
 use crate::{
     core::error::VMError,
-    heap::HeapObject,
+    memory::MemObject,
     types::{
         object::func::{Engine, Function},
         Value,
@@ -32,7 +32,7 @@ fn write(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r);
             let request = match heap_obj {
-                HeapObject::String(s) => s.to_string(),
+                MemObject::String(s) => s.to_string(),
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
@@ -53,8 +53,7 @@ fn write(
 
     // resolve 'self'
     let _self = if let Some(_this) = _self {
-        if let HeapObject::NativeStruct(NativeStruct::NetStream(ns)) =
-            vm.resolve_heap_mut_ref(_this)
+        if let MemObject::NativeStruct(NativeStruct::NetStream(ns)) = vm.resolve_heap_mut_ref(_this)
         {
             ns
         } else {
@@ -82,8 +81,7 @@ fn read(
 ) -> Result<Value, VMError> {
     // resolve 'self'
     let _self = if let Some(_this) = _self {
-        if let HeapObject::NativeStruct(NativeStruct::NetStream(ns)) =
-            vm.resolve_heap_mut_ref(_this)
+        if let MemObject::NativeStruct(NativeStruct::NetStream(ns)) = vm.resolve_heap_mut_ref(_this)
         {
             ns
         } else {
@@ -102,7 +100,7 @@ fn read(
             _self.host.to_string(),
         ))));
     };
-    let read_obj = HeapObject::String(String::from_utf8_lossy(&buffer[..bytes_count]).to_string());
+    let read_obj = MemObject::String(String::from_utf8_lossy(&buffer[..bytes_count]).to_string());
     Ok(Value::HeapRef(vm.heap.allocate(read_obj)))
 }
 
@@ -117,7 +115,7 @@ pub fn connect(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r);
             let request = match heap_obj {
-                HeapObject::String(s) => s,
+                MemObject::String(s) => s,
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
@@ -176,13 +174,13 @@ pub fn connect(
 
     let mut shape = HashMap::new();
     let owned_host = host.clone();
-    let host_ref = vm.heap.allocate(HeapObject::String(host.clone()));
-    let write_ref = vm.heap.allocate(HeapObject::Function(Function::new(
+    let host_ref = vm.heap.allocate(MemObject::String(host.clone()));
+    let write_ref = vm.heap.allocate(MemObject::Function(Function::new(
         "write".to_string(),
         vec![],
         Engine::Native(write),
     )));
-    let read_ref = vm.heap.allocate(HeapObject::Function(Function::new(
+    let read_ref = vm.heap.allocate(MemObject::Function(Function::new(
         "read".to_string(),
         vec![],
         Engine::Native(read),
@@ -195,15 +193,13 @@ pub fn connect(
     let net_stream = NetStream::new(owned_host, stream, shape);
     let net_stream_ref = vm
         .heap
-        .allocate(HeapObject::NativeStruct(NativeStruct::NetStream(
-            net_stream,
-        )));
+        .allocate(MemObject::NativeStruct(NativeStruct::NetStream(net_stream)));
 
     return Ok(Value::HeapRef(net_stream_ref));
 }
 
-pub fn connect_ref() -> HeapObject {
-    HeapObject::Function(Function::new(
+pub fn connect_ref() -> MemObject {
+    MemObject::Function(Function::new(
         "connect".to_string(),
         vec!["host".to_string()],
         Engine::Native(connect),

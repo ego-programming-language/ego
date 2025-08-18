@@ -1,6 +1,7 @@
 use crate::{
     core::error::{self, type_errors::TypeError, VMError, VMErrorType},
-    heap::{HeapObject, HeapRef},
+    heap::HeapRef,
+    memory::MemObject,
     types::{
         object::func::{Engine, Function},
         raw::RawValue,
@@ -11,8 +12,8 @@ use crate::{
 use std::env;
 
 // environment variable set
-pub fn set_obj() -> HeapObject {
-    HeapObject::Function(Function::new(
+pub fn set_obj() -> MemObject {
+    MemObject::Function(Function::new(
         "set".to_string(),
         vec!["key".to_string(), "value".to_string()],
         Engine::Native(set),
@@ -38,7 +39,7 @@ pub fn set(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r.clone());
             match heap_obj {
-                HeapObject::String(s) => s,
+                MemObject::String(s) => s,
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
@@ -60,7 +61,7 @@ pub fn set(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r.clone());
             match heap_obj {
-                HeapObject::String(s) => s,
+                MemObject::String(s) => s,
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
@@ -86,8 +87,8 @@ pub fn set(
 }
 
 // get environment variables
-pub fn get_obj() -> HeapObject {
-    HeapObject::Function(Function::new(
+pub fn get_obj() -> MemObject {
+    MemObject::Function(Function::new(
         "get".to_string(),
         vec!["key".to_string()],
         Engine::Native(get),
@@ -113,7 +114,7 @@ pub fn get(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r.clone());
             match heap_obj {
-                HeapObject::String(s) => s,
+                MemObject::String(s) => s,
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
@@ -137,7 +138,7 @@ pub fn get(
     let var = env::var(key);
     match var {
         Ok(v) => {
-            let value_ref = vm.heap.allocate(HeapObject::String(v));
+            let value_ref = vm.heap.allocate(MemObject::String(v));
             Ok(Value::HeapRef(value_ref))
         }
         Err(_) => Ok(Value::RawValue(RawValue::Nothing)),

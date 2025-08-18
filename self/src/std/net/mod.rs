@@ -2,9 +2,9 @@ mod members;
 pub mod types;
 pub mod utils;
 
-use crate::{heap::HeapObject, std::net::members::connect_ref};
+use crate::{memory::MemObject, std::net::members::connect_ref};
 
-pub fn generate_struct() -> (String, Vec<(String, HeapObject)>) {
+pub fn generate_struct() -> (String, Vec<(String, MemObject)>) {
     let mut fields = vec![];
 
     fields.push(("connect".to_string(), connect_ref()));

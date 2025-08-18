@@ -1,6 +1,7 @@
 use crate::{
     core::error::{self, type_errors::TypeError, VMError, VMErrorType},
-    heap::{HeapObject, HeapRef},
+    heap::HeapRef,
+    memory::MemObject,
     types::{
         object::func::{Engine, Function},
         raw::{u32::U32, RawValue},
@@ -9,8 +10,8 @@ use crate::{
     vm::Vm,
 };
 
-pub fn len_obj() -> HeapObject {
-    HeapObject::Function(Function::new(
+pub fn len_obj() -> MemObject {
+    MemObject::Function(Function::new(
         "len".to_string(),
         vec![],
         Engine::Native(len),
@@ -25,7 +26,7 @@ fn len(
 ) -> Result<Value, VMError> {
     // resolve 'self'
     let _self = if let Some(_this) = _self {
-        if let HeapObject::Vector(vec) = vm.resolve_heap_mut_ref(_this) {
+        if let MemObject::Vector(vec) = vm.resolve_heap_mut_ref(_this) {
             vec
         } else {
             unreachable!()
@@ -40,8 +41,8 @@ fn len(
 }
 
 // map
-pub fn map_obj() -> HeapObject {
-    HeapObject::Function(Function::new(
+pub fn map_obj() -> MemObject {
+    MemObject::Function(Function::new(
         "map".to_string(),
         vec!["callback".to_string()],
         Engine::Native(map),
@@ -56,7 +57,7 @@ fn map(
 ) -> Result<Value, VMError> {
     // resolve 'self'
     let _self = if let Some(_this) = _self {
-        if let HeapObject::Vector(vec) = vm.resolve_heap_ref(_this) {
+        if let MemObject::Vector(vec) = vm.resolve_heap_ref(_this) {
             vec.clone()
         } else {
             unreachable!()
@@ -69,7 +70,7 @@ fn map(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r);
             let request = match heap_obj {
-                HeapObject::Function(f) => f.clone(),
+                MemObject::Function(f) => f.clone(),
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "function".to_string(),

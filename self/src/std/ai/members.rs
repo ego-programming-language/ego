@@ -13,7 +13,8 @@ use serde_json::Value as SValue;
 
 use crate::{
     core::error::{self, action_errors::ActionError, ai_errors::AIError, VMError, VMErrorType},
-    heap::{HeapObject, HeapRef},
+    heap::HeapRef,
+    memory::MemObject,
     std::{
         ai::{
             prompts::{do_prompt, infer_prompt},
@@ -91,7 +92,7 @@ pub fn infer(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r);
             let request = match heap_obj {
-                HeapObject::String(s) => s,
+                MemObject::String(s) => s,
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
@@ -119,7 +120,7 @@ pub fn infer(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r);
             let context = match heap_obj {
-                HeapObject::String(s) => s,
+                MemObject::String(s) => s,
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
@@ -191,7 +192,7 @@ pub fn do_fn(
         Value::HeapRef(r) => {
             let heap_obj = vm.resolve_heap_ref(r);
             let request = match heap_obj {
-                HeapObject::String(s) => s,
+                MemObject::String(s) => s,
                 _ => {
                     return Err(error::throw(VMErrorType::TypeMismatch {
                         expected: "string".to_string(),
@@ -264,7 +265,7 @@ pub fn do_fn(
     // native module import executed the generic code
     // to have things on scope, like, exec function.
     let exec_fn = Function::new("exec".to_string(), vec![], Engine::Native(exec));
-    let exec_ref = vm.heap.allocate(HeapObject::Function(exec_fn));
+    let exec_ref = vm.heap.allocate(MemObject::Function(exec_fn));
 
     let actions: Vec<Action> = instructions
         .iter()
@@ -295,7 +296,7 @@ pub fn do_fn(
     let mut actions_ref = vec![];
     for action in actions {
         actions_ref
-            .push(Value::HeapRef(vm.heap.allocate(HeapObject::NativeStruct(
+            .push(Value::HeapRef(vm.heap.allocate(MemObject::NativeStruct(
                 NativeStruct::Action(action),
             ))));
     }
@@ -304,7 +305,7 @@ pub fn do_fn(
     // vector allocated heap ref
     let mut vector = Vector::new(actions_ref);
     vector::init_vector_members(&mut vector, vm);
-    let vector_ref = vm.heap.allocate(HeapObject::Vector(vector));
+    let vector_ref = vm.heap.allocate(MemObject::Vector(vector));
     return Ok(Value::HeapRef(vector_ref));
 }
 
@@ -316,7 +317,7 @@ pub fn exec(
 ) -> Result<Value, VMError> {
     // resolve 'self'
     let (_self, _self_ref) = if let Some(_this) = _self {
-        if let HeapObject::NativeStruct(NativeStruct::Action(ns)) =
+        if let MemObject::NativeStruct(NativeStruct::Action(ns)) =
             vm.resolve_heap_ref(_this.clone())
         {
             (ns, _this)
@@ -351,7 +352,7 @@ pub fn exec(
     };
 
     match &member.1 {
-        HeapObject::Function(f) => {
+        MemObject::Function(f) => {
             let execution = vm.run_function(&f.clone(), Some(_self_ref), _self.args.clone(), debug);
             if let Some(err) = execution.error {
                 return Err(err);

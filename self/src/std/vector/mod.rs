@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
 use crate::{
-    heap::HeapObject,
+    memory::MemObject,
     types::{object::vector::Vector, Value},
     vm::Vm,
 };
 mod members;
 
-pub fn init_lib() -> Vec<(String, HeapObject)> {
+pub fn init_lib() -> Vec<(String, MemObject)> {
     let mut fields = vec![];
 
     fields.push(("vector.len".to_string(), members::len_obj()));
