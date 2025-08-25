@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::memory::MemObject;
-use crate::vm::Vm;
 
 #[derive(Debug)]
 pub struct Heap {
