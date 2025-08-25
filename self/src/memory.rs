@@ -40,7 +40,7 @@ impl MemoryManager {
         }
     }
 
-    pub fn resolve(&mut self, handle: Handle) -> Option<&MemObject> {
+    pub fn resolve(&self, handle: Handle) -> Option<&MemObject> {
         let real_pointer = self.table.get(&handle.pointer);
         if let Some(rp) = real_pointer {
             match rp {
