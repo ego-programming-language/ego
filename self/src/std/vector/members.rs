@@ -66,46 +66,7 @@ fn map(
         unreachable!()
     };
 
-    let callback = match params[0].clone() {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r);
-            let request = match heap_obj {
-                MemObject::Function(f) => f.clone(),
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "function".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }));
-                }
-            };
-            request
-        }
-        Value::RawValue(_) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "function".to_string(),
-                received: "raw_value".to_string(),
-            }));
-        }
-        Value::BoundAccess(_) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "function".to_string(),
-                received: "bound_access".to_string(),
-            }));
-        }
-        Value::Handle(_) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "function".to_string(),
-                received: "handle".to_string(),
-            }));
-        }
-        _ => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "function".to_string(),
-                received: "unknown_type".to_string(),
-            }));
-        }
-    };
-
+    let callback = params[0].as_function_obj(vm)?;
     if callback.parameters.len() < 1 {
         return Err(error::throw(VMErrorType::TypeError(
             TypeError::InvalidArgsCount {

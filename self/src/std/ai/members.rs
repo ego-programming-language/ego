@@ -88,73 +88,9 @@ pub fn infer(
     debug: bool,
 ) -> Result<Value, VMError> {
     let request_ref = params[0].clone();
-    let request = match request_ref {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r);
-            let request = match heap_obj {
-                MemObject::String(s) => s,
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "string".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }));
-                }
-            };
-            request
-        }
-        Value::RawValue(r) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: r.get_type_string(),
-            }));
-        }
-        Value::BoundAccess(_) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: "bound_access".to_string(),
-            }));
-        }
-        Value::Handle(_) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: "bound_access".to_string(),
-            }));
-        }
-    };
+    let request = request_ref.as_string_obj(vm)?;
     let context_ref = params[1].clone();
-    let context = match context_ref {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r);
-            let context = match heap_obj {
-                MemObject::String(s) => s,
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "string".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }));
-                }
-            };
-            context
-        }
-        Value::RawValue(r) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: r.get_type_string(),
-            }));
-        }
-        Value::BoundAccess(_) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: "bound_access".to_string(),
-            }));
-        }
-        Value::Handle(_) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: "handle".to_string(),
-            }));
-        }
-    };
+    let context = context_ref.as_string_obj(vm)?;
 
     if debug {
         println!("AI <- {}({})", request, context.to_string());
@@ -162,7 +98,7 @@ pub fn infer(
 
     // we should try to avoid prompt injection
     // maybe using multiple prompts?
-    let prompt = infer_prompt(request, context);
+    let prompt = infer_prompt(&request, &context);
     let res = fetch_ai(prompt);
     let res = match res {
         Ok(r) => r,
@@ -200,39 +136,7 @@ pub fn do_fn(
     debug: bool,
 ) -> Result<Value, VMError> {
     let request_ref = params[0].clone();
-    let request = match request_ref {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r);
-            let request = match heap_obj {
-                MemObject::String(s) => s,
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "string".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }));
-                }
-            };
-            request
-        }
-        Value::RawValue(r) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: r.get_type_string(),
-            }));
-        }
-        Value::BoundAccess(_) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: "bound_access".to_string(),
-            }));
-        }
-        Value::Handle(_) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: "handle".to_string(),
-            }));
-        }
-    };
+    let request = request_ref.as_string_obj(vm)?;
 
     if debug {
         println!("AI.DO <- {}", request);
@@ -245,7 +149,7 @@ pub fn do_fn(
 
     // we should try to avoid prompt injection
     // maybe using multiple prompts?
-    let prompt = do_prompt(stdlib_defs, request);
+    let prompt = do_prompt(stdlib_defs, &request);
     let res = fetch_ai(prompt);
     let res = match res {
         Ok(r) => r,

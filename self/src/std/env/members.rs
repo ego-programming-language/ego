@@ -35,49 +35,8 @@ pub fn set(
         )));
     }
 
-    let key = match &params[0] {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r.clone());
-            match heap_obj {
-                MemObject::String(s) => s,
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "string".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }))
-                }
-            }
-        }
-        Value::RawValue(RawValue::Utf8(s)) => &s.value,
-        _ => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: params[0].get_type(),
-            }))
-        }
-    };
-
-    let value = match &params[1] {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r.clone());
-            match heap_obj {
-                MemObject::String(s) => s,
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "string".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }))
-                }
-            }
-        }
-        Value::RawValue(RawValue::Utf8(s)) => &s.value,
-        _ => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: params[0].get_type(),
-            }))
-        }
-    };
+    let key = &params[0].as_string_obj(vm)?;
+    let value = &params[1].as_string_obj(vm)?;
 
     if debug {
         println!("ENV_SET -> {}({})", key, value)
@@ -110,27 +69,7 @@ pub fn get(
         )));
     }
 
-    let key = match &params[0] {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r.clone());
-            match heap_obj {
-                MemObject::String(s) => s,
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "string".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }))
-                }
-            }
-        }
-        Value::RawValue(RawValue::Utf8(s)) => &s.value,
-        _ => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: params[0].get_type(),
-            }))
-        }
-    };
+    let key = &params[0].as_string_obj(vm)?;
 
     if debug {
         println!("ENV_GET -> {}", key)

@@ -27,30 +27,7 @@ fn write(
     debug: bool,
 ) -> Result<Value, VMError> {
     // get params
-    let data_ref = params[0].clone();
-    let data = match data_ref {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r);
-            let request = match heap_obj {
-                MemObject::String(s) => s.to_string(),
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "string".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }));
-                }
-            };
-            request
-        }
-        Value::RawValue(RawValue::Utf8(s)) => s.value,
-        _ => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: "bound_access".to_string(),
-            }));
-        }
-    };
-
+    let data = params[0].as_string_obj(vm)?;
     // resolve 'self'
     let _self = if let Some(_this) = _self {
         if let MemObject::NativeStruct(NativeStruct::NetStream(ns)) = vm.resolve_heap_mut_ref(_this)
@@ -110,57 +87,15 @@ pub fn connect(
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
-    let host_ref = params[0].clone();
-    let host = match host_ref {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r);
-            let request = match heap_obj {
-                MemObject::String(s) => s,
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "string".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }));
-                }
-            };
-            request
-        }
-        Value::RawValue(r) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: r.get_type_string(),
-            }));
-        }
-        Value::BoundAccess(_) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: "bound_access".to_string(),
-            }));
-        }
-        Value::Handle(r) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: "handle".to_string(),
-            }));
-        }
-    };
-
+    let host = params[0].as_string_obj(vm)?;
     let use_tls = if let Some(second) = params.get(1) {
-        match second {
-            Value::RawValue(RawValue::Bool(b)) => b.value,
-            _ => {
-                return Err(error::throw(VMErrorType::TypeMismatch {
-                    expected: "bool".to_string(),
-                    received: second.get_type(),
-                }))
-            }
-        }
+        second.as_bool(vm)?
     } else {
         false // default if not passed
     };
 
     let stream = if use_tls {
-        let tls_stream = tls(host);
+        let tls_stream = tls(&host);
         if let Ok(_stream) = tls_stream {
             StreamKind::Tls(_stream)
         } else {
@@ -169,7 +104,7 @@ pub fn connect(
             ))));
         }
     } else {
-        if let Ok(stream) = TcpStream::connect(host) {
+        if let Ok(stream) = TcpStream::connect(host.clone()) {
             StreamKind::Plain(stream)
         } else {
             return Err(error::throw(VMErrorType::Net(NetErrors::NetConnectError(

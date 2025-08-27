@@ -43,44 +43,7 @@ pub fn read_file(
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
-    let path_ref = params[0].clone();
-    let path = match path_ref {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r);
-            let request = match heap_obj {
-                MemObject::String(s) => s.clone(),
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "string".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }));
-                }
-            };
-            request
-        }
-        Value::RawValue(r) => match r {
-            RawValue::Utf8(s) => s.value,
-            _ => {
-                return Err(error::throw(VMErrorType::TypeMismatch {
-                    expected: "string".to_string(),
-                    received: r.get_type_string(),
-                }));
-            }
-        },
-        Value::BoundAccess(_) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: "bound_access".to_string(),
-            }));
-        }
-        Value::Handle(_) => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: "handle".to_string(),
-            }));
-        }
-    };
-
+    let path = params[0].as_string_obj(vm)?;
     let path_obj = Path::new(&path);
     if !path_obj.exists() {
         return Err(error::throw(VMErrorType::Fs(FsError::FileNotFound(
@@ -143,49 +106,8 @@ pub fn write_file(
         )));
     }
 
-    let path = match &params[0] {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r.clone());
-            match heap_obj {
-                MemObject::String(s) => s,
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "string".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }))
-                }
-            }
-        }
-        Value::RawValue(RawValue::Utf8(s)) => &s.value,
-        _ => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: params[0].get_type(),
-            }))
-        }
-    };
-
-    let content = match &params[1] {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r.clone());
-            match heap_obj {
-                MemObject::String(s) => s,
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "string".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }))
-                }
-            }
-        }
-        Value::RawValue(RawValue::Utf8(s)) => &s.value,
-        _ => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: params[1].get_type(),
-            }))
-        }
-    };
+    let path = &params[0].as_string_obj(vm)?;
+    let content = &params[1].as_string_obj(vm)?;
 
     let overwrite_or_create = if let Some(param2) = params.get(2) {
         match param2 {
@@ -276,38 +198,9 @@ pub fn delete(
         )));
     }
 
-    let path = match &params[0] {
-        Value::HeapRef(r) => {
-            let heap_obj = vm.resolve_heap_ref(r.clone());
-            match heap_obj {
-                MemObject::String(s) => s,
-                _ => {
-                    return Err(error::throw(VMErrorType::TypeMismatch {
-                        expected: "string".to_string(),
-                        received: heap_obj.to_string(vm),
-                    }))
-                }
-            }
-        }
-        Value::RawValue(RawValue::Utf8(s)) => &s.value,
-        _ => {
-            return Err(error::throw(VMErrorType::TypeMismatch {
-                expected: "string".to_string(),
-                received: params[0].get_type(),
-            }))
-        }
-    };
-
+    let path = &params[0].as_string_obj(vm)?;
     let remove_recursively = if let Some(param2) = params.get(1) {
-        match param2 {
-            Value::RawValue(RawValue::Bool(b)) => b.value,
-            _ => {
-                return Err(error::throw(VMErrorType::TypeMismatch {
-                    expected: "bool".to_string(),
-                    received: param2.get_type(),
-                }))
-            }
-        }
+        param2.as_bool(vm)?
     } else {
         false // default if not passed
     };
