@@ -1,5 +1,8 @@
-use crate::{heap::HeapRef, memory::MemObject, vm::Vm};
+use crate::{
+    memory::{Handle, MemObject},
+    vm::Vm,
+};
 
-pub fn put_string(vm: &mut Vm, string: String) -> HeapRef {
-    vm.heap.allocate(MemObject::String(string))
+pub fn put_string(vm: &mut Vm, string: String) -> Handle {
+    vm.memory.alloc(MemObject::String(string))
 }

@@ -4,7 +4,7 @@ use std::net::TcpStream;
 
 use crate::core::error::net_errors::NetErrors;
 use crate::core::error::{self, VMErrorType};
-use crate::heap::HeapRef;
+use crate::memory::Handle;
 use crate::std::net::types::{NetStream, StreamKind};
 use crate::std::net::utils::tls;
 use crate::types::object::native_struct::NativeStruct;
@@ -22,7 +22,7 @@ use crate::{
 
 fn write(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
@@ -30,7 +30,7 @@ fn write(
     let data = params[0].as_string_obj(vm)?;
     // resolve 'self'
     let _self = if let Some(_this) = _self {
-        if let MemObject::NativeStruct(NativeStruct::NetStream(ns)) = vm.resolve_heap_mut_ref(_this)
+        if let MemObject::NativeStruct(NativeStruct::NetStream(ns)) = vm.memory.resolve_mut(&_this)
         {
             ns
         } else {
@@ -53,13 +53,13 @@ fn write(
 
 fn read(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
     // resolve 'self'
     let _self = if let Some(_this) = _self {
-        if let MemObject::NativeStruct(NativeStruct::NetStream(ns)) = vm.resolve_heap_mut_ref(_this)
+        if let MemObject::NativeStruct(NativeStruct::NetStream(ns)) = vm.memory.resolve_mut(&_this)
         {
             ns
         } else {
@@ -80,12 +80,12 @@ fn read(
         ));
     };
     let read_obj = MemObject::String(String::from_utf8_lossy(&buffer[..bytes_count]).to_string());
-    Ok(Value::HeapRef(vm.heap.allocate(read_obj)))
+    Ok(Value::Handle(vm.memory.alloc(read_obj)))
 }
 
 pub fn connect(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
@@ -119,28 +119,28 @@ pub fn connect(
 
     let mut shape = HashMap::new();
     let owned_host = host.clone();
-    let host_ref = vm.heap.allocate(MemObject::String(host.clone()));
-    let write_ref = vm.heap.allocate(MemObject::Function(Function::new(
+    let host_ref = vm.memory.alloc(MemObject::String(host.clone()));
+    let write_ref = vm.memory.alloc(MemObject::Function(Function::new(
         "write".to_string(),
         vec![],
         Engine::Native(write),
     )));
-    let read_ref = vm.heap.allocate(MemObject::Function(Function::new(
+    let read_ref = vm.memory.alloc(MemObject::Function(Function::new(
         "read".to_string(),
         vec![],
         Engine::Native(read),
     )));
 
-    shape.insert("host".to_string(), Value::HeapRef(host_ref));
-    shape.insert("write".to_string(), Value::HeapRef(write_ref));
-    shape.insert("read".to_string(), Value::HeapRef(read_ref));
+    shape.insert("host".to_string(), Value::Handle(host_ref));
+    shape.insert("write".to_string(), Value::Handle(write_ref));
+    shape.insert("read".to_string(), Value::Handle(read_ref));
 
     let net_stream = NetStream::new(owned_host, stream, shape);
     let net_stream_ref = vm
-        .heap
-        .allocate(MemObject::NativeStruct(NativeStruct::NetStream(net_stream)));
+        .memory
+        .alloc(MemObject::NativeStruct(NativeStruct::NetStream(net_stream)));
 
-    return Ok(Value::HeapRef(net_stream_ref));
+    return Ok(Value::Handle(net_stream_ref));
 }
 
 pub fn connect_ref() -> MemObject {

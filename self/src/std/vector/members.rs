@@ -1,7 +1,6 @@
 use crate::{
     core::error::{self, type_errors::TypeError, VMError, VMErrorType},
-    heap::HeapRef,
-    memory::MemObject,
+    memory::{Handle, MemObject},
     types::{
         object::func::{Engine, Function},
         raw::{u32::U32, RawValue},
@@ -20,13 +19,13 @@ pub fn len_obj() -> MemObject {
 
 fn len(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
     // resolve 'self'
     let _self = if let Some(_this) = _self {
-        if let MemObject::Vector(vec) = vm.resolve_heap_mut_ref(_this) {
+        if let MemObject::Vector(vec) = vm.memory.resolve_mut(&_this) {
             vec
         } else {
             unreachable!()
@@ -51,13 +50,13 @@ pub fn map_obj() -> MemObject {
 
 fn map(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
     // resolve 'self'
     let _self = if let Some(_this) = _self {
-        if let MemObject::Vector(vec) = vm.resolve_heap_ref(_this) {
+        if let MemObject::Vector(vec) = vm.memory.resolve(&_this) {
             vec.clone()
         } else {
             unreachable!()

@@ -1,5 +1,5 @@
 use crate::{
-    heap::HeapRef,
+    memory::Handle,
     types::{
         raw::{utf8::Utf8, RawValue},
         Value,
@@ -10,12 +10,12 @@ use crate::{
 pub struct Action {
     pub module: String,
     pub member: String,
-    pub exec: HeapRef, // heap_ref to the executor function
+    pub exec: Handle, // handle to the executor function
     pub args: Vec<Value>,
 }
 
 impl Action {
-    pub fn new(module: String, exec: HeapRef, member: String, args: Vec<Value>) -> Action {
+    pub fn new(module: String, exec: Handle, member: String, args: Vec<Value>) -> Action {
         Action {
             module,
             exec,
@@ -36,7 +36,7 @@ impl Action {
             "member" => Some(Value::RawValue(RawValue::Utf8(Utf8::new(
                 self.member.clone(),
             )))),
-            "exec" => Some(Value::HeapRef(self.exec.clone())),
+            "exec" => Some(Value::Handle(self.exec.clone())),
             //"params" => self.params,
             _ => None,
         }

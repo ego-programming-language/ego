@@ -32,7 +32,7 @@ impl Value {
                 }
             }
             Value::BoundAccess(x) => x.to_string(),
-            Value::Handle(x) => x.to_string(),
+            Value::Handle(x) => vm.memory.resolve(x).to_string(vm),
             _ => "unkown_value_type".to_string(),
         }
     }
@@ -49,8 +49,8 @@ impl Value {
 
     pub fn as_string_obj(&self, vm: &Vm) -> Result<String, VMError> {
         match self {
-            Value::HeapRef(r) => {
-                let heap_obj = vm.resolve_heap_ref(r.clone());
+            Value::Handle(r) => {
+                let heap_obj = vm.memory.resolve(&r);
                 let request = match heap_obj {
                     MemObject::String(s) => s,
                     _ => {
@@ -109,8 +109,8 @@ impl Value {
 
     pub fn as_function_obj(&self, vm: &Vm) -> Result<Function, VMError> {
         match self {
-            Value::HeapRef(r) => {
-                let heap_obj = vm.resolve_heap_ref(r.clone());
+            Value::Handle(r) => {
+                let heap_obj = vm.memory.resolve(&r);
                 let request = match heap_obj {
                     MemObject::Function(f) => f.clone(),
                     _ => {

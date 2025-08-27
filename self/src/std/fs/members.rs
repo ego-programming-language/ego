@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::core::error::fs_errors::FsError;
 use crate::core::error::type_errors::TypeError;
 use crate::core::error::{self, VMErrorType};
-use crate::heap::HeapRef;
+use crate::memory::Handle;
 use crate::std::heap_utils::put_string;
 use crate::std::NativeMember;
 use crate::types::raw::bool::Bool;
@@ -39,7 +39,7 @@ pub fn read_file_obj() -> MemObject {
 
 pub fn read_file(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
@@ -59,7 +59,7 @@ pub fn read_file(
     }
 
     match fs::read_to_string(path_obj) {
-        Ok(content) => Ok(Value::HeapRef(put_string(vm, content))),
+        Ok(content) => Ok(Value::Handle(put_string(vm, content))),
         Err(_) => Err(error::throw(
             VMErrorType::Fs(FsError::ReadError(format!("{}", path))),
             vm,
@@ -94,7 +94,7 @@ pub fn write_file_obj() -> MemObject {
 
 pub fn write_file(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
@@ -193,7 +193,7 @@ pub fn delete_obj() -> MemObject {
 
 pub fn delete(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {

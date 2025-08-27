@@ -1,7 +1,7 @@
 use crate::{
     core::error::{self, type_errors::TypeError, VMError, VMErrorType},
     heap::HeapRef,
-    memory::MemObject,
+    memory::{Handle, MemObject},
     types::{
         object::func::{Engine, Function},
         raw::RawValue,
@@ -22,7 +22,7 @@ pub fn set_obj() -> MemObject {
 
 pub fn set(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
@@ -57,7 +57,7 @@ pub fn get_obj() -> MemObject {
 
 pub fn get(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {

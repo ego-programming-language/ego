@@ -6,7 +6,7 @@ use crate::core::handlers::call_handler::call_handler;
 use crate::core::handlers::foreign_handlers::ForeignHandlers;
 use crate::core::handlers::print_handler::print_handler;
 use crate::heap::Heap;
-use crate::heap::HeapRef;
+use crate::memory::Handle;
 use crate::memory::MemObject;
 use crate::memory::MemoryManager;
 use crate::opcodes::DataType;
@@ -33,10 +33,10 @@ pub struct Vm {
     operand_stack: Vec<OperandsStackValue>,
     pub call_stack: CallStack,
     pub heap: Heap,
-    memory: MemoryManager,
+    pub memory: MemoryManager,
     bytecode: Vec<u8>,
     pc: usize,
-    handlers: HashMap<String, HeapRef>,
+    handlers: HashMap<String, Handle>,
     ffi_handlers: ForeignHandlers,
 }
 
@@ -78,8 +78,8 @@ impl Vm {
         let raw_handlers = bootstrap_default_lib();
         let mut handlers = HashMap::new();
         for (handler_name, handler_obj) in raw_handlers {
-            let obj_ref = self.heap.allocate(handler_obj);
-            handlers.insert(handler_name, obj_ref);
+            let obj_handle = self.memory.alloc(handler_obj);
+            handlers.insert(handler_name, obj_handle);
         }
         self.handlers = handlers;
 
@@ -285,7 +285,7 @@ impl Vm {
                         .iter()
                         .map(|val| {
                             match val {
-                                Value::HeapRef(r) => match self.resolve_heap_ref(r.clone()) {
+                                Value::Handle(r) => match self.memory.resolve(&r) {
                                     MemObject::String(s) => s.clone(),
                                     _ => {
                                         // TODO: use self-vm errors sytem
@@ -324,11 +324,11 @@ impl Vm {
                         params_names,
                         Engine::Bytecode(body_bytecode),
                     ));
-                    let func_ref = self.heap.allocate(func_obj);
+                    let func_handle = self.memory.alloc(func_obj);
 
                     // make accesible on the current context
                     self.call_stack
-                        .put_to_frame(identifier_name, Value::HeapRef(func_ref));
+                        .put_to_frame(identifier_name, Value::Handle(func_handle));
                 }
                 Opcode::StructDec => {
                     // skip StructDec opcode
@@ -377,51 +377,56 @@ impl Vm {
                     let struct_declaration =
                         StructDeclaration::new(identifier_name.clone(), fields);
                     // push to declaration heap
-                    let heap_ref = self
-                        .heap
-                        .allocate(MemObject::StructDeclaration(struct_declaration));
+                    let heap_handle = self
+                        .memory
+                        .alloc(MemObject::StructDeclaration(struct_declaration));
                     self.call_stack
-                        .put_to_frame(identifier_name, Value::HeapRef(heap_ref));
+                        .put_to_frame(identifier_name, Value::Handle(heap_handle));
                 }
                 Opcode::GetProperty => {
                     let values = self.get_stack_values(&2);
-                    let (object, property) = match (&values[0], &values[1]) {
-                        (Value::HeapRef(obj_ref), Value::HeapRef(prop_ref)) => {
-                            (obj_ref.clone(), prop_ref.clone())
+                    println!("values: {:#?}", values);
+                    let (object_handle, property_handle) = match (&values[0], &values[1]) {
+                        // (Value::HeapRef(obj_ref), Value::HeapRef(prop_ref)) => (
+                        //     self.resolve_heap_ref(obj_ref.clone()),
+                        //     self.resolve_heap_ref(prop_ref.clone()),
+                        // ),
+                        (Value::Handle(obj_handle), Value::Handle(prop_handle)) => {
+                            (obj_handle, prop_handle)
                         }
                         // TODO: use self-vm errors
                         // here we should handle if a function returns an
                         // nothing istead of a struct
-                        _ => panic!("Expected two HeapRef values for <get_property> opcode"),
+                        _ => panic!("Expected two Handle values for <get_property> opcode"),
                     };
 
-                    let object_val = self.resolve_heap_ref(object.clone());
-                    let property_val = self.resolve_heap_ref(property.clone());
+                    let object = self.memory.resolve(object_handle);
+                    let property = self.memory.resolve(property_handle);
 
                     if debug {
                         println!(
                             "GET_PROPERTY <- {}({:?})",
-                            object_val.to_string(self),
-                            property_val.to_string(self)
+                            object.to_string(self),
+                            property.to_string(self)
                         );
                     }
 
-                    if let MemObject::String(property_key) = property_val {
-                        match object_val {
+                    if let MemObject::String(property_key) = property {
+                        match object {
                             MemObject::StructLiteral(x) => {
                                 let value = x.property_access(&property_key);
                                 if let Some(prop) = value {
                                     let bound_access =
-                                        BoundAccess::new(object.clone(), Box::new(prop));
+                                        BoundAccess::new(object_handle.clone(), Box::new(prop));
                                     self.push_to_stack(
                                         Value::BoundAccess(bound_access),
-                                        Some(object_val.to_string(self)),
+                                        Some(object.to_string(self)),
                                     );
                                 } else {
                                     return VMExecutionResult::terminate_with_errors(
                                         VMErrorType::Struct(StructError::FieldNotFound {
                                             field: property_key.to_string(),
-                                            struct_type: object_val.to_string(self),
+                                            struct_type: object.to_string(self),
                                         }),
                                         self,
                                     );
@@ -431,16 +436,16 @@ impl Vm {
                                 let value = x.property_access(&property_key);
                                 if let Some(prop) = value {
                                     let bound_access =
-                                        BoundAccess::new(object.clone(), Box::new(prop));
+                                        BoundAccess::new(object_handle.clone(), Box::new(prop));
                                     self.push_to_stack(
                                         Value::BoundAccess(bound_access),
-                                        Some(object_val.to_string(self)),
+                                        Some(object.to_string(self)),
                                     );
                                 } else {
                                     return VMExecutionResult::terminate_with_errors(
                                         VMErrorType::Struct(StructError::FieldNotFound {
                                             field: property_key.to_string(),
-                                            struct_type: object_val.to_string(self),
+                                            struct_type: object.to_string(self),
                                         }),
                                         self,
                                     );
@@ -450,16 +455,16 @@ impl Vm {
                                 let value = x.property_access(&property_key);
                                 if let Some(prop) = value {
                                     let bound_access =
-                                        BoundAccess::new(object.clone(), Box::new(prop));
+                                        BoundAccess::new(object_handle.clone(), Box::new(prop));
                                     self.push_to_stack(
                                         Value::BoundAccess(bound_access),
-                                        Some(object_val.to_string(self)),
+                                        Some(object.to_string(self)),
                                     );
                                 } else {
                                     return VMExecutionResult::terminate_with_errors(
                                         VMErrorType::Struct(StructError::FieldNotFound {
                                             field: property_key.to_string(),
-                                            struct_type: object_val.to_string(self),
+                                            struct_type: object.to_string(self),
                                         }),
                                         self,
                                     );
@@ -480,19 +485,20 @@ impl Vm {
                     self.pc += 1;
                     let args = self.get_function_call_args();
                     let callee_value = self.get_stack_values(&1);
-                    let ((caller_obj, caller_ref), callee_ref): (
-                        (&MemObject, HeapRef),
-                        Option<HeapRef>,
+                    let ((caller_obj, caller_handle), callee_handle): (
+                        (&MemObject, Handle),
+                        Option<Handle>,
                     ) = match callee_value[0].clone() {
-                        Value::HeapRef(_ref) => {
-                            let owned_ref = _ref.clone();
-                            ((self.resolve_heap_ref(_ref), owned_ref), None)
-                        }
+                        // Value::HeapRef(_ref) => {
+                        //     let owned_ref = _ref.clone();
+                        //     ((self.resolve_heap_ref(_ref), owned_ref), None)
+                        // }
+                        Value::Handle(handle) => ((self.memory.resolve(&handle), handle), None),
                         Value::BoundAccess(b) => {
-                            if let Value::HeapRef(callee_ref) = b.property.as_ref() {
+                            if let Value::Handle(callee_handle) = b.property.as_ref() {
                                 (
-                                    (self.resolve_heap_ref(b.object.clone()), b.object),
-                                    Some(callee_ref.clone()),
+                                    (self.memory.resolve(&b.object), b.object),
+                                    Some(callee_handle.clone()),
                                 )
                             } else {
                                 // nested bound accesses
@@ -533,15 +539,15 @@ impl Vm {
                                     };
 
                                     match value {
-                                        Value::HeapRef(v) => {
+                                        Value::Handle(v) => {
                                             // clone heap_object to be able to mutate the
                                             // vm state
-                                            let heap_object = self.resolve_heap_ref(v);
+                                            let heap_object = self.memory.resolve(&v);
                                             if let MemObject::Function(func) = heap_object {
                                                 let func = func.clone();
                                                 let exec_result = self.run_function(
                                                     &func,
-                                                    None,
+                                                    Some(caller_handle),
                                                     args.clone(),
                                                     debug,
                                                 );
@@ -581,18 +587,22 @@ impl Vm {
 
                         // FOR STRUCTS CALLABLE MEMBERS
                         MemObject::StructLiteral(caller) => {
-                            let callee_ref = if let Some(c) = callee_ref {
+                            let callee_handle = if let Some(c) = callee_handle {
                                 c
                             } else {
                                 // TODO: use self-vm error system
                                 panic!("callee is not defined for a struct as function caller")
                             };
 
-                            let callee = self.resolve_heap_ref(callee_ref);
+                            let callee = self.memory.resolve(&callee_handle);
                             if let MemObject::Function(func) = callee {
                                 let func = func.clone();
-                                let exec_result =
-                                    self.run_function(&func, Some(caller_ref), args.clone(), debug);
+                                let exec_result = self.run_function(
+                                    &func,
+                                    Some(caller_handle),
+                                    args.clone(),
+                                    debug,
+                                );
                                 if exec_result.error.is_some() {
                                     return VMExecutionResult::terminate_with_errors(
                                         exec_result.error.unwrap().error_type,
@@ -615,18 +625,19 @@ impl Vm {
 
                         // FOR NATIVE_STRUCTS CALLABLE MEMBERS
                         MemObject::NativeStruct(caller) => {
-                            let callee_ref = if let Some(c) = callee_ref {
+                            let callee_handle = if let Some(c) = callee_handle {
                                 c
                             } else {
                                 // TODO: use self-vm error system
                                 panic!("callee is not defined for a struct as function caller")
                             };
 
-                            let callee = self.resolve_heap_ref(callee_ref);
+                            let callee = self.memory.resolve(&callee_handle);
                             if let MemObject::Function(func) = callee {
                                 let func = func.clone();
                                 let exec_result =
-                                    self.run_function(&func, Some(caller_ref), args.clone(), debug);
+                                    // instead of none callee_handle
+                                    self.run_function(&func, Some(caller_handle), args.clone(), debug);
                                 if exec_result.error.is_some() {
                                     return VMExecutionResult::terminate_with_errors(
                                         exec_result.error.unwrap().error_type,
@@ -649,18 +660,22 @@ impl Vm {
 
                         // FOR VECTOR CALLABLE MEMBERS
                         MemObject::Vector(caller) => {
-                            let callee_ref = if let Some(c) = callee_ref {
+                            let callee_handle = if let Some(c) = callee_handle {
                                 c
                             } else {
                                 // TODO: use self-vm error system
                                 panic!("callee is not defined for a vec as a function caller")
                             };
 
-                            let callee = self.resolve_heap_ref(callee_ref);
+                            let callee = self.memory.resolve(&callee_handle);
                             if let MemObject::Function(func) = callee {
                                 let func = func.clone();
-                                let exec_result =
-                                    self.run_function(&func, Some(caller_ref), args.clone(), debug);
+                                let exec_result = self.run_function(
+                                    &func,
+                                    Some(caller_handle),
+                                    args.clone(),
+                                    debug,
+                                );
                                 if exec_result.error.is_some() {
                                     return VMExecutionResult::terminate_with_errors(
                                         exec_result.error.unwrap().error_type,
@@ -692,8 +707,8 @@ impl Vm {
                         Vm::read_offset(&self.bytecode[self.pc + 1..self.pc + 5]);
                     self.pc += 4;
 
-                    if let Value::HeapRef(obj) = module_name_value {
-                        let module_name = self.resolve_heap_ref(obj).to_string(self);
+                    if let Value::Handle(mod_handle) = module_name_value {
+                        let module_name = self.memory.resolve(&mod_handle).to_string(self);
                         let native_module = get_native_module_type(module_name.as_str());
                         // native module
                         if let Some(nm) = native_module {
@@ -701,18 +716,18 @@ impl Vm {
                             let module_def = generate_native_module(nm);
                             let mut module_fields = HashMap::new();
                             for field in module_def.1 {
-                                let field_ref = self.heap.allocate(field.1);
-                                module_fields.insert(field.0, Value::HeapRef(field_ref));
+                                let field_handle = self.memory.alloc(field.1);
+                                module_fields.insert(field.0, Value::Handle(field_handle));
                             }
 
                             // create the native module struct
                             let module_struct = StructLiteral::new(module_def.0, module_fields);
-                            let module_struct_ref =
-                                self.heap.allocate(MemObject::StructLiteral(module_struct));
+                            let module_struct_handle =
+                                self.memory.alloc(MemObject::StructLiteral(module_struct));
 
                             self.call_stack.put_to_frame(
                                 module_name.to_string(),
-                                Value::HeapRef(module_struct_ref),
+                                Value::Handle(module_struct_handle),
                             );
                         } else {
                             // custom module
@@ -724,7 +739,7 @@ impl Vm {
                                 [self.pc + 1..(self.pc + (mod_bytecode_length as usize)) + 1];
                             self.pc += mod_bytecode_length as usize;
                             // here we should generate a definition of the module
-                            // and push it onto the heap and add a HeapRef to the stack
+                            // and push it onto the heap and add a Handle to the stack
                             // --
                             let exec_result = self.run_module(
                                 &mod_name.to_string(),
@@ -737,9 +752,9 @@ impl Vm {
 
                             // if members exported, add them to the scope
                             if let Some(result) = exec_result.result {
-                                if let Value::HeapRef(r) = result {
+                                if let Value::Handle(r) = result {
                                     self.call_stack
-                                        .put_to_frame(mod_name.to_string(), Value::HeapRef(r));
+                                        .put_to_frame(mod_name.to_string(), Value::Handle(r));
                                 }
                             }
                         }
@@ -752,8 +767,8 @@ impl Vm {
                 }
                 Opcode::Export => {
                     let arg_ref = self.get_stack_values(&1)[0].clone();
-                    if let Value::HeapRef(r) = arg_ref.clone() {
-                        let arg = self.resolve_heap_ref(r);
+                    if let Value::Handle(r) = arg_ref.clone() {
+                        let arg = self.memory.resolve(&r);
                         if let MemObject::String(s) = arg {
                             if debug {
                                 println!("EXPORT -> {}", s)
@@ -1057,18 +1072,18 @@ impl Vm {
 
                 value = Value::RawValue(result_value);
             }
-            (Value::HeapRef(l), Value::HeapRef(r)) => {
+            (Value::Handle(l), Value::Handle(r)) => {
                 // here implement binary operations between different
-                // types once the HeapRef is resolved to the actual value
-                let l_heap_object = self.resolve_heap_ref(l);
-                let r_heap_object = self.resolve_heap_ref(r);
+                // types once the Handle is resolved to the actual value
+                let l_heap_object = self.memory.resolve(&l);
+                let r_heap_object = self.memory.resolve(&r);
 
                 let result_value = match (l_heap_object, r_heap_object) {
                     (MemObject::String(left_string), MemObject::String(right_string)) => {
                         match operator {
                             "+" => {
                                 let result_string = format!("{left_string}{right_string}");
-                                self.heap.allocate(MemObject::String(result_string))
+                                self.memory.alloc(MemObject::String(result_string))
                             }
                             _ => {
                                 return Some(VMErrorType::InvalidBinaryOperation(
@@ -1095,12 +1110,12 @@ impl Vm {
                     }
                 };
 
-                value = Value::HeapRef(result_value);
+                value = Value::Handle(result_value);
             }
-            (Value::HeapRef(_), Value::RawValue(_)) => {
+            (Value::Handle(_), Value::RawValue(_)) => {
                 return Some(VMErrorType::TypeCoercionError(right))
             }
-            (Value::RawValue(_), Value::HeapRef(_)) => {
+            (Value::RawValue(_), Value::Handle(_)) => {
                 return Some(VMErrorType::TypeCoercionError(right))
             }
             _ => {
@@ -1131,9 +1146,9 @@ impl Vm {
         if let Some(mut frame) = mod_frame {
             let exported_members = frame.get_exports();
             let exports_struct = StructLiteral::new(mod_name.to_string(), exported_members);
-            let exports_ref = self.heap.allocate(MemObject::StructLiteral(exports_struct));
+            let exports_handle = self.memory.alloc(MemObject::StructLiteral(exports_struct));
 
-            mod_exec_result.result = Some(Value::HeapRef(exports_ref));
+            mod_exec_result.result = Some(Value::Handle(exports_handle));
         }
         self.pc = return_pc;
         self.bytecode = main_bytecode;
@@ -1144,7 +1159,7 @@ impl Vm {
     pub fn run_function(
         &mut self,
         func: &Function,
-        caller: Option<HeapRef>,
+        caller: Option<Handle>,
         args: Vec<Value>,
         debug: bool,
     ) -> VMExecutionResult {
@@ -1202,30 +1217,6 @@ impl Vm {
         };
 
         return execution_result;
-    }
-
-    pub fn resolve_heap_ref(&self, address: HeapRef) -> &MemObject {
-        if let Some(addr) = self.heap.get(address) {
-            return addr;
-        } else {
-            panic!("ref is not defined in the heap")
-        }
-    }
-
-    pub fn resolve_heap_mut_ref(&mut self, address: HeapRef) -> &mut MemObject {
-        if let Some(addr) = self.heap.get_mut(address) {
-            return addr;
-        } else {
-            panic!("ref is not defined in the heap")
-        }
-    }
-
-    fn free_heap_ref(&mut self, address: HeapRef) -> MemObject {
-        if let Some(obj) = self.heap.free(address) {
-            return obj;
-        } else {
-            panic!("cannot free heap ref. ref is not defined in the heap")
-        }
     }
 
     fn get_value_length(&mut self) -> (DataType, Vec<u8>) {
@@ -1328,8 +1319,8 @@ impl Vm {
                     String::from_utf8(value.clone()).expect("Provided value is not valid UTF-8");
                 printable_value = value.to_string();
 
-                let value_ref = self.heap.allocate(MemObject::String(value));
-                Value::HeapRef(value_ref)
+                let value_handle = self.memory.alloc(MemObject::String(value));
+                Value::Handle(value_handle)
             }
             DataType::Vector => {
                 let elements_count_bytes = if value.len() >= 4 {
@@ -1349,8 +1340,8 @@ impl Vm {
                 vector::init_vector_members(&mut vector, &self);
                 printable_value = vector.to_string(self);
 
-                let value_ref = self.heap.allocate(MemObject::Vector(vector));
-                Value::HeapRef(value_ref)
+                let value_handle = self.memory.alloc(MemObject::Vector(vector));
+                Value::Handle(value_handle)
             }
             DataType::StructLiteral => {
                 let struct_type = self.get_stack_values(&1)[0].clone();
@@ -1370,14 +1361,14 @@ impl Vm {
                 let mut fields: HashMap<String, Value> = HashMap::new();
                 let flat_fields = self.get_stack_values(&(fields_count * 2));
                 for i in (0..fields_count * 2).step_by(2) {
-                    let field_name_ref = flat_fields[i as usize].clone();
+                    let field_name_handle = flat_fields[i as usize].clone();
                     let field_value = flat_fields[(i + 1) as usize].clone();
 
                     // this is because we're using the existent infra for utf8 values
                     // and they are a heap allocated value, but there is also infra to
                     // storing strings in the stack and not in the heap
-                    if let Value::HeapRef(field_ref) = field_name_ref {
-                        let field_name = self.free_heap_ref(field_ref);
+                    if let Value::Handle(field_handle) = field_name_handle {
+                        let field_name = self.memory.free(&field_handle);
                         if let MemObject::String(field_name) = field_name {
                             // add field with it's value to StructLiteral fields
                             fields.insert(field_name, field_value);
@@ -1387,21 +1378,12 @@ impl Vm {
                         }
                     } else {
                         // TODO: handle with self-vm errors system
-                        panic!("struct field_name must be a HeapRef of a string");
+                        panic!("struct field_name must be a Handle of a string");
                     };
                 }
 
                 let resolved_struct_type = match struct_type {
-                    Value::HeapRef(v) => {
-                        let resolved = self.heap.get(v);
-                        match resolved {
-                            Some(v) => v.to_string(self),
-                            None => {
-                                // TODO: use self-vm errors system
-                                panic!("test")
-                            }
-                        }
-                    }
+                    Value::Handle(v) => self.memory.resolve(&v),
                     Value::BoundAccess(_) => {
                         panic!("TODO: implement structs from bound acceses ")
                     }
@@ -1410,13 +1392,14 @@ impl Vm {
                         panic!("invalid struct type")
                     }
                 };
-                printable_value = resolved_struct_type.to_string();
+                printable_value = resolved_struct_type.to_string(self);
 
                 // here we should check if the struct exists and the each field
                 // before allocating it in the heap
-                let struct_literal = StructLiteral::new(resolved_struct_type, fields);
-                let value_ref = self.heap.allocate(MemObject::StructLiteral(struct_literal));
-                Value::HeapRef(value_ref)
+                let struct_literal =
+                    StructLiteral::new(resolved_struct_type.to_string(self), fields);
+                let value_handle = self.memory.alloc(MemObject::StructLiteral(struct_literal));
+                Value::Handle(value_handle)
             }
             DataType::Bool => {
                 if value.len() > 1 {
@@ -1499,7 +1482,7 @@ impl Vm {
         args
     }
 
-    pub fn get_handler(&self, handler: &str) -> Option<HeapRef> {
+    pub fn get_handler(&self, handler: &str) -> Option<Handle> {
         self.handlers.get(handler).cloned()
     }
     pub fn push_to_stack(&mut self, value: Value, origin: Option<String>) {

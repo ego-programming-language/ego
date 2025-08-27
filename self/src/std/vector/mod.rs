@@ -19,10 +19,10 @@ pub fn init_lib() -> Vec<(String, MemObject)> {
 pub fn init_vector_members(vector: &mut Vector, vm: &Vm) {
     let mut members = HashMap::new();
     if let Some(mem) = vm.get_handler("vector.len") {
-        members.insert("len".to_string(), Value::HeapRef(mem));
+        members.insert("len".to_string(), Value::Handle(mem));
     }
     if let Some(mem) = vm.get_handler("vector.map") {
-        members.insert("map".to_string(), Value::HeapRef(mem));
+        members.insert("map".to_string(), Value::Handle(mem));
     }
 
     vector.init_vector_members(members);

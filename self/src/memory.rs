@@ -40,11 +40,32 @@ impl MemoryManager {
         }
     }
 
-    pub fn resolve(&self, handle: Handle) -> Option<&MemObject> {
+    pub fn free(&mut self, handle: &Handle) -> MemObject {
+        todo!()
+    }
+
+    pub fn resolve(&self, handle: &Handle) -> &MemObject {
         let real_pointer = self.table.get(&handle.pointer);
         if let Some(rp) = real_pointer {
             match rp {
-                PointerType::HeapPointer(p) => self.heap.get(p.clone()),
+                PointerType::HeapPointer(p) => match self.heap.get(p.clone()) {
+                    Some(v) => v,
+                    None => panic!("handle pointer does not exist in memory table"),
+                },
+            }
+        } else {
+            panic!("handle pointer does not exist in memory table")
+        }
+    }
+
+    pub fn resolve_mut(&mut self, handle: &Handle) -> &mut MemObject {
+        let real_pointer = self.table.get(&handle.pointer);
+        if let Some(rp) = real_pointer {
+            match rp {
+                PointerType::HeapPointer(p) => match self.heap.get_mut(p.clone()) {
+                    Some(v) => v,
+                    None => panic!("handle pointer does not exist in memory table"),
+                },
             }
         } else {
             panic!("handle pointer does not exist in memory table")

@@ -13,8 +13,7 @@ use serde_json::Value as SValue;
 
 use crate::{
     core::error::{self, action_errors::ActionError, ai_errors::AIError, VMError, VMErrorType},
-    heap::HeapRef,
-    memory::MemObject,
+    memory::{Handle, MemObject},
     std::{
         ai::{
             prompts::{do_prompt, infer_prompt},
@@ -83,7 +82,7 @@ struct AIAction {
 
 pub fn infer(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
@@ -132,7 +131,7 @@ pub fn infer(
 
 pub fn do_fn(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
@@ -189,7 +188,7 @@ pub fn do_fn(
     // native module import executed the generic code
     // to have things on scope, like, exec function.
     let exec_fn = Function::new("exec".to_string(), vec![], Engine::Native(exec));
-    let exec_ref = vm.heap.allocate(MemObject::Function(exec_fn));
+    let exec_ref = vm.memory.alloc(MemObject::Function(exec_fn));
 
     let actions: Vec<Action> = instructions
         .iter()
@@ -219,31 +218,29 @@ pub fn do_fn(
 
     let mut actions_ref = vec![];
     for action in actions {
-        actions_ref
-            .push(Value::HeapRef(vm.heap.allocate(MemObject::NativeStruct(
-                NativeStruct::Action(action),
-            ))));
+        actions_ref.push(Value::Handle(
+            vm.memory
+                .alloc(MemObject::NativeStruct(NativeStruct::Action(action))),
+        ));
     }
 
     // store all actions ref in a vector and return the
     // vector allocated heap ref
     let mut vector = Vector::new(actions_ref);
     vector::init_vector_members(&mut vector, vm);
-    let vector_ref = vm.heap.allocate(MemObject::Vector(vector));
-    return Ok(Value::HeapRef(vector_ref));
+    let vector_handle = vm.memory.alloc(MemObject::Vector(vector));
+    return Ok(Value::Handle(vector_handle));
 }
 
 pub fn exec(
     vm: &mut Vm,
-    _self: Option<HeapRef>,
+    _self: Option<Handle>,
     params: Vec<Value>,
     debug: bool,
 ) -> Result<Value, VMError> {
     // resolve 'self'
     let (_self, _self_ref) = if let Some(_this) = _self {
-        if let MemObject::NativeStruct(NativeStruct::Action(ns)) =
-            vm.resolve_heap_ref(_this.clone())
-        {
+        if let MemObject::NativeStruct(NativeStruct::Action(ns)) = vm.memory.resolve(&_this) {
             (ns, _this)
         } else {
             unreachable!()
