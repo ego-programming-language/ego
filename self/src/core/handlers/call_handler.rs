@@ -1,7 +1,5 @@
 use std::process::Command;
 
-use crate::types::Value;
-
 use super::foreign_handlers::ForeignHandlers;
 
 pub fn call_handler(foreign_handlers: &ForeignHandlers, args: Vec<String>) {

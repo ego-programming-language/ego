@@ -50,14 +50,17 @@ impl Instruction {
     pub fn get_type(&self) -> String {
         match self {
             Instruction::Zero => "Zero".to_string(),
-            Instruction::LoadConst { data_type, value } => "LoadConst".to_string(),
+            Instruction::LoadConst {
+                data_type: _,
+                value: _,
+            } => "LoadConst".to_string(),
             Instruction::LoadVar {
-                data_type,
-                identifier,
+                data_type: _,
+                identifier: _,
             } => "LoadVar".to_string(),
             Instruction::StoreVar {
-                identifier,
-                mutable,
+                identifier: _,
+                mutable: _,
             } => "StoreVar".to_string(),
             Instruction::JumpIfFalse => "JumpIfFalse".to_string(),
             Instruction::Jump => "Jump".to_string(),
@@ -69,13 +72,16 @@ impl Instruction {
             Instruction::LessThan => "LessThan".to_string(),
             Instruction::Equals => "Equals".to_string(),
             Instruction::NotEquals => "NotEquals".to_string(),
-            Instruction::FuncDec { identifier } => "FuncDec".to_string(),
-            Instruction::StructDec { identifier, fields } => "StructDec".to_string(),
+            Instruction::FuncDec { identifier: _ } => "FuncDec".to_string(),
+            Instruction::StructDec {
+                identifier: _,
+                fields: _,
+            } => "StructDec".to_string(),
             Instruction::GetProperty => "GetProperty".to_string(),
-            Instruction::Print { number_of_args } => "Print".to_string(),
-            Instruction::Println { number_of_args } => "Println".to_string(),
+            Instruction::Print { number_of_args: _ } => "Print".to_string(),
+            Instruction::Println { number_of_args: _ } => "Println".to_string(),
             Instruction::Call => "Call".to_string(),
-            Instruction::FFI_Call { number_of_args } => "FFI_Call".to_string(),
+            Instruction::FFI_Call { number_of_args: _ } => "FFI_Call".to_string(),
             Instruction::Unknown => "Unknown".to_string(),
         }
     }

@@ -1,15 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{
-    core::error::VMError,
-    heap::HeapRef,
-    memory::MemObject,
-    types::{
-        raw::{u32::U32, RawValue},
-        Value,
-    },
-    vm::Vm,
-};
+use crate::{types::Value, vm::Vm};
 
 #[derive(Debug, Clone)]
 pub struct Vector {

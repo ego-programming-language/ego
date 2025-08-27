@@ -1,6 +1,6 @@
-use std::{env, vec};
+use std::env;
 
-use reqwest::{blocking::Client, blocking::Response};
+use reqwest::blocking::Response;
 use serde::{Deserialize, Serialize};
 
 use crate::core::error::{ai_errors::AIError, VMErrorType};

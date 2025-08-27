@@ -4,7 +4,7 @@ use std::net::TcpStream;
 
 use crate::core::error::net_errors::NetErrors;
 use crate::core::error::{self, VMErrorType};
-use crate::heap::{self, HeapRef};
+use crate::heap::HeapRef;
 use crate::std::net::types::{NetStream, StreamKind};
 use crate::std::net::utils::tls;
 use crate::types::object::native_struct::NativeStruct;

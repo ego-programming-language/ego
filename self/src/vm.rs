@@ -14,7 +14,6 @@ use crate::opcodes::Opcode;
 use crate::std::bootstrap_default_lib;
 use crate::std::vector;
 use crate::std::{generate_native_module, get_native_module_type};
-use crate::translator::Translator;
 use crate::types::object::func::Engine;
 use crate::types::object::func::Function;
 use crate::types::object::structs::StructDeclaration;
@@ -22,7 +21,7 @@ use crate::types::object::structs::StructLiteral;
 use crate::types::object::vector::Vector;
 use crate::types::object::BoundAccess;
 use crate::types::raw::RawValue;
-use crate::types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64, utf8::Utf8};
+use crate::types::raw::{bool::Bool, f64::F64, i32::I32, i64::I64, u32::U32, u64::U64};
 use crate::utils::foreign_handlers_utils::get_foreign_handlers;
 use std::collections::HashMap;
 use std::path::Path;
@@ -1387,7 +1386,7 @@ impl Vm {
                             }
                         }
                     }
-                    Value::BoundAccess(v) => {
+                    Value::BoundAccess(_) => {
                         panic!("TODO: implement structs from bound acceses ")
                     }
                     _ => {

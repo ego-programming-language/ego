@@ -8,7 +8,6 @@ PROVIDER.
 
 use std::env;
 
-use regex::Regex;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

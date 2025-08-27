@@ -232,14 +232,14 @@ impl Translator {
                 }
 
                 let value_bytes = &t.bytecode[t.pc + 1..t.pc + 5];
-                let number_of_args = u32::from_le_bytes(
+                let _ = u32::from_le_bytes(
                     value_bytes.try_into().expect("Provided value is incorrect"),
                 );
                 t.pc += 4;
 
                 // identifier
                 t.pc += 1;
-                let (data_type, value_bytes) = t.get_value_length();
+                let (_, _) = t.get_value_length();
 
                 (Instruction::Call, pc.abs_diff(t.pc))
             }
@@ -265,14 +265,17 @@ impl Translator {
 
     pub fn get_instruction_info(instruction: &Instruction) -> String {
         match instruction {
-            Instruction::LoadConst { data_type, value } => data_type.as_str().to_string(),
+            Instruction::LoadConst {
+                data_type,
+                value: _,
+            } => data_type.as_str().to_string(),
             Instruction::LoadVar {
                 data_type,
-                identifier,
+                identifier: _,
             } => data_type.as_str().to_string(),
             Instruction::StoreVar {
                 identifier,
-                mutable,
+                mutable: _,
             } => identifier.to_string(),
             Instruction::Print { number_of_args } => number_of_args.to_string(),
             Instruction::Println { number_of_args } => number_of_args.to_string(),

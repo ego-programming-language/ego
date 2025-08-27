@@ -1,8 +1,4 @@
-use crate::{
-    memory::MemObject,
-    types::object::func::{Engine, Function},
-    vm::Vm,
-};
+use crate::memory::MemObject;
 
 pub mod ai;
 pub mod env;
