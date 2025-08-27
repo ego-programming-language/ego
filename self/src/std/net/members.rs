@@ -44,9 +44,10 @@ fn write(
     if let Ok(bytes) = write_result {
         Ok(Value::RawValue(RawValue::U64(U64::new(bytes as u64))))
     } else {
-        Err(error::throw(VMErrorType::Net(NetErrors::WriteError(
-            _self.host.to_string(),
-        ))))
+        Err(error::throw(
+            VMErrorType::Net(NetErrors::WriteError(_self.host.to_string())),
+            vm,
+        ))
     }
 }
 
@@ -73,9 +74,10 @@ fn read(
     let bytes_count = if let Ok(bytes_count) = read_result {
         bytes_count
     } else {
-        return Err(error::throw(VMErrorType::Net(NetErrors::ReadError(
-            _self.host.to_string(),
-        ))));
+        return Err(error::throw(
+            VMErrorType::Net(NetErrors::ReadError(_self.host.to_string())),
+            vm,
+        ));
     };
     let read_obj = MemObject::String(String::from_utf8_lossy(&buffer[..bytes_count]).to_string());
     Ok(Value::HeapRef(vm.heap.allocate(read_obj)))
@@ -99,17 +101,19 @@ pub fn connect(
         if let Ok(_stream) = tls_stream {
             StreamKind::Tls(_stream)
         } else {
-            return Err(error::throw(VMErrorType::Net(NetErrors::NetConnectError(
-                format!("host {}", host),
-            ))));
+            return Err(error::throw(
+                VMErrorType::Net(NetErrors::NetConnectError(format!("host {}", host))),
+                vm,
+            ));
         }
     } else {
         if let Ok(stream) = TcpStream::connect(host.clone()) {
             StreamKind::Plain(stream)
         } else {
-            return Err(error::throw(VMErrorType::Net(NetErrors::NetConnectError(
-                format!("host {}", host),
-            ))));
+            return Err(error::throw(
+                VMErrorType::Net(NetErrors::NetConnectError(format!("host {}", host))),
+                vm,
+            ));
         }
     };
 

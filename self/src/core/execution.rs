@@ -1,4 +1,4 @@
-use crate::types::Value;
+use crate::{types::Value, vm::Vm};
 
 use super::error::{throw, VMError, VMErrorType};
 
@@ -20,9 +20,9 @@ impl VMExecutionResult {
         }
     }
 
-    pub fn terminate_with_errors(error_type: VMErrorType) -> VMExecutionResult {
+    pub fn terminate_with_errors(error_type: VMErrorType, vm: &Vm) -> VMExecutionResult {
         VMExecutionResult {
-            error: Some(throw(error_type)),
+            error: Some(throw(error_type, vm)),
             result: None,
         }
     }

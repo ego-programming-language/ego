@@ -21,20 +21,7 @@ impl Vector {
     }
 
     pub fn to_string(&self, vm: &Vm) -> String {
-        let elements: Vec<String> = self
-            .elements
-            .iter()
-            .map(|ele| match ele {
-                Value::RawValue(v) => v.to_string(),
-                Value::HeapRef(v) => vm.resolve_heap_ref(v.clone()).to_string(vm),
-                Value::BoundAccess(_) => {
-                    panic!("to string not implemented for BoundAccess element on vector");
-                }
-                Value::Handle(_) => {
-                    panic!("to string not implemented for BoundAccess element on vector");
-                }
-            })
-            .collect();
+        let elements: Vec<String> = self.elements.iter().map(|ele| ele.to_string(vm)).collect();
         format!("{:#?}", elements)
     }
 

@@ -22,14 +22,16 @@ fn get_cwd(
                 }
                 Ok(Value::HeapRef(put_string(vm, path.to_string())))
             } else {
-                Err(error::throw(VMErrorType::Os(OsError::__placeholder(
-                    "non utf8 path".to_string(),
-                ))))
+                Err(error::throw(
+                    VMErrorType::Os(OsError::__placeholder("non utf8 path".to_string())),
+                    vm,
+                ))
             }
         }
-        Err(e) => Err(error::throw(VMErrorType::Os(OsError::__placeholder(
-            e.to_string(),
-        )))),
+        Err(e) => Err(error::throw(
+            VMErrorType::Os(OsError::__placeholder(e.to_string())),
+            vm,
+        )),
     }
 }
 

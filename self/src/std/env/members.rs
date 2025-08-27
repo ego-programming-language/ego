@@ -27,12 +27,13 @@ pub fn set(
     debug: bool,
 ) -> Result<Value, VMError> {
     if params.len() < 2 {
-        return Err(error::throw(VMErrorType::TypeError(
-            TypeError::InvalidArgsCount {
+        return Err(error::throw(
+            VMErrorType::TypeError(TypeError::InvalidArgsCount {
                 expected: 2,
                 received: params.len() as u32,
-            },
-        )));
+            }),
+            vm,
+        ));
     }
 
     let key = &params[0].as_string_obj(vm)?;
@@ -61,12 +62,13 @@ pub fn get(
     debug: bool,
 ) -> Result<Value, VMError> {
     if params.len() < 1 {
-        return Err(error::throw(VMErrorType::TypeError(
-            TypeError::InvalidArgsCount {
+        return Err(error::throw(
+            VMErrorType::TypeError(TypeError::InvalidArgsCount {
                 expected: 1,
                 received: params.len() as u32,
-            },
-        )));
+            }),
+            vm,
+        ));
     }
 
     let key = &params[0].as_string_obj(vm)?;

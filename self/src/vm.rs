@@ -132,6 +132,7 @@ impl Vm {
                     } else {
                         return VMExecutionResult::terminate_with_errors(
                             VMErrorType::UndeclaredIdentifierError(identifier_name),
+                            self,
                         );
                     }
 
@@ -167,7 +168,7 @@ impl Vm {
                     let stack_stored_value = self.operand_stack.pop();
                     if let Some(v) = stack_stored_value {
                         let datatype = v.value.get_type();
-                        let printable_value = v.value.to_string();
+                        let printable_value = v.value.to_string(self);
                         self.call_stack
                             .put_to_frame(identifier_name.clone(), v.value);
                         if debug {
@@ -233,7 +234,7 @@ impl Vm {
                     for val in args {
                         match self.value_to_string(val) {
                             Ok(v) => resolved_args.push(v),
-                            Err(e) => return VMExecutionResult::terminate_with_errors(e),
+                            Err(e) => return VMExecutionResult::terminate_with_errors(e, self),
                         }
                     }
                     print_handler(resolved_args, debug, false);
@@ -245,7 +246,7 @@ impl Vm {
                     for val in args {
                         match self.value_to_string(val) {
                             Ok(v) => resolved_args.push(v),
-                            Err(e) => return VMExecutionResult::terminate_with_errors(e),
+                            Err(e) => return VMExecutionResult::terminate_with_errors(e, self),
                         }
                     }
                     print_handler(resolved_args, debug, true);
@@ -422,6 +423,7 @@ impl Vm {
                                             field: property_key.to_string(),
                                             struct_type: object_val.to_string(self),
                                         }),
+                                        self,
                                     );
                                 }
                             }
@@ -440,6 +442,7 @@ impl Vm {
                                             field: property_key.to_string(),
                                             struct_type: object_val.to_string(self),
                                         }),
+                                        self,
                                     );
                                 }
                             }
@@ -458,6 +461,7 @@ impl Vm {
                                             field: property_key.to_string(),
                                             struct_type: object_val.to_string(self),
                                         }),
+                                        self,
                                     );
                                 }
                             }
@@ -524,6 +528,7 @@ impl Vm {
                                             VMErrorType::UndeclaredIdentifierError(
                                                 identifier_name.clone(),
                                             ),
+                                            self,
                                         );
                                     };
 
@@ -543,6 +548,7 @@ impl Vm {
                                                 if exec_result.error.is_some() {
                                                     return VMExecutionResult::terminate_with_errors(
                                                                 exec_result.error.unwrap().error_type,
+                                                                self
                                                             );
                                                 }
                                                 if let Some(returned_value) = &exec_result.result {
@@ -556,6 +562,7 @@ impl Vm {
                                                     VMErrorType::NotCallableError(
                                                         identifier_name.clone(),
                                                     ),
+                                                    self,
                                                 );
                                             }
                                         }
@@ -564,6 +571,7 @@ impl Vm {
                                                 VMErrorType::NotCallableError(
                                                     identifier_name.clone(),
                                                 ),
+                                                self,
                                             );
                                         }
                                     }
@@ -588,6 +596,7 @@ impl Vm {
                                 if exec_result.error.is_some() {
                                     return VMExecutionResult::terminate_with_errors(
                                         exec_result.error.unwrap().error_type,
+                                        self,
                                     );
                                 }
                                 if let Some(returned_value) = &exec_result.result {
@@ -599,6 +608,7 @@ impl Vm {
                             } else {
                                 return VMExecutionResult::terminate_with_errors(
                                     VMErrorType::NotCallableError(caller.struct_type.clone()),
+                                    self,
                                 );
                             }
                         }
@@ -620,6 +630,7 @@ impl Vm {
                                 if exec_result.error.is_some() {
                                     return VMExecutionResult::terminate_with_errors(
                                         exec_result.error.unwrap().error_type,
+                                        self,
                                     );
                                 }
                                 if let Some(returned_value) = &exec_result.result {
@@ -631,6 +642,7 @@ impl Vm {
                             } else {
                                 return VMExecutionResult::terminate_with_errors(
                                     VMErrorType::NotCallableError(caller.to_string()),
+                                    self,
                                 );
                             }
                         }
@@ -652,6 +664,7 @@ impl Vm {
                                 if exec_result.error.is_some() {
                                     return VMExecutionResult::terminate_with_errors(
                                         exec_result.error.unwrap().error_type,
+                                        self,
                                     );
                                 }
                                 if let Some(returned_value) = &exec_result.result {
@@ -663,6 +676,7 @@ impl Vm {
                             } else {
                                 return VMExecutionResult::terminate_with_errors(
                                     VMErrorType::NotCallableError(caller.to_string(self)),
+                                    self,
                                 );
                             }
                         }
@@ -748,11 +762,13 @@ impl Vm {
                         } else {
                             return VMExecutionResult::terminate_with_errors(
                                 VMErrorType::ExportInvalidMemberType,
+                                self,
                             );
                         }
                     } else {
                         return VMExecutionResult::terminate_with_errors(
                             VMErrorType::ExportInvalidMemberType,
+                            self,
                         );
                     }
                     self.pc += 1;
@@ -774,7 +790,7 @@ impl Vm {
 
                     let error = self.run_binary_expression("+", operands_stack_values);
                     if let Some(err) = error {
-                        return VMExecutionResult::terminate_with_errors(err);
+                        return VMExecutionResult::terminate_with_errors(err, self);
                     }
 
                     self.pc += 1;
@@ -792,7 +808,7 @@ impl Vm {
 
                     let error = self.run_binary_expression("-", operands_stack_values);
                     if let Some(err) = error {
-                        return VMExecutionResult::terminate_with_errors(err);
+                        return VMExecutionResult::terminate_with_errors(err, self);
                     }
 
                     self.pc += 1;
@@ -810,7 +826,7 @@ impl Vm {
 
                     let error = self.run_binary_expression("*", operands_stack_values);
                     if let Some(err) = error {
-                        return VMExecutionResult::terminate_with_errors(err);
+                        return VMExecutionResult::terminate_with_errors(err, self);
                     }
 
                     self.pc += 1;
@@ -828,7 +844,7 @@ impl Vm {
 
                     let error = self.run_binary_expression("/", operands_stack_values);
                     if let Some(err) = error {
-                        return VMExecutionResult::terminate_with_errors(err);
+                        return VMExecutionResult::terminate_with_errors(err, self);
                     }
 
                     self.pc += 1;
@@ -846,7 +862,7 @@ impl Vm {
 
                     let error = self.run_binary_expression(">", operands_stack_values);
                     if let Some(err) = error {
-                        return VMExecutionResult::terminate_with_errors(err);
+                        return VMExecutionResult::terminate_with_errors(err, self);
                     }
 
                     self.pc += 1;
@@ -864,7 +880,7 @@ impl Vm {
 
                     let error = self.run_binary_expression("<", operands_stack_values);
                     if let Some(err) = error {
-                        return VMExecutionResult::terminate_with_errors(err);
+                        return VMExecutionResult::terminate_with_errors(err, self);
                     }
 
                     self.pc += 1;
@@ -882,7 +898,7 @@ impl Vm {
 
                     let error = self.run_binary_expression("==", operands_stack_values);
                     if let Some(err) = error {
-                        return VMExecutionResult::terminate_with_errors(err);
+                        return VMExecutionResult::terminate_with_errors(err, self);
                     }
 
                     self.pc += 1;
@@ -900,7 +916,7 @@ impl Vm {
 
                     let error = self.run_binary_expression("!=", operands_stack_values);
                     if let Some(err) = error {
-                        return VMExecutionResult::terminate_with_errors(err);
+                        return VMExecutionResult::terminate_with_errors(err, self);
                     }
 
                     self.pc += 1;
@@ -912,7 +928,7 @@ impl Vm {
                     for val in args {
                         match self.value_to_string(val) {
                             Ok(v) => resolved_args.push(v),
-                            Err(e) => return VMExecutionResult::terminate_with_errors(e),
+                            Err(e) => return VMExecutionResult::terminate_with_errors(e, self),
                         }
                     }
                     if debug {
@@ -1429,23 +1445,7 @@ impl Vm {
     }
 
     fn value_to_string(&mut self, value: Value) -> Result<String, VMErrorType> {
-        match value {
-            Value::RawValue(x) => Ok(x.to_string()),
-            Value::HeapRef(x) => match self.heap.get(x) {
-                Some(x) => Ok(x.to_string(self)),
-                None => {
-                    // identifier not defined
-                    //Err(VMErrorType::Iden)
-                    panic!("idenifier not defined")
-                }
-            },
-            Value::BoundAccess(x) => {
-                panic!("BoundAccess cannot be represented as a string value")
-            }
-            Value::Handle(x) => {
-                panic!("Handle cannot be represented as a string value")
-            }
-        }
+        Ok(value.to_string(self))
     }
 
     fn values_to_string(&mut self, args: Vec<Value>) -> Result<Vec<String>, VMErrorType> {

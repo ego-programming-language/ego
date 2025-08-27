@@ -46,23 +46,24 @@ pub fn read_file(
     let path = params[0].as_string_obj(vm)?;
     let path_obj = Path::new(&path);
     if !path_obj.exists() {
-        return Err(error::throw(VMErrorType::Fs(FsError::FileNotFound(
-            format!("{}", path),
-        ))));
+        return Err(error::throw(
+            VMErrorType::Fs(FsError::FileNotFound(format!("{}", path))),
+            vm,
+        ));
     }
     if !path_obj.is_file() {
-        return Err(error::throw(VMErrorType::Fs(FsError::NotAFile(format!(
-            "{}",
-            path
-        )))));
+        return Err(error::throw(
+            VMErrorType::Fs(FsError::NotAFile(format!("{}", path))),
+            vm,
+        ));
     }
 
     match fs::read_to_string(path_obj) {
         Ok(content) => Ok(Value::HeapRef(put_string(vm, content))),
-        Err(_) => Err(error::throw(VMErrorType::Fs(FsError::ReadError(format!(
-            "{}",
-            path
-        ))))),
+        Err(_) => Err(error::throw(
+            VMErrorType::Fs(FsError::ReadError(format!("{}", path))),
+            vm,
+        )),
     }
 }
 
@@ -98,12 +99,13 @@ pub fn write_file(
     debug: bool,
 ) -> Result<Value, VMError> {
     if params.len() < 2 {
-        return Err(error::throw(VMErrorType::TypeError(
-            TypeError::InvalidArgsCount {
+        return Err(error::throw(
+            VMErrorType::TypeError(TypeError::InvalidArgsCount {
                 expected: 2,
                 received: params.len() as u32,
-            },
-        )));
+            }),
+            vm,
+        ));
     }
 
     let path = &params[0].as_string_obj(vm)?;
@@ -113,10 +115,13 @@ pub fn write_file(
         match param2 {
             Value::RawValue(RawValue::Bool(b)) => b.value,
             _ => {
-                return Err(error::throw(VMErrorType::TypeMismatch {
-                    expected: "bool".to_string(),
-                    received: param2.get_type(),
-                }))
+                return Err(error::throw(
+                    VMErrorType::TypeMismatch {
+                        expected: "bool".to_string(),
+                        received: param2.get_type(),
+                    },
+                    vm,
+                ))
             }
         }
     } else {
@@ -126,9 +131,10 @@ pub fn write_file(
     let path_obj = Path::new(path);
 
     if !path_obj.exists() && !overwrite_or_create {
-        return Err(error::throw(VMErrorType::Fs(FsError::FileNotFound(
-            path.to_string(),
-        ))));
+        return Err(error::throw(
+            VMErrorType::Fs(FsError::FileNotFound(path.to_string())),
+            vm,
+        ));
     }
 
     let file = if overwrite_or_create {
@@ -148,17 +154,19 @@ pub fn write_file(
                 Ok(_) => Ok(Value::RawValue(RawValue::Bool(Bool::new(true)))),
                 Err(err) => {
                     println!("err{:#?}", err);
-                    Err(error::throw(VMErrorType::Fs(FsError::WriteError(
-                        path.to_string(),
-                    ))))
+                    Err(error::throw(
+                        VMErrorType::Fs(FsError::WriteError(path.to_string())),
+                        vm,
+                    ))
                 }
             }
         }
         Err(err) => {
             println!("err{:#?}", err);
-            Err(error::throw(VMErrorType::Fs(FsError::WriteError(
-                path.to_string(),
-            ))))
+            Err(error::throw(
+                VMErrorType::Fs(FsError::WriteError(path.to_string())),
+                vm,
+            ))
         }
     }
 }
@@ -190,12 +198,13 @@ pub fn delete(
     debug: bool,
 ) -> Result<Value, VMError> {
     if params.len() < 1 {
-        return Err(error::throw(VMErrorType::TypeError(
-            TypeError::InvalidArgsCount {
+        return Err(error::throw(
+            VMErrorType::TypeError(TypeError::InvalidArgsCount {
                 expected: 1,
                 received: params.len() as u32,
-            },
-        )));
+            }),
+            vm,
+        ));
     }
 
     let path = &params[0].as_string_obj(vm)?;
@@ -207,9 +216,10 @@ pub fn delete(
 
     let path_obj = Path::new(path);
     if !path_obj.exists() {
-        return Err(error::throw(VMErrorType::Fs(FsError::FileNotFound(
-            path.to_string(),
-        ))));
+        return Err(error::throw(
+            VMErrorType::Fs(FsError::FileNotFound(path.to_string())),
+            vm,
+        ));
     }
 
     let op_result = if remove_recursively {
@@ -220,8 +230,9 @@ pub fn delete(
 
     match op_result {
         Ok(_) => Ok(Value::RawValue(RawValue::Bool(Bool::new(true)))),
-        Err(_) => Err(error::throw(VMErrorType::Fs(FsError::DeleteError(
-            path.to_string(),
-        )))),
+        Err(_) => Err(error::throw(
+            VMErrorType::Fs(FsError::DeleteError(path.to_string())),
+            vm,
+        )),
     }
 }

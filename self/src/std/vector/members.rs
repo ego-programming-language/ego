@@ -68,12 +68,13 @@ fn map(
 
     let callback = params[0].as_function_obj(vm)?;
     if callback.parameters.len() < 1 {
-        return Err(error::throw(VMErrorType::TypeError(
-            TypeError::InvalidArgsCount {
+        return Err(error::throw(
+            VMErrorType::TypeError(TypeError::InvalidArgsCount {
                 expected: 1,
                 received: 0,
-            },
-        )));
+            }),
+            vm,
+        ));
     }
 
     for ele in &_self.elements {

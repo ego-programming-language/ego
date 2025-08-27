@@ -103,15 +103,16 @@ pub fn infer(
     let res = match res {
         Ok(r) => r,
         Err(vm_err) => {
-            return Err(error::throw(vm_err));
+            return Err(error::throw(vm_err, vm));
         }
     };
 
     if !res.status().is_success() {
         println!("AI (FAILED) -> {}", res.status());
-        return Err(error::throw(VMErrorType::AI(AIError::AIFetchError(
-            res.status().to_string(),
-        ))));
+        return Err(error::throw(
+            VMErrorType::AI(AIError::AIFetchError(res.status().to_string())),
+            vm,
+        ));
     }
 
     let response: ChatResponse = res.json().expect("AI: Failed to parse response");
@@ -154,15 +155,16 @@ pub fn do_fn(
     let res = match res {
         Ok(r) => r,
         Err(vm_err) => {
-            return Err(error::throw(vm_err));
+            return Err(error::throw(vm_err, vm));
         }
     };
 
     if !res.status().is_success() {
         println!("AI.DO (FAILED) -> {}", res.status());
-        return Err(error::throw(VMErrorType::AI(AIError::AIFetchError(
-            res.status().to_string(),
-        ))));
+        return Err(error::throw(
+            VMErrorType::AI(AIError::AIFetchError(res.status().to_string())),
+            vm,
+        ));
     }
 
     let response: ChatResponse = res.json().expect("AI.DO: Failed to parse response");
@@ -256,21 +258,23 @@ pub fn exec(
     let native_module_type = if let Some(nmt) = get_native_module_type(&_self.module) {
         nmt
     } else {
-        return Err(error::throw(VMErrorType::Action(
-            ActionError::InvalidModule(_self.module.clone()),
-        )));
+        return Err(error::throw(
+            VMErrorType::Action(ActionError::InvalidModule(_self.module.clone())),
+            vm,
+        ));
     };
     let native_module = generate_native_module(native_module_type);
     let fields = native_module.1;
     let member = if let Some(member) = fields.iter().find(|m| m.0 == _self.member) {
         member
     } else {
-        return Err(error::throw(VMErrorType::Action(
-            ActionError::InvalidMember {
+        return Err(error::throw(
+            VMErrorType::Action(ActionError::InvalidMember {
                 module: _self.module.clone(),
                 member: _self.member.clone(),
-            },
-        )));
+            }),
+            vm,
+        ));
     };
 
     match &member.1 {

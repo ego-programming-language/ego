@@ -13,6 +13,7 @@ use crate::{
     },
     opcodes::DataType,
     stack::OperandsStackValue,
+    vm::Vm,
 };
 
 pub enum VMErrorType {
@@ -39,13 +40,13 @@ pub struct VMError {
     pub semantic_message: String,
 }
 
-pub fn throw(error_type: VMErrorType) -> VMError {
+pub fn throw(error_type: VMErrorType, vm: &Vm) -> VMError {
     let error = match &error_type {
         VMErrorType::TypeCoercionError(v) => {
             let source = if let Some(origin) = &v.origin {
                 origin
             } else {
-                &v.value.to_string()
+                &v.value.to_string(vm)
             };
             (
                 "Type coercion error".to_string(),
@@ -73,7 +74,7 @@ pub fn throw(error_type: VMErrorType) -> VMError {
             let source = if let Some(origin) = &v.origin {
                 origin
             } else {
-                &v.value.to_string()
+                &v.value.to_string(vm)
             };
 
             (
