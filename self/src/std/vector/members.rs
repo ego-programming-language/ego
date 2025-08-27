@@ -92,6 +92,18 @@ fn map(
                 received: "bound_access".to_string(),
             }));
         }
+        Value::Handle(_) => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "function".to_string(),
+                received: "handle".to_string(),
+            }));
+        }
+        _ => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "function".to_string(),
+                received: "unknown_type".to_string(),
+            }));
+        }
     };
 
     if callback.parameters.len() < 1 {

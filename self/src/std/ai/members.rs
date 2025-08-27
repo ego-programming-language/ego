@@ -114,6 +114,12 @@ pub fn infer(
                 received: "bound_access".to_string(),
             }));
         }
+        Value::Handle(_) => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: "bound_access".to_string(),
+            }));
+        }
     };
     let context_ref = params[1].clone();
     let context = match context_ref {
@@ -140,6 +146,12 @@ pub fn infer(
             return Err(error::throw(VMErrorType::TypeMismatch {
                 expected: "string".to_string(),
                 received: "bound_access".to_string(),
+            }));
+        }
+        Value::Handle(_) => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: "handle".to_string(),
             }));
         }
     };
@@ -212,6 +224,12 @@ pub fn do_fn(
             return Err(error::throw(VMErrorType::TypeMismatch {
                 expected: "string".to_string(),
                 received: "bound_access".to_string(),
+            }));
+        }
+        Value::Handle(_) => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: "handle".to_string(),
             }));
         }
     };

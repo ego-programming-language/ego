@@ -137,6 +137,12 @@ pub fn connect(
                 received: "bound_access".to_string(),
             }));
         }
+        Value::Handle(r) => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: "handle".to_string(),
+            }));
+        }
     };
 
     let use_tls = if let Some(second) = params.get(1) {

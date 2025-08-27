@@ -27,7 +27,10 @@ impl Vector {
             .map(|ele| match ele {
                 Value::RawValue(v) => v.to_string(),
                 Value::HeapRef(v) => vm.resolve_heap_ref(v.clone()).to_string(vm),
-                Value::BoundAccess(v) => {
+                Value::BoundAccess(_) => {
+                    panic!("to string not implemented for BoundAccess element on vector");
+                }
+                Value::Handle(_) => {
                     panic!("to string not implemented for BoundAccess element on vector");
                 }
             })

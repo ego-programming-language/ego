@@ -60,6 +60,7 @@ impl MemoryManager {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Handle {
     pub pointer: u32,
 }
@@ -69,6 +70,10 @@ impl Handle {
         Handle {
             pointer: handle_pointer,
         }
+    }
+
+    pub fn to_string(&self) -> String {
+        self.pointer.to_string()
     }
 }
 

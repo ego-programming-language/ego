@@ -1442,6 +1442,9 @@ impl Vm {
             Value::BoundAccess(x) => {
                 panic!("BoundAccess cannot be represented as a string value")
             }
+            Value::Handle(x) => {
+                panic!("Handle cannot be represented as a string value")
+            }
         }
     }
 

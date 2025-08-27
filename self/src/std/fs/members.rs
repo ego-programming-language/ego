@@ -73,6 +73,12 @@ pub fn read_file(
                 received: "bound_access".to_string(),
             }));
         }
+        Value::Handle(_) => {
+            return Err(error::throw(VMErrorType::TypeMismatch {
+                expected: "string".to_string(),
+                received: "handle".to_string(),
+            }));
+        }
     };
 
     let path_obj = Path::new(&path);
