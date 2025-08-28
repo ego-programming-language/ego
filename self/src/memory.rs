@@ -40,8 +40,26 @@ impl MemoryManager {
         }
     }
 
-    pub fn free(&mut self, handle: &Handle) -> MemObject {
-        todo!()
+    pub fn free(&mut self, handle: Handle) -> MemObject {
+        let mem_obj = self.resolve(&handle);
+        match mem_obj {
+            // heap objects
+            MemObject::String(_)
+            | MemObject::Function(_)
+            | MemObject::NativeStruct(_)
+            | MemObject::StructDeclaration(_)
+            | MemObject::StructLiteral(_)
+            | MemObject::Vector(_) => {
+                // free handle from table
+                let heap_ref = self.free_handle(&handle).1.as_heap_pointer();
+                // free heap
+                let mem_obj = self.heap.free(heap_ref);
+                if mem_obj.is_none() {
+                    panic!("handle pointer does not exist in memory table")
+                }
+                mem_obj.unwrap()
+            }
+        }
     }
 
     pub fn resolve(&self, handle: &Handle) -> &MemObject {
@@ -79,6 +97,15 @@ impl MemoryManager {
         self.table.insert(generated_pointer, pointer);
         handle
     }
+
+    fn free_handle(&mut self, handle: &Handle) -> (u32, PointerType) {
+        let val = self.table.remove(&handle.pointer);
+        if val.is_none() {
+            panic!("unset pointer exception")
+        }
+
+        (handle.pointer, val.unwrap().clone())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -98,8 +125,18 @@ impl Handle {
     }
 }
 
+#[derive(Clone)]
 pub enum PointerType {
     HeapPointer(HeapRef),
+}
+
+impl PointerType {
+    pub fn as_heap_pointer(&self) -> HeapRef {
+        match self {
+            PointerType::HeapPointer(v) => v.clone(),
+            _ => panic!("invalid parse on PointerType as_heap_pointer method"),
+        }
+    }
 }
 
 #[derive(Debug)]

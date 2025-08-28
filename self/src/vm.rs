@@ -385,7 +385,6 @@ impl Vm {
                 }
                 Opcode::GetProperty => {
                     let values = self.get_stack_values(&2);
-                    println!("values: {:#?}", values);
                     let (object_handle, property_handle) = match (&values[0], &values[1]) {
                         // (Value::HeapRef(obj_ref), Value::HeapRef(prop_ref)) => (
                         //     self.resolve_heap_ref(obj_ref.clone()),
@@ -1368,7 +1367,7 @@ impl Vm {
                     // and they are a heap allocated value, but there is also infra to
                     // storing strings in the stack and not in the heap
                     if let Value::Handle(field_handle) = field_name_handle {
-                        let field_name = self.memory.free(&field_handle);
+                        let field_name = self.memory.free(field_handle);
                         if let MemObject::String(field_name) = field_name {
                             // add field with it's value to StructLiteral fields
                             fields.insert(field_name, field_value);
