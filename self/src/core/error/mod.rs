@@ -16,6 +16,7 @@ use crate::{
     vm::Vm,
 };
 
+#[derive(Debug)]
 pub enum VMErrorType {
     TypeCoercionError(OperandsStackValue), // maybe here we should have a more generic value, we'll see with time
     TypeMismatch { expected: String, received: String },
@@ -34,6 +35,7 @@ pub enum VMErrorType {
     Struct(StructError),
 }
 
+#[derive(Debug)]
 pub struct VMError {
     pub error_type: VMErrorType,
     pub message: String,
@@ -149,6 +151,7 @@ pub fn throw(error_type: VMErrorType, vm: &Vm) -> VMError {
     }
 }
 
+#[derive(Debug)]
 pub struct InvalidBinaryOperation {
     pub left: DataType,
     pub right: DataType,
