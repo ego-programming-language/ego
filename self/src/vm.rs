@@ -1218,6 +1218,7 @@ impl Vm {
         return execution_result;
     }
 
+    // REFACTOR: this function should return a Result<(DataType, Vec<u8>), VMError>
     fn get_value_length(&mut self) -> (DataType, Vec<u8>) {
         let data_type = DataType::to_opcode(self.bytecode[self.pc]);
         let value_length = match data_type {
@@ -1260,6 +1261,7 @@ impl Vm {
         (data_type, value_bytes)
     }
 
+    // REFACTOR: this function should return a Result<(Value, String), VMError>
     pub fn bytes_to_data(&mut self, data_type: &DataType, value: &Vec<u8>) -> (Value, String) {
         let printable_value;
         let value = match data_type {
@@ -1381,16 +1383,7 @@ impl Vm {
                     };
                 }
 
-                let resolved_struct_type = match struct_type {
-                    Value::Handle(v) => self.memory.resolve(&v),
-                    Value::BoundAccess(_) => {
-                        panic!("TODO: implement structs from bound acceses ")
-                    }
-                    _ => {
-                        // TODO: use self-vm errors system
-                        panic!("invalid struct type")
-                    }
-                };
+                let resolved_struct_type = struct_type.as_mem_obj(self).unwrap();
                 printable_value = resolved_struct_type.to_string(self);
 
                 // here we should check if the struct exists and the each field

@@ -47,6 +47,19 @@ impl Value {
         }
     }
 
+    pub fn as_mem_obj<'vm>(&self, vm: &'vm Vm) -> Result<&'vm MemObject, VMError> {
+        match self {
+            Value::Handle(v) => Ok(vm.memory.resolve(&v)),
+            Value::BoundAccess(_) => {
+                panic!("TODO: implement structs from bound acceses ")
+            }
+            _ => {
+                // TODO: use self-vm errors system
+                panic!("invalid struct type")
+            }
+        }
+    }
+
     pub fn as_string_obj(&self, vm: &Vm) -> Result<String, VMError> {
         match self {
             Value::Handle(r) => {
