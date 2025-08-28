@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
+    core::error::{self, VMError},
     heap::{Heap, HeapRef},
     types::object::{
         func::Function,
@@ -158,6 +159,30 @@ impl MemObject {
             MemObject::StructLiteral(x) => x.struct_type.to_string(),
             MemObject::NativeStruct(x) => x.to_string(),
             MemObject::Vector(x) => x.to_string(vm),
+        }
+    }
+
+    pub fn get_type(&self) -> String {
+        match self {
+            MemObject::String(_) => "string".to_string(),
+            MemObject::Function(_) => "function".to_string(),
+            MemObject::StructDeclaration(_) => "struct_declaration".to_string(),
+            MemObject::StructLiteral(_) => "struct_literal".to_string(),
+            MemObject::NativeStruct(_) => "native_struct".to_string(),
+            MemObject::Vector(_) => "vector".to_string(),
+        }
+    }
+
+    pub fn as_struct_declaration(&self, vm: &Vm) -> Result<StructDeclaration, VMError> {
+        match self {
+            MemObject::StructDeclaration(x) => Ok(x.clone()),
+            _ => Err(error::throw(
+                error::VMErrorType::TypeMismatch {
+                    expected: "struct_declaration".to_string(),
+                    received: self.get_type(),
+                },
+                vm,
+            )),
         }
     }
 }
