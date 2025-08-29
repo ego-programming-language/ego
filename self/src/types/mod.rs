@@ -31,7 +31,7 @@ impl Value {
                     "unkown_value_type".to_string()
                 }
             }
-            Value::BoundAccess(x) => x.to_string(),
+            Value::BoundAccess(x) => x.property.to_string(vm),
             Value::Handle(x) => vm.memory.resolve(x).to_string(vm),
             _ => "unkown_value_type".to_string(),
         }
@@ -50,12 +50,11 @@ impl Value {
     pub fn as_mem_obj<'vm>(&self, vm: &'vm Vm) -> Result<&'vm MemObject, VMError> {
         match self {
             Value::Handle(v) => Ok(vm.memory.resolve(&v)),
-            Value::BoundAccess(_) => {
-                panic!("TODO: implement structs from bound acceses ")
-            }
+            // assuming that every BoundAccess is created type checking the property, we only need to get the property unwrapped value
+            Value::BoundAccess(v) => Ok(v.property.as_mem_obj(vm)?),
             _ => {
                 // TODO: use self-vm errors system
-                panic!("invalid struct type")
+                panic!("invalid type to use as_mem_obj struct type")
             }
         }
     }
